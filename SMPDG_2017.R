@@ -22,7 +22,7 @@ library(pROC)
 
 ### functions
 # below three functions for marginal likelihood calculations
-marg.ll1.2g <- function(lambda, e.beta, v.beta, e.psi.inv, e.psi, G, sizes, modmat) {
+marg.ll1.2g <- function(lambda, e.beta, v.beta, e.psi.inv, e.psi, p, G, sizes, modmat) {
   # marginal likelihood in lambda1 and lambda2g
   
   lambda1 <- lambda[1]
@@ -38,14 +38,16 @@ marg.ll1.2g <- function(lambda, e.beta, v.beta, e.psi.inv, e.psi, G, sizes, modm
   
 }
 
-gr.marg.ll1.2g <- function(lambda, e.beta, v.beta, e.psi.inv, e.psi, G, sizes, modmat) {
+gr.marg.ll1.2g <- function(lambda, e.beta, v.beta, e.psi.inv, e.psi, p, G, sizes, modmat) {
   # gradient of marginal likelihood in lambda1 and lambda2g
+  
   lambda1 <- lambda[1]
   lambda2 <- lambda[2:(G + 1)]
+  lambda2vec <- rep(lambda2, times=sizes)
   part1.1 <- p/lambda1
-  part1.2 <- lambda1*sum((t(as.matrix(e.psi + 1)) %*% modmat)/lambda2)/4
+  part1.2 <- lambda1*sum((e.psi + 1)/lambda2vec)/4
   part1.3 <- sum(sizes*dnorm(lambda1/sqrt(4*lambda2))/
-                   (sqrt(4*lambda2)*pnorm(-lambda1/sqrt(4*lambda2))))
+                   (sqrt(lambda2)*pnorm(-lambda1/sqrt(4*lambda2))))/sqrt(4)
   comp1 <- part1.1 - part1.2 + part1.3
   part2.1 <- lambda1^2*(t(as.matrix(e.psi + 1)) %*% modmat)/(8*lambda2^2)
   part2.2 <- 0.5*as.numeric((t(as.matrix((v.beta + e.beta^2)*(1 + e.psi.inv))) %*% modmat))
@@ -56,17 +58,6 @@ gr.marg.ll1.2g <- function(lambda, e.beta, v.beta, e.psi.inv, e.psi, G, sizes, m
   
 }
 
-
-############################################# DEBUGGING ####################################################
-x=X 
-y=Y
-groups=grs 
-lambda1=1 
-lambda2=1 
-maxiter=1000
-epsilon=1e-07
-trace=TRUE
-
 # the fitting function
 envb2 <- function(x, y, groups, lambda1, lambda2, maxiter=1000, epsilon=1e-07, trace=TRUE) {
   
@@ -74,9 +65,10 @@ envb2 <- function(x, y, groups, lambda1, lambda2, maxiter=1000, epsilon=1e-07, t
   n <- nrow(x)
   G <- length(unique(groups))
   sizes <- rle(groups)$lengths
-  G <- length(unique(groups))
   modmat <- matrix(0, ncol=G, nrow=p)
   modmat <- sapply(1:G, function(g) {as.numeric(groups==g)})
+  m <- 1
+  kappa <- y - 0.5*m
   
   # starting values
   fit <- penalized(y, x, unpenalized=~0, lambda1=0, lambda2=lambda1 + lambda2, model="logistic")
@@ -137,7 +129,7 @@ envb2 <- function(x, y, groups, lambda1, lambda2, maxiter=1000, epsilon=1e-07, t
     chi <- as.numeric(lambda2vec*(diag(sigma) + mu^2))
     
     # check the convergence of the model parameters
-    conv <- max(abs(c(sigma - sigmaold, mu - muold))) < epsilon
+    conv <- max(abs(c(diag(sigma) - diag(sigmaold), mu - muold))) < epsilon
     
     # update old parameters to new ones
     sigmaold <- sigma
@@ -155,11 +147,19 @@ envb2 <- function(x, y, groups, lambda1, lambda2, maxiter=1000, epsilon=1e-07, t
     e.psi <- 1/phi + sqrt(chi/phi)
     
     lambdaold <- c(lambda1old, lambda2old)
-    opt.rout <- optim(par=lambdaold, fn=marg.ll1.2g, gr=gr.marg.ll1.2g,
-                      method="L-BFGS-B", lower=rep(0.001, G + 1), 
-                      upper=rep(Inf, G + 1), control=list(fnscale=-1), 
-                      e.beta=e.beta, v.beta=v.beta, e.psi.inv=e.psi.inv, 
-                      e.psi=e.psi, G=G, sizes=sizes, modmat=modmat)
+    opt.rout <- tryCatch({
+      optim(par=lambdaold, fn=marg.ll1.2g, gr=gr.marg.ll1.2g,
+            method="L-BFGS-B", lower=rep(0.001, G + 1), 
+            upper=rep(Inf, G + 1), control=list(fnscale=-1), 
+            e.beta=e.beta, v.beta=v.beta, e.psi.inv=e.psi.inv, 
+            e.psi=e.psi, p=p, G=G, sizes=sizes, modmat=modmat)},
+      error=function(war) {
+        optim(par=lambdaold, fn=marg.ll1.2g,
+              method="L-BFGS-B", lower=rep(0.001, G + 1), 
+              upper=rep(Inf, G + 1), control=list(fnscale=-1), 
+              e.beta=e.beta, v.beta=v.beta, e.psi.inv=e.psi.inv, 
+              e.psi=e.psi, p=p, G=G, sizes=sizes, modmat=modmat)
+      })
     lambda1 <- opt.rout$par[1]
     lambda2 <- opt.rout$par[2:(G + 1)]
     
@@ -218,7 +218,7 @@ for(fac in facvec){
       
       ### FITTING THE MODELS
       pblock <- G*p/Nblock
-      grs <- rep(1:G,each=p)
+      grs <- rep(1:G, each=p)
       P <- G*p #Complete number of variables
       X <- Reduce(cbind, lapply(1:Nblock, function(z) {
         matrix(rep(rnorm(n, sd=sqrt(CorX/(1 - CorX))), times=pblock), n, pblock)})) + matrix(rnorm(n*G*p), n, G*p)
@@ -230,8 +230,8 @@ for(fac in facvec){
       Y <- rbinom(length(prob), 1, prob)
       
       # ENVB
-      vbSim <- envb2(x=X, y=Y, groups=grs, lambda1=1, lambda2=1, maxiter=1000, epsilon=1e-07, trace=TRUE)
-      
+      vbSim <- envb2(x=X, y=Y, groups=grs, lambda1=1, lambda2=1, maxiter=1000, epsilon=1e-06, trace=TRUE)
+
       # GRridge
       groups <- CreatePartition(grs, grsize=p, uniform=T, decreasing=F)
       partsim <- list(grouping=groups)
@@ -240,7 +240,7 @@ for(fac in facvec){
       # calculating mse
       grMse <- var((grSim$betas - Beta)^2)
       vbMse <- var((vbSim$mu - Beta)^2)
-      mses <- c(fac, fract, repit, grMse, vbMse)
+      mses <- c(fac, fract, reptit, grMse, vbMse)
       
       ### TESTING THE MODELS
       # making the test data
@@ -275,10 +275,16 @@ for(fac in facvec){
       print(briermat)
       aucmat <- rbind(aucmat, aucs)
       print("aucs")
+      print(aucmat)
       
     }
   }   
 }
 
-test1 <- matrix(c(1:5), ncol=5, nrow=5)
-t(t(test1)*c(1:5))
+colnames(msemat) <- c("fac", "fract", "reptit", "GRridge", "ENVB")
+colnames(briermat) <- c("fac", "fract", "reptit", "GRridge", "ENVB")
+colnames(aucmat) <- c("fac", "fract", "reptit", "GRridge", "ENVB")
+
+save(msemat, briermat, aucmat, file=paste(path.results, "SMPDG_2017_v01.Rdata", sep=""))
+
+
