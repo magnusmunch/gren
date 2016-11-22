@@ -21,11 +21,11 @@ library(pROC)
 
 ### functions
 # below three functions for marginal likelihood calculations
-marg.ll1.2g <- function(lambda, e.beta, v.beta, e.psi.inv, e.psi, p, G, sizes, modmat) {
+marg.ll1.2g <- function(lambda, e.beta, v.beta, e.psi.inv, e.psi, p, G, sizes, modmat, intercept) {
   # marginal likelihood in lambda1 and lambda2g
   
   lambda1 <- lambda[1]
-  lambda2 <- lambda[2:(G + 1)]
+  lambda2 <- lambda[2:(G + 1 + intercept)]
   lambda2vec <- rep(lambda2, times=sizes)
   part1 <- p*log(lambda1)
   part2 <- 0.5*sum(lambda2vec*(v.beta + e.beta^2)*(1 + e.psi.inv))
@@ -37,11 +37,11 @@ marg.ll1.2g <- function(lambda, e.beta, v.beta, e.psi.inv, e.psi, p, G, sizes, m
   
 }
 
-gr.marg.ll1.2g <- function(lambda, e.beta, v.beta, e.psi.inv, e.psi, p, G, sizes, modmat) {
+gr.marg.ll1.2g <- function(lambda, e.beta, v.beta, e.psi.inv, e.psi, p, G, sizes, modmat, intercept) {
   # gradient of marginal likelihood in lambda1 and lambda2g
   
   lambda1 <- lambda[1]
-  lambda2 <- lambda[2:(G + 1)]
+  lambda2 <- lambda[2:(G + 1 + intercept)]
   lambda2vec <- rep(lambda2, times=sizes)
   part1.1 <- p/lambda1
   part1.2 <- lambda1*sum((e.psi + 1)/lambda2vec)/4
@@ -58,21 +58,30 @@ gr.marg.ll1.2g <- function(lambda, e.beta, v.beta, e.psi.inv, e.psi, p, G, sizes
 }
 
 # the fitting function
-envb2 <- function(x, y, groups, lambda1, lambda2, maxiter=1000, epsilon=1e-07, trace=TRUE) {
+envb2 <- function(x, y, groups, lambda1, lambda2, intercept=TRUE, maxiter=1000, epsilon=1e-07, trace=TRUE) {
   
   p <- ncol(x)
   n <- nrow(x)
   G <- length(unique(groups))
-  sizes <- rle(groups)$lengths
-  modmat <- matrix(0, ncol=G, nrow=p)
-  modmat <- sapply(1:G, function(g) {as.numeric(groups==g)})
+  modmat <- matrix(0, ncol=G + intercept, nrow=p + intercept)
+  modmat[1, 1] <- intercept
+  modmat[(intercept + 1):(p + intercept), (intercept + 1):(G + intercept)] <- sapply(1:G, function(g) {
+    ifelse(groups==g, g + intercept, 0)})
   m <- 1
   kappa <- y - 0.5*m
+  td <- min(n, p + intercept)
   
   # starting values
-  fit <- penalized(y, x, unpenalized=~0, lambda1=0, lambda2=lambda1 + lambda2, model="logistic")
+  if(intercept) {
+    fit <- penalized(y, x, unpenalized=~1, lambda1=0, lambda2=lambda1 + lambda2, model="logistic")
+    sizes <- c(rle(groups)$lengths, 1)
+    x <- cbind(1, x)
+  } else {
+    fit <- penalized(y, x, unpenalized=~0, lambda1=0, lambda2=lambda1 + lambda2, model="logistic")
+    sizes <- rle(groups)$lengths
+  }
   
-  mu <- muold <- fit@penalized
+  mu <- muold <- c(fit@unpenalized, fit@penalized)
   
   xmu <- x %*% mu
   phat <- as.numeric(exp(xmu)/(1 + exp(xmu)))
@@ -82,7 +91,6 @@ envb2 <- function(x, y, groups, lambda1, lambda2, maxiter=1000, epsilon=1e-07, t
   U <- svdxw$u
   V <- svdxw$v
   d <- svdxw$d
-  td <- min(n, p)
   invmat <- 1/(d^2 + 2*(lambda1 + lambda2))
   part1 <- invmat^2*d^2
   sigma <- sigmaold <- t(t(V)*part1) %*% t(V)
@@ -90,13 +98,18 @@ envb2 <- function(x, y, groups, lambda1, lambda2, maxiter=1000, epsilon=1e-07, t
   ci <- ciold <- as.numeric(sqrt(colSums(t(x) * (sigma %*% t(x))) + (colSums(t(x)*mu))^2))
   chi <- chiold <- as.numeric(lambda2*(diag(sigma) + mu^2))
   
-  lambda2old <- rep(lambda2, G)
+  lambda2old <- rep(lambda2, G + intercept)
   lambda1old <- lambda1
   lambda2vec <- rep(lambda2old, time=sizes)
   phi <- lambda1^2/(4*lambda2vec)
   
   conv <- FALSE
   niter <- 0
+  if(intercept) {
+    ps <- c(1, 1, rep(1, G))
+  } else {
+    ps <- rep(1, G + 1)
+  }
   
   while(!conv & (niter < maxiter)) {
     
@@ -121,7 +134,7 @@ envb2 <- function(x, y, groups, lambda1, lambda2, maxiter=1000, epsilon=1e-07, t
     U <- t(V)
     hinv <- 1/h
     vhinv <- t(t(V)*hinv)
-    sigma <- diag(hinv) - (hinv*U) %*% solve(diag(n) + vhinv %*% U) %*% vhinv
+    sigma <- diag(hinv) - (hinv*U) %*% solve(diag(td) + vhinv %*% U) %*% vhinv
     
     mu <- as.numeric(sigma %*% (t(x) %*% kappa))
     ci <- as.numeric(sqrt(colSums(t(x) * (sigma %*% t(x))) + (colSums(t(x)*mu))^2))
@@ -148,19 +161,23 @@ envb2 <- function(x, y, groups, lambda1, lambda2, maxiter=1000, epsilon=1e-07, t
     lambdaold <- c(lambda1old, lambda2old)
     opt.rout <- tryCatch({
       optim(par=lambdaold, fn=marg.ll1.2g, gr=gr.marg.ll1.2g,
-            method="L-BFGS-B", lower=rep(0.001, G + 1), 
-            upper=rep(Inf, G + 1), control=list(fnscale=-1), 
+            method="L-BFGS-B", lower=rep(0.001, G + 1 + intercept), 
+            upper=rep(Inf, G + 1 + intercept), 
+            control=list(fnscale=-1, parscale=ps, maxit=20000), 
             e.beta=e.beta, v.beta=v.beta, e.psi.inv=e.psi.inv, 
-            e.psi=e.psi, p=p, G=G, sizes=sizes, modmat=modmat)},
+            e.psi=e.psi, p=p, G=G, sizes=sizes, modmat=modmat, 
+            intercept=intercept)},
       error=function(war) {
         optim(par=lambdaold, fn=marg.ll1.2g,
-              method="L-BFGS-B", lower=rep(0.001, G + 1), 
-              upper=rep(Inf, G + 1), control=list(fnscale=-1), 
+              method="L-BFGS-B", lower=rep(0.001, G + 1 + intercept), 
+              upper=rep(Inf, G + 1 + intercept),
+              control=list(fnscale=-1, parscale=ps, maxit=20000), 
               e.beta=e.beta, v.beta=v.beta, e.psi.inv=e.psi.inv, 
-              e.psi=e.psi, p=p, G=G, sizes=sizes, modmat=modmat)
+              e.psi=e.psi, p=p, G=G, sizes=sizes, modmat=modmat,
+              intercept=intercept)
       })
     lambda1 <- opt.rout$par[1]
-    lambda2 <- opt.rout$par[2:(G + 1)]
+    lambda2 <- opt.rout$par[2:(G + 1 + intercept)]
     
     # update old hyperparameters to new ones
     lambda1old <- lambda1
@@ -316,27 +333,83 @@ for(fac in facvec){
 
 save(out, file=paste(path.results, "SMPDG_2017_v01_run02.Rdata", sep=""))
 
-apply(out[[1]]$msemat, 2, median)
-boxplot(out[[1]]$msemat[, -4], use.cols=TRUE)
+
+set.seed(123)
+n <- 100           # Nb of observations    
+ntest <- 1000          ## Nb of test set observations     
+p <- 200            # Nb of variables per group
+G <- 10            # Nb of groups
+meanBeta <- 0.01   # Beta variances per group are VarBeta*(1:G); use this for CorX=0.5
+CorX <- 0.5       # correlation within variable block
+Nblock <- 10*G    # number of correlation blocks
+fac <- 1.3 
+fract <- 0 
+reps <- rev(sapply(0:(G - 1), function(i) {fac^(-i)}))
+meansB <- rep(reps, each=p)*meanBeta/mean(rep(reps, each=p))
+Beta <- meansB
+Beta <- rev(sparsify(Beta, frac=fract))
+pblock <- G*p/Nblock
+grs <- rep(1:G, each=p)
+P <- G*p #Complete number of variables
+X <- Reduce(cbind, lapply(1:Nblock, function(z) {
+  matrix(rep(rnorm(n, sd=sqrt(CorX/(1 - CorX))), times=pblock), n, pblock)})) + matrix(rnorm(n*G*p), n, G*p)
+X <- t((t(X) - apply(t(X), 1, mean))/apply(t(X), 1, sd))
+lpred <- X %*% Beta 
+logisticintercept <- 0.01
+prob <- 1/(1 + exp(-(lpred + logisticintercept)))
+Y <- rbinom(length(prob), 1, prob)
 
 
+test1 <- envb2(x=X, y=Y, groups=grs, lambda1=1, lambda2=100, intercept=TRUE, maxiter=1000, epsilon=1e-06, 
+               trace=TRUE)
+test2 <- envb2(x=X, y=Y, groups=grs, lambda1=1, lambda2=100, intercept=FALSE, maxiter=1000, epsilon=1e-06, 
+               trace=TRUE)
+var((Beta - test1$mu[-1])^2)
+var((Beta - test2$mu)^2)
+
+Xtest <- Reduce(cbind, lapply(1:Nblock, function(z) {
+  matrix(rep(rnorm(ntest, sd=sqrt(CorX/(1 - CorX))), times=pblock), ntest, pblock)})) + 
+  matrix(rnorm(ntest*G*p), ntest, G*p)
+lpredtest <- Xtest %*% Beta 
+probtest <- 1/(1 + exp(-(lpredtest + logisticintercept)))
+Ytest <- rbinom(length(probtest), 1, probtest)
 
 
+pred1 <- 1/(1 + exp(-(cbind(1, Xtest) %*% test1$mu)))
+pred2 <- 1/(1 + exp(-(Xtest %*% test2$mu)))
+cutoffs <- rev(seq(0, 1, by=0.005))
+brier1 <- mean((pred1 - probtest)^2)
+brier2 <- mean((pred2 - probtest)^2)
+auc1 <- GRridge::auc(GRridge::roc(probs=as.numeric(pred1), true=Ytest, cutoffs))
+auc2 <- GRridge::auc(GRridge::roc(probs=as.numeric(pred2), true=Ytest, cutoffs))
 
+#intercept estimate
+test1$mu[1]
 
-
-data(dataVerlaat)
-cpganngroup <- CreatePartition(CpGann)
-grs <- rep(1:6, times=sapply(1:length(cpganngroup), function(g) {length(cpganngroup[[g]])}))
-grs2 <- CreatePartition(as.factor(grs))
-X <- t(datcenVerlaat)[, order(unlist(cpganngroup))]
-X <- apply(X, 2, function(j) {(j - mean(j)/sd(j))})
-Y <- respVerlaat
-
-test1 <- envb2(x=X, y=Y, groups=grs, lambda1=1, lambda2=500, maxiter=500, epsilon=1e-06, trace=TRUE)
-test2 <- grridge(t(X), Y, partitions=list(cpg=grs2), unpenal=~1, innfold=10)
-test3 <- grridge(datcenVerlaat, respVerlaat, partition=list(gpg=CreatePartition(CpGann)),
-                 unpenal=~1, innfold=10)
+plot(c(logisticintercept, Beta), test1$mu)
+plot(Beta, test2$mu)
+plot(test1$mu[-1], test2$mu)
+# apply(out[[1]]$msemat, 2, median)
+# boxplot(out[[1]]$msemat[, -4], use.cols=TRUE)
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# data(dataVerlaat)
+# cpganngroup <- CreatePartition(CpGann)
+# grs <- rep(1:6, times=sapply(1:length(cpganngroup), function(g) {length(cpganngroup[[g]])}))
+# grs2 <- CreatePartition(as.factor(grs))
+# X <- t(datcenVerlaat)[, order(unlist(cpganngroup))]
+# X <- apply(X, 2, function(j) {(j - mean(j)/sd(j))})
+# Y <- respVerlaat
+# 
+# test1 <- envb2(x=X, y=Y, groups=grs, lambda1=1, lambda2=500, maxiter=500, epsilon=1e-06, trace=TRUE)
+# test2 <- grridge(t(X), Y, partitions=list(cpg=grs2), unpenal=~1, innfold=10)
+# test3 <- grridge(datcenVerlaat, respVerlaat, partition=list(gpg=CreatePartition(CpGann)),
+#                  unpenal=~1, innfold=10)
 
 
 

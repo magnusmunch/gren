@@ -236,7 +236,9 @@ for(fac in facvec){
       # GRridge
       groups <- CreatePartition(grs, grsize=p, uniform=T, decreasing=F)
       partsim <- list(grouping=groups)
-      grSim <- grridge(t(X), Y, unpenal=~0, partsim, savepredobj="all", innfold=10, method="stable")
+      grSim <- tryCatch({
+        grridge(t(X), Y, unpenal=~0, partsim, savepredobj="all", innfold=10, method="stable")},
+        error=function(war) {return(NULL)})
       
       # ridge
       rrSim <- optL2(Y, X, unpenalized=~0, lambda1=0, model="logistic", fold=10)
@@ -248,7 +250,11 @@ for(fac in facvec){
       enSim <- optL2(Y, X, unpenalized=~0, lambda1=vbSim$lambda1, model="logistic", fold=10)
       
       # calculating mse
-      grMse <- var((grSim$betas - Beta)^2)
+      if(is.null(grSim)) {
+        grMse <- NA
+      } else {
+        grMse <- var((grSim$betas - Beta)^2)
+      }
       vbMse <- var((vbSim$mu - Beta)^2)
       rrMse <- var((rrSim$fullfit@penalized - Beta)^2)
       lrMse <- var((lrSim$fullfit@penalized - Beta)^2)
@@ -268,32 +274,41 @@ for(fac in facvec){
       
       # making predictions
       vbPred <- 1/(1 + exp(-(Xtest %*% vbSim$mu)))
-      grPred <- predict.grridge(grSim, t(Xtest))
       rrPred <- predict(rrSim$fullfit, Xtest)
       lrPred <- predict(lrSim$fullfit, Xtest)
       enPred <- predict(enSim$fullfit, Xtest)
       
+      # GRridge stuff
+      cutoffs <- rev(seq(0, 1, by=0.005))
+      if(is.null(grSim)) {
+        grBrier <- NA
+        grAuc <- NA
+      } else {
+        grPred <- predict.grridge(grSim, t(Xtest))
+        grBrier <- mean((grPred[, 2] - probtest)^2)
+        grRoc <- GRridge::roc(probs=as.numeric(grPred[, 2]), true=Ytest, cutoffs)
+        grAuc <- GRridge::auc(grRoc)
+      }
+      
       # calculating brier residuals and auc
-      grBrier <- mean((grPred[, 2] - probtest)^2)
+      
       vbBrier <- mean((vbPred - probtest)^2)
       rrBrier <- mean((rrPred - probtest)^2)
       lrBrier <- mean((lrPred - probtest)^2)
       enBrier <- mean((enPred - probtest)^2)
       briermat[reptit, ] <- c(vbBrier, grBrier, rrBrier, lrBrier, enBrier)
       
-      cutoffs <- rev(seq(0, 1, by=0.005))
-      grRoc <- GRridge::roc(probs=as.numeric(grPred[, 2]), true=Ytest, cutoffs) #ridge, sel
       vbRoc <- GRridge::roc(probs=as.numeric(vbPred), true=Ytest, cutoffs)
       rrRoc <- GRridge::roc(probs=as.numeric(rrPred), true=Ytest, cutoffs)
       lrRoc <- GRridge::roc(probs=as.numeric(lrPred), true=Ytest, cutoffs)
       enRoc <- GRridge::roc(probs=as.numeric(enPred), true=Ytest, cutoffs)
-      aucmat[reptit, ] <- c(GRridge::auc(vbRoc), GRridge::auc(grRoc), GRridge::auc(rrRoc), GRridge::auc(lrRoc),
+      aucmat[reptit, ] <- c(GRridge::auc(vbRoc), grAuc, GRridge::auc(rrRoc), GRridge::auc(lrRoc),
                             GRridge::auc(enRoc))
       
     }
     
     colnames(msemat) <- colnames(briermat) <- colnames(aucmat) <- c("ENVB", "GRridge", "RR", "LR", "EN")
-    out[[3*fac + fract - 3]] <- list(msemat=msemat, briermat=briermat, aucmat=aucmat)
+    out[[3*which(fac==facvec) + which(fract==fractvec) - 3]] <- list(msemat=msemat, briermat=briermat, aucmat=aucmat)
     
   }   
 }
