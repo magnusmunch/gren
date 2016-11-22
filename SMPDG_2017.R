@@ -21,16 +21,16 @@ library(pROC)
 
 ### functions
 # below three functions for marginal likelihood calculations
-marg.ll1.2g <- function(lambda, e.beta, v.beta, e.psi.inv, e.psi, p, G, sizes, modmat, intercept) {
+marg.ll1.2g <- function(lambda, sum.beta.psi, sum.psi, p, G, sizes, intercept) {
   # marginal likelihood in lambda1 and lambda2g
   
-  lambda1 <- lambda[1]
-  lambda2 <- lambda[2:(G + 1 + intercept)]
-  lambda2vec <- rep(lambda2, times=sizes)
-  part1 <- p*log(lambda1)
-  part2 <- 0.5*sum(lambda2vec*(v.beta + e.beta^2)*(1 + e.psi.inv))
-  part3 <- lambda1^2*sum((e.psi + 1)/lambda2vec)/8
-  part4 <- sum(sizes*pnorm(-lambda1/(sqrt(4*lambda2)), log.p=TRUE))
+  lambda1 <- lambda[1:(intercept + 1)]
+  lambda2 <- lambda[(intercept + 2):(G + 1 + intercept*2)]
+  part1 <- sum(c(intercept, p)*log(lambda1))
+  part2 <- 0.5*sum(lambda2*sum.beta.psi)
+  part3 <- lambda1[1]^2*(sum.psi[1]/(8*lambda2[1])) + sum(lambda1[intercept + 1]^2*(sum.psi[-1]/(8*lambda2[-1])))
+  part4 <- (intercept + (1 - intercept)*sizes[1])*pnorm(-lambda1[1]/sqrt(4*lambda2[1]), log.p=TRUE) + 
+    sum(sizes[-1]*pnorm(-lambda1[-1]/sqrt(4*lambda2[-1]), log.p=TRUE))
   ll <- part1 - part2 - part3 - part4
   
   return(ll)
@@ -40,18 +40,25 @@ marg.ll1.2g <- function(lambda, e.beta, v.beta, e.psi.inv, e.psi, p, G, sizes, m
 gr.marg.ll1.2g <- function(lambda, e.beta, v.beta, e.psi.inv, e.psi, p, G, sizes, modmat, intercept) {
   # gradient of marginal likelihood in lambda1 and lambda2g
   
-  lambda1 <- lambda[1]
-  lambda2 <- lambda[2:(G + 1 + intercept)]
+  lambda1 <- lambda[1:(intercept + 1)]
+  lambda2 <- lambda[(intercept + 2):(G + 1 + intercept*2)]
+  lambda1vec <- rep(c(lambda1[1], lambda1[intercept + 1]), times=c(intercept, p))
   lambda2vec <- rep(lambda2, times=sizes)
-  part1.1 <- p/lambda1
-  part1.2 <- lambda1*sum((e.psi + 1)/lambda2vec)/4
-  part1.3 <- sum(sizes*dnorm(lambda1/sqrt(4*lambda2))/
-                   (sqrt(lambda2)*pnorm(-lambda1/sqrt(4*lambda2))))/sqrt(4)
-  comp1 <- part1.1 - part1.2 + part1.3
-  part2.1 <- lambda1^2*(t(as.matrix(e.psi + 1)) %*% modmat)/(8*lambda2^2)
+  part1.1 <- (c(1, p)/lambda1)[(2 - intercept):2]
+  part1.2 <- c(lambda1[1]*(e.psi[1] + 1)/(lambda2[1]*4), 
+               lambda1[intercept + 1]*sum((e.psi[(intercept + 1):(p + intercept)] + 1)/
+                                            lambda2vec[(intercept + 1):(p + intercept)])/4)[(2 - intercept):2]
+  part1.3 <- c(dnorm(lambda1[1]/sqrt(4*lambda2[1]))/(pnorm(-lambda1[1]/sqrt(4*lambda2[1]))*sqrt(4*lambda2[1])),
+               sum(sizes*dnorm(lambda1[(intercept + 1)]/sqrt(4*lambda2[(intercept + 1):(G + intercept)]))/
+                 pnorm(-lambda1[(intercept + 1)])/sqrt(4*lambda2[(intercept + 1):(G + intercept)]))/
+                    sqrt(4*lambda2[(intercept + 1):(G + intercept)]))[(2 - intercept):2]
+  comp1 <- part1.1 - part1.2  + part1.3
+  part2.1 <- as.numeric(t(as.matrix(lambda1vec^2*(e.psi + 1)/(8*lambda2vec^2)) %*% modmat))
   part2.2 <- 0.5*as.numeric((t(as.matrix((v.beta + e.beta^2)*(1 + e.psi.inv))) %*% modmat))
-  part2.3 <- lambda1*sizes*dnorm(lambda1/sqrt(4*lambda2))/
-    (4*lambda2^(1.5)*pnorm(-lambda1/sqrt(4*lambda2)))
+  part2.3 <- c(lambda1[1]*sizes[1]*dnorm(lambda1[1]/sqrt(4*lambda2[1]))/
+    (4*lambda2[1]^(1.5)*pnorm(-lambda1[1]/sqrt(4*lambda2[1]))), 
+    lambda1[intercept + 1]*sizes[-1]*dnorm(lambda1[intercept + 1]/sqrt(4*lambda2[-1]))/
+      (4*lambda2[-1]^(1.5)*pnorm(-lambda1[intercept + 1]/sqrt(4*lambda2[-1]))))
   comp2 <- part2.1 - part2.2 - part2.3
   return(c(comp1, comp2))
   
@@ -70,15 +77,14 @@ envb2 <- function(x, y, groups, lambda1, lambda2, intercept=TRUE, maxiter=1000, 
   m <- 1
   kappa <- y - 0.5*m
   td <- min(n, p + intercept)
+  sizes <- rle(groups)$lengths
   
   # starting values
   if(intercept) {
     fit <- penalized(y, x, unpenalized=~1, lambda1=0, lambda2=lambda1 + lambda2, model="logistic")
-    sizes <- c(rle(groups)$lengths, 1)
     x <- cbind(1, x)
   } else {
     fit <- penalized(y, x, unpenalized=~0, lambda1=0, lambda2=lambda1 + lambda2, model="logistic")
-    sizes <- rle(groups)$lengths
   }
   
   mu <- muold <- c(fit@unpenalized, fit@penalized)
@@ -99,17 +105,13 @@ envb2 <- function(x, y, groups, lambda1, lambda2, intercept=TRUE, maxiter=1000, 
   chi <- chiold <- as.numeric(lambda2*(diag(sigma) + mu^2))
   
   lambda2old <- rep(lambda2, G + intercept)
-  lambda1old <- lambda1
-  lambda2vec <- rep(lambda2old, time=sizes)
-  phi <- lambda1^2/(4*lambda2vec)
+  lambda1old <- rep(lambda1, 1 + intercept)
+  lambda2vec <- rep(c(lambda2old[1], lambda2old[(intercept + 1):(G + intercept)]), times=c(intercept, sizes))
+  lambda1vec <- rep(c(lambda1old[1], lambda1old[intercept + 1]), times=c(intercept, p))
+  phi <- lambda1vec^2/(4*lambda2vec)
   
   conv <- FALSE
   niter <- 0
-  if(intercept) {
-    ps <- c(1, 1, rep(1, G))
-  } else {
-    ps <- rep(1, G + 1)
-  }
   
   while(!conv & (niter < maxiter)) {
     
@@ -117,9 +119,9 @@ envb2 <- function(x, y, groups, lambda1, lambda2, intercept=TRUE, maxiter=1000, 
     
     if(trace) {
       cat("\r", "Iteration: ", niter, ", ", 
-          paste("lambda1=[", paste(round(lambda1, 2), collapse=", "), 
+          paste("lambda1=[", paste(round(lambda1old, 2), collapse=", "), 
                 sep=""), "], ", 
-          paste("lambda2=[", paste(round(lambda2, 2), collapse=", "), 
+          paste("lambda2=[", paste(round(lambda2old, 2), collapse=", "), 
                 sep=""), "]", sep="")
     }
     
@@ -150,43 +152,42 @@ envb2 <- function(x, y, groups, lambda1, lambda2, intercept=TRUE, maxiter=1000, 
     chiold <- chi
     
     # recalculate phi, since it depends on lambda1 and lambda2
-    phi <- lambda1old^2/(4*lambda2vec)
+    phi <- lambda1vec^2/(4*lambda2vec)
     
     # fixed parameters needed in function optimisation
-    e.beta <- mu
-    v.beta <- diag(sigma)
-    e.psi.inv <- sqrt(phi/chi)
-    e.psi <- 1/phi + sqrt(chi/phi)
+    sum.beta.psi <- as.numeric(t(as.matrix((diag(sigma) + mu^2)*(1 + sqrt(phi/chi)))) %*% modmat)
+    sum.psi <- as.numeric(t(as.matrix(sqrt(1/phi + sqrt(chi/phi)))) %*% modmat)
     
+    # optimization routine
     lambdaold <- c(lambda1old, lambda2old)
     opt.rout <- tryCatch({
-      optim(par=lambdaold, fn=marg.ll1.2g, gr=gr.marg.ll1.2g,
-            method="L-BFGS-B", lower=rep(0.001, G + 1 + intercept), 
-            upper=rep(Inf, G + 1 + intercept), 
-            control=list(fnscale=-1, parscale=ps, maxit=20000), 
-            e.beta=e.beta, v.beta=v.beta, e.psi.inv=e.psi.inv, 
-            e.psi=e.psi, p=p, G=G, sizes=sizes, modmat=modmat, 
+      optim(par=lambdaold, fn=marg.ll1.2g, #gr=gr.marg.ll1.2g,
+            method="L-BFGS-B", lower=rep(0.001, G + 1 + intercept*2), 
+            upper=rep(Inf, G + 1 + intercept*2), 
+            control=list(fnscale=-1, maxit=30000), 
+            sum.beta.psi=sum.beta.psi, sum.psi=sum.psi, p=p, G=G, sizes=sizes,
             intercept=intercept)},
       error=function(war) {
         optim(par=lambdaold, fn=marg.ll1.2g,
-              method="L-BFGS-B", lower=rep(0.001, G + 1 + intercept), 
-              upper=rep(Inf, G + 1 + intercept),
-              control=list(fnscale=-1, parscale=ps, maxit=20000), 
-              e.beta=e.beta, v.beta=v.beta, e.psi.inv=e.psi.inv, 
-              e.psi=e.psi, p=p, G=G, sizes=sizes, modmat=modmat,
+              method="L-BFGS-B", lower=rep(0.001, G + 1 + intercept*2), 
+              upper=rep(Inf, G + 1 + intercept*2),
+              control=list(fnscale=-1, maxit=30000), 
+              sum.beta.psi=sum.beta.psi, sum.psi=sum.psi, p=p, G=G, sizes=sizes,
               intercept=intercept)
       })
-    lambda1 <- opt.rout$par[1]
-    lambda2 <- opt.rout$par[2:(G + 1 + intercept)]
+    
+    lambda1 <- opt.rout$par[1:(intercept + 1)]
+    lambda2 <- opt.rout$par[(intercept + 2):(G + 1 + intercept*2)]
     
     # update old hyperparameters to new ones
     lambda1old <- lambda1
     lambda2old <- lambda2
-    lambda2vec <- rep(lambda2old, times=sizes)
+    lambda1vec <- rep(c(lambda1old[1], lambda1old[intercept + 1], times=c(intercept, p)))
+    lambda2vec <- rep(c(lambda2old[1], lambda2old[(intercept + 1):(G + intercept)]), times=c(intercept, sizes))
     
   }
   
-  out <- list(niter=niter, conv=conv, sigma=sigma, mu=mu, c=ci, chi=chi, lambda1=lambda1)
+  out <- list(niter=niter, conv=conv, sigma=sigma, mu=mu, c=ci, chi=chi, lambda1=lambda1, lambda2=lambda2)
   return(out)
   
 }
