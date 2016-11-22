@@ -3,7 +3,7 @@
 # version: 02                                                         #
 # author: Magnus Münch                                                #
 # created: 15-11-2016                                                 #
-# last edited: 15-11-2016                                             #
+# last edited: 18-11-2016                                             #
 #######################################################################
 
 ###############################  notes  ###############################
@@ -14,7 +14,6 @@
 path.results <- "C:/Users/Magnus/Documents/phd/ENVB/abstract_SMPGD_2017/results/"
 
 ### libraries
-library(glmnet)
 library(penalized)
 library(mvtnorm)
 library(GRridge)
@@ -129,7 +128,7 @@ envb2 <- function(x, y, groups, lambda1, lambda2, maxiter=1000, epsilon=1e-07, t
     chi <- as.numeric(lambda2vec*(diag(sigma) + mu^2))
     
     # check the convergence of the model parameters
-    conv <- max(abs(c(diag(sigma) - diag(sigmaold), mu - muold))) < epsilon
+    conv <- max(abs(c(sigma - sigmaold, mu - muold))) < epsilon
     
     # update old parameters to new ones
     sigmaold <- sigma
@@ -170,7 +169,7 @@ envb2 <- function(x, y, groups, lambda1, lambda2, maxiter=1000, epsilon=1e-07, t
     
   }
   
-  out <- list(niter=niter, conv=conv, sigma=sigma, mu=mu, c=ci, chi=chi)
+  out <- list(niter=niter, conv=conv, sigma=sigma, mu=mu, c=ci, chi=chi, lambda1=lambda1)
   return(out)
   
 }
@@ -198,13 +197,16 @@ CorX <- 0.5       # correlation within variable block
 Nblock <- 10*G    # number of correlation blocks
 settings <- c(ntrain=n, p=p, G=G, meanBeta=meanBeta, CorX=CorX, Nblock=Nblock)
 
-nrep <- 1  #number of repeats per simulation setting
+nrep <- 20  #number of repeats per simulation setting
 facvec <- c(1.3, 1.6, 2)   #tunes how much weaker each next group is. The '2' means that the second group is twice as weak as the first, etc
 fractvec <- c(0, 0.7, 0.9) #tunes the sparsity per group. E.g. 0.9 means that 9/10 betas in a group are set to 0
 
-aucmat <- c()
-briermat <- c()
-msemat <- c()
+out <- vector(mode="list", length=length(facvec)*length(fractvec))
+names(out) <- as.vector(t(outer(paste("factor ", facvec, ",", sep=""), paste("fraction", fractvec), paste)))
+
+aucmat <- matrix(NA, ncol=5, nrow=nrep)
+briermat <- matrix(NA, ncol=5, nrow=nrep)
+msemat <- matrix(NA, ncol=5, nrow=nrep)
 for(fac in facvec){
   for(fract in fractvec){
     for(reptit in 1:nrep){
@@ -230,17 +232,35 @@ for(fac in facvec){
       Y <- rbinom(length(prob), 1, prob)
       
       # ENVB
-      vbSim <- envb2(x=X, y=Y, groups=grs, lambda1=1, lambda2=1, maxiter=1000, epsilon=1e-06, trace=TRUE)
-
+      vbSim <- envb2(x=X, y=Y, groups=grs, lambda1=1, lambda2=500, maxiter=1000, epsilon=1e-06, trace=TRUE)
+      
       # GRridge
       groups <- CreatePartition(grs, grsize=p, uniform=T, decreasing=F)
       partsim <- list(grouping=groups)
-      grSim <- grridge(t(X), Y, unpenal=~0, partsim, savepredobj="all", innfold=10, method="stable")
+      grSim <- tryCatch({
+        grridge(t(X), Y, unpenal=~0, partsim, savepredobj="all", innfold=10, method="stable")},
+        error=function(war) {return(NULL)})
+      
+      # ridge
+      rrSim <- optL2(Y, X, unpenalized=~0, lambda1=0, model="logistic", fold=10)
+      
+      # lasso
+      lrSim <- optL1(Y, X, unpenalized=~0, lambda2=0, model="logistic", fold=10)
+      
+      # elastic net
+      enSim <- optL2(Y, X, unpenalized=~0, lambda1=vbSim$lambda1, model="logistic", fold=10)
       
       # calculating mse
-      grMse <- var((grSim$betas - Beta)^2)
+      if(is.null(grSim)) {
+        grMse <- NA
+      } else {
+        grMse <- var((grSim$betas - Beta)^2)
+      }
       vbMse <- var((vbSim$mu - Beta)^2)
-      mses <- c(fac, fract, reptit, grMse, vbMse)
+      rrMse <- var((rrSim$fullfit@penalized - Beta)^2)
+      lrMse <- var((lrSim$fullfit@penalized - Beta)^2)
+      enMse <- var((enSim$fullfit@penalized - Beta)^2)
+      msemat[reptit, ] <- c(vbMse, grMse, rrMse, lrMse, enMse)
       
       ### TESTING THE MODELS
       # making the test data
@@ -255,36 +275,69 @@ for(fac in facvec){
       
       # making predictions
       vbPred <- 1/(1 + exp(-(Xtest %*% vbSim$mu)))
-      grPred <- predict.grridge(grSim, t(Xtest))
+      rrPred <- predict(rrSim$fullfit, Xtest)
+      lrPred <- predict(lrSim$fullfit, Xtest)
+      enPred <- predict(enSim$fullfit, Xtest)
+      
+      # GRridge stuff
+      cutoffs <- rev(seq(0, 1, by=0.005))
+      if(is.null(grSim)) {
+        grBrier <- NA
+        grAuc <- NA
+      } else {
+        grPred <- predict.grridge(grSim, t(Xtest))
+        grBrier <- mean((grPred[, 2] - probtest)^2)
+        grRoc <- GRridge::roc(probs=as.numeric(grPred[, 2]), true=Ytest, cutoffs)
+        grAuc <- GRridge::auc(grRoc)
+      }
       
       # calculating brier residuals and auc
-      grBrier <- mean((grPred[, 2] - probtest)^2)
+      
       vbBrier <- mean((vbPred - probtest)^2)
-      briers <- c(fac, fract, reptit, grBrier, vbBrier)
+      rrBrier <- mean((rrPred - probtest)^2)
+      lrBrier <- mean((lrPred - probtest)^2)
+      enBrier <- mean((enPred - probtest)^2)
+      briermat[reptit, ] <- c(vbBrier, grBrier, rrBrier, lrBrier, enBrier)
       
-      cutoffs <- rev(seq(0, 1, by=0.005))
-      grRoc <- GRridge::roc(probs=as.numeric(grPred[, 2]), true=Ytest, cutoffs) #ridge, sel
       vbRoc <- GRridge::roc(probs=as.numeric(vbPred), true=Ytest, cutoffs)
-      aucs <- c(fac, fract, reptit, GRridge::auc(grRoc), GRridge::auc(vbRoc))
-      
-      msemat <- rbind(msemat, mses)
-      print("mses")
-      print(msemat)
-      briermat <- rbind(briermat, briers)
-      print("briers")
-      print(briermat)
-      aucmat <- rbind(aucmat, aucs)
-      print("aucs")
-      print(aucmat)
+      rrRoc <- GRridge::roc(probs=as.numeric(rrPred), true=Ytest, cutoffs)
+      lrRoc <- GRridge::roc(probs=as.numeric(lrPred), true=Ytest, cutoffs)
+      enRoc <- GRridge::roc(probs=as.numeric(enPred), true=Ytest, cutoffs)
+      aucmat[reptit, ] <- c(GRridge::auc(vbRoc), grAuc, GRridge::auc(rrRoc), GRridge::auc(lrRoc),
+                            GRridge::auc(enRoc))
       
     }
+    
+    colnames(msemat) <- colnames(briermat) <- colnames(aucmat) <- c("ENVB", "GRridge", "RR", "LR", "EN")
+    out[[3*which(fac==facvec) + which(fract==fractvec) - 3]] <- list(msemat=msemat, briermat=briermat, aucmat=aucmat)
+    
   }   
 }
 
-colnames(msemat) <- c("fac", "fract", "reptit", "GRridge", "ENVB")
-colnames(briermat) <- c("fac", "fract", "reptit", "GRridge", "ENVB")
-colnames(aucmat) <- c("fac", "fract", "reptit", "GRridge", "ENVB")
+save(out, file=paste(path.results, "SMPDG_2017_v01_run02.Rdata", sep=""))
 
-save(msemat, briermat, aucmat, file=paste(path.results, "SMPDG_2017_v01.Rdata", sep=""))
+apply(out[[1]]$msemat, 2, median)
+boxplot(out[[1]]$msemat[, -4], use.cols=TRUE)
+
+
+
+
+
+
+
+data(dataVerlaat)
+cpganngroup <- CreatePartition(CpGann)
+grs <- rep(1:6, times=sapply(1:length(cpganngroup), function(g) {length(cpganngroup[[g]])}))
+grs2 <- CreatePartition(as.factor(grs))
+X <- t(datcenVerlaat)[, order(unlist(cpganngroup))]
+X <- apply(X, 2, function(j) {(j - mean(j)/sd(j))})
+Y <- respVerlaat
+
+test1 <- envb2(x=X, y=Y, groups=grs, lambda1=1, lambda2=500, maxiter=500, epsilon=1e-06, trace=TRUE)
+test2 <- grridge(t(X), Y, partitions=list(cpg=grs2), unpenal=~1, innfold=10)
+test3 <- grridge(datcenVerlaat, respVerlaat, partition=list(gpg=CreatePartition(CpGann)),
+                 unpenal=~1, innfold=10)
+
+
 
 
