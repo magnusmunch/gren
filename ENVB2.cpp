@@ -76,3 +76,12 @@ List est_param(mat x, vec kappa, vec m, int n, int p, vec ciold, vec phi, vec ch
                         Named("chi") = chiold);
 }
 
+// [[Rcpp::export]]
+mat solveC(mat x) {
+	return x.i();
+}
+
+// [[Rcpp::export]]
+mat crossprodC(mat x) {
+	return x.t()*x;
+}
