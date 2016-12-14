@@ -12,14 +12,20 @@
 
 ### paths
 path.results <- "C:/Users/Magnus/Documents/phd/ENVB/abstract_SMPGD_2017/results/"
+path.code <- "C:/Users/Magnus/Documents/phd/ENVB/code/"
+path.graph <- "C:/Users/Magnus/Documents/phd/ENVB/graphs/"
 
 ### libraries
 library(penalized)
 library(mvtnorm)
 library(GRridge)
 library(pROC)
+library(Rcpp)
 
 ### functions
+# source function to estimate parameters in C++
+sourceCpp(paste(path.code, "ENVB2.cpp", sep=""))
+
 # below three functions for marginal likelihood calculations
 marg.ll1.2g <- function(lambda, e.beta, v.beta, e.psi.inv, e.psi, p, G, sizes, modmat) {
   # marginal likelihood in lambda1 and lambda2g
@@ -66,7 +72,7 @@ envb2 <- function(x, y, groups, lambda1, lambda2, intercept=TRUE, maxiter=1000, 
   sizes <- rle(groups)$lengths
   modmat <- matrix(0, ncol=G, nrow=p)
   modmat <- sapply(1:G, function(g) {as.numeric(groups==g)})
-  m <- 1
+  m <- rep(1, n)
   kappa <- y - 0.5*m
   xaug <- x
   
@@ -132,33 +138,12 @@ envb2 <- function(x, y, groups, lambda1, lambda2, intercept=TRUE, maxiter=1000, 
                 sep=""), "]", sep="")
     }
     
-    # estimation of new model parameters
-    h <- (1 + sqrt(phi/chiold))*lambda2vec
-    om <- (0.5*m/ciold)*tanh(ciold/2)
-    omsq <- sqrt(om)
-    hinv <- 1/h
-    
-    # using the Woodbury identity 
-    if(intercept) {
-      invtrom <- 1/sum(om)
-      Omadj <- diag(om) - invtrom*as.matrix(om) %*% t(as.matrix(om))
-      xhinv <- t(t(x)*hinv)
-      Ainv <- diag(hinv) - t(xhinv) %*% Omadj %*% solve(diag(n) + x %*% t(xhinv) %*% Omadj) %*% xhinv
-      ainvxom <- Ainv %*% t(x) %*% as.matrix(om)
-      sigma[1, 1] <- invtrom + invtrom^2*t(as.matrix(om)) %*% x %*% ainvxom
-      sigma[2:(p + 1), 1] <- sigma[1, 2:(p + 1)] <- -invtrom*ainvxom
-      sigma[2:(p + 1), 2:(p + 1)] <- Ainv
-      mu <- as.numeric(sigma %*% (t(xaug) %*% kappa))
-      ci <- as.numeric(sqrt(colSums(t(xaug) * (sigma %*% t(xaug))) + (colSums(t(xaug)*mu))^2))
-      chi <- as.numeric(lambda2vec*(diag(sigma[-1, -1]) + mu[-1]^2))
-    } else {
-      V <- x*omsq
-      vhinv <- t(t(V)*hinv)
-      sigma <- diag(hinv) - t(vhinv) %*% solve(diag(n) + vhinv %*% t(V)) %*% vhinv
-      mu <- as.numeric(sigma %*% (t(x) %*% kappa))
-      ci <- as.numeric(sqrt(colSums(t(x) * (sigma %*% t(x))) + (colSums(t(x)*mu))^2))
-      chi <- as.numeric(lambda2vec*(diag(sigma) + mu^2))
-    }
+    # estimation of new model parameter (done in Cpp)
+    new.param <- est_param(x, kappa, m, n, p, ciold, phi, chiold, lambda2vec, intercept)
+    sigma <- new.param$sigma
+    mu <- as.numeric(new.param$mu)
+    ci <- as.numeric(new.param$ci)
+    chi <- as.numeric(new.param$chi)
     
     # check the convergence of the model parameters
     conv <- max(abs(c(diag(sigma) - diag(sigmaold), mu - muold))) < epsilon
@@ -220,7 +205,6 @@ sparsify <- function(vec, frac){
 }
 
 ### simulations
-set.seed(123)
 n <- 100           # Nb of observations    
 ntest <- 1000          ## Nb of test set observations     
 p <- 200            # Nb of variables per group
@@ -230,7 +214,7 @@ CorX <- 0.5       # correlation within variable block
 Nblock <- 10*G    # number of correlation blocks
 settings <- c(ntrain=n, p=p, G=G, meanBeta=meanBeta, CorX=CorX, Nblock=Nblock)
 
-nrep <- 20  #number of repeats per simulation setting
+nrep <- 3  #number of repeats per simulation setting
 facvec <- c(1.3, 1.6, 2)   #tunes how much weaker each next group is. The '2' means that the second group is twice as weak as the first, etc
 fractvec <- c(0, 0.7, 0.9) #tunes the sparsity per group. E.g. 0.9 means that 9/10 betas in a group are set to 0
 
@@ -243,6 +227,7 @@ msemat <- matrix(NA, ncol=5, nrow=nrep)
 for(fac in facvec){
   for(fract in fractvec){
     for(reptit in 1:nrep){
+      set.seed(as.numeric(gsub("\\.", "", paste(fac, fract, reptit, sep=""))))
       print(paste("fac=", fac))
       print(paste("fract=", fract))
       print(paste("repeat=", reptit))
@@ -265,23 +250,24 @@ for(fac in facvec){
       Y <- rbinom(length(prob), 1, prob)
       
       # ENVB
-      vbSim <- envb2(x=X, y=Y, groups=grs, lambda1=1, lambda2=500, maxiter=1000, epsilon=1e-06, trace=TRUE)
+      vbSim <- envb2(x=X, y=Y, groups=grs, lambda1=1, lambda2=500, maxiter=1000, epsilon=1e-06, trace=TRUE, 
+                     intercept=TRUE)
       
       # GRridge
       groups <- CreatePartition(grs, grsize=p, uniform=T, decreasing=F)
       partsim <- list(grouping=groups)
       grSim <- tryCatch({
-        grridge(t(X), Y, unpenal=~0, partsim, savepredobj="all", innfold=10, method="stable")},
+        grridge(t(X), Y, unpenal=~1, partsim, savepredobj="all", innfold=10, method="stable")},
         error=function(war) {return(NULL)})
       
       # ridge
-      rrSim <- optL2(Y, X, unpenalized=~0, lambda1=0, model="logistic", fold=10)
+      rrSim <- optL2(Y, X, unpenalized=~1, lambda1=0, model="logistic", fold=10)
       
       # lasso
-      lrSim <- optL1(Y, X, unpenalized=~0, lambda2=0, model="logistic", fold=10)
+      lrSim <- optL1(Y, X, unpenalized=~1, lambda2=0, model="logistic", fold=10)
       
       # elastic net
-      enSim <- optL2(Y, X, unpenalized=~0, lambda1=vbSim$lambda1, model="logistic", fold=10)
+      enSim <- optL2(Y, X, unpenalized=~1, lambda1=vbSim$lambda1, model="logistic", fold=10)
       
       # calculating mse
       if(is.null(grSim)) {
@@ -289,7 +275,7 @@ for(fac in facvec){
       } else {
         grMse <- var((grSim$betas - Beta)^2)
       }
-      vbMse <- var((vbSim$mu - Beta)^2)
+      vbMse <- var((vbSim$mu[-1] - Beta)^2)
       rrMse <- var((rrSim$fullfit@penalized - Beta)^2)
       lrMse <- var((lrSim$fullfit@penalized - Beta)^2)
       enMse <- var((enSim$fullfit@penalized - Beta)^2)
@@ -297,17 +283,17 @@ for(fac in facvec){
       
       ### TESTING THE MODELS
       # making the test data
-      Xtest <- cbind(1, Reduce(cbind, lapply(1:Nblock, function(z) {
+      Xtest <- Reduce(cbind, lapply(1:Nblock, function(z) {
         matrix(rep(rnorm(ntest, sd=sqrt(CorX/(1 - CorX))), times=pblock), ntest, pblock)})) + 
-        matrix(rnorm(ntest*G*p), ntest, G*p))
-      lpredtest <- Xtest %*% c(0, Beta )
+        matrix(rnorm(ntest*G*p), ntest, G*p)
+      lpredtest <- Xtest %*% Beta
       logisticintercept <- 0
       
       probtest <- 1/(1 + exp(-(lpredtest + logisticintercept)))
       Ytest <- rbinom(length(probtest), 1, probtest)
       
       # making predictions
-      vbPred <- 1/(1 + exp(-(Xtest %*% vbSim$mu)))
+      vbPred <- 1/(1 + exp(-(cbind(1, Xtest) %*% vbSim$mu)))
       rrPred <- predict(rrSim$fullfit, Xtest)
       lrPred <- predict(lrSim$fullfit, Xtest)
       enPred <- predict(enSim$fullfit, Xtest)
@@ -358,7 +344,14 @@ boxplot(out[[4]]$msemat[, -4])
 boxplot(out[[5]]$msemat[, -4])
 boxplot(out[[5]]$msemat[, 1])
 
-#### data example
+### comparing to Gibbs sampling 
+library(metabolomics)
+data(treated)
+
+
+str(treated)
+
+### data example
 data(dataVerlaat)
 cpganngroup <- CreatePartition(CpGann)
 grs <- rep(1:6, times=sapply(1:length(cpganngroup), function(g) {length(cpganngroup[[g]])}))
@@ -371,4 +364,286 @@ test1 <- envb2(x=X, y=Y, groups=grs, lambda1=1, lambda2=100, intercept=TRUE, max
 test2 <- grridge(t(X), Y, partitions=list(cpg=grs2), unpenal=~1, innfold=10)
 test3 <- grridge(datcenVerlaat, respVerlaat, partition=list(gpg=CreatePartition(CpGann)),
                  unpenal=~1, innfold=10)
+
+
+### creating graphs with performance in simulations
+library(ggplot2)
+library(reshape2)
+library(grid)
+library(gridExtra)
+library(grid)
+
+# results from surfsara setting 1
+load(paste(path.results, "SMPDG_2017_c_v02_run02.Rdata", sep=""))
+data1.1 <- melt(as.data.frame(out[[1]]))
+data1.2 <- melt(as.data.frame(out[[2]]))
+data1.3 <- melt(as.data.frame(out[[3]]))
+
+th1 <- theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
+            panel.background=element_blank(), axis.line=element_line(colour="black"),
+            plot.title=element_text(hjust=0.5))
+th2 <- theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
+             panel.background=element_blank(), axis.line=element_line(colour="black"),
+             axis.title.y=element_blank(), axis.title.x=element_blank())
+
+plot.big1.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data1.1) + th1
+plot.zoom1.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value),
+                                        data1.1[!(data1.1$variable %in% c("GRridge", "LR")), ]) + th2
+ylim1.1 <- c(min(boxplot(out[[1]][, -c(2, 4)], plot=FALSE)$stats),
+             max(boxplot(out[[1]][, -c(2, 4)], plot=FALSE)$stats))
+ylim1.2 <- ggplot_build(plot.big1.1)$layout$panel_ranges[[1]]$y.range[2] - 
+  c(diff(ggplot_build(plot.big1.1)$layout$panel_ranges[[1]]$y.range)/1.5,
+    diff(ggplot_build(plot.big1.1)$layout$panel_ranges[[1]]$y.range)*0.08)
+plot1.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data1.1) + th1 + 
+  annotation_custom(grob=ggplotGrob(plot.zoom1.1 + coord_cartesian(ylim=ylim1.1)), xmax=3, 
+                    ymin=ylim1.2[1], ymax=ylim1.2[2]) + labs(title="a)", x="", y="Average MSE")
+plot1.2 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data1.2) + th1 + 
+  labs(title="b)", x="", y="Mean Brier residuals")
+plot1.3 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data1.3) + th1 + 
+  labs(title="c)", x="f=1.3, q=0", y="AUC")
+
+# reading in results from surfsara setting 2
+load(paste(path.results, "SMPDG_2017_c_v02_run03.Rdata", sep=""))
+data2.1 <- melt(as.data.frame(out[[1]]))
+data2.2 <- melt(as.data.frame(out[[2]]))
+data2.3 <- melt(as.data.frame(out[[3]]))
+
+plot.big2.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data2.1) + th1
+plot.zoom2.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value),
+                                        data2.1[!(data2.1$variable %in% c("GRridge", "LR")), ]) + th2
+ylim2.1 <- c(min(boxplot(out[[1]][, -c(2, 4)], plot=FALSE)$stats),
+             max(boxplot(out[[1]][, -c(2, 4)], plot=FALSE)$stats))
+ylim2.2 <- ggplot_build(plot.big2.1)$layout$panel_ranges[[1]]$y.range[2] - 
+  c(diff(ggplot_build(plot.big2.1)$layout$panel_ranges[[1]]$y.range)/1.5,
+    diff(ggplot_build(plot.big2.1)$layout$panel_ranges[[1]]$y.range)*0.08)
+plot2.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data2.1) + th1 + 
+  annotation_custom(grob=ggplotGrob(plot.zoom2.1 + coord_cartesian(ylim=ylim2.1)), xmax=3, ymin=ylim2.2[1],
+                    ymax=ylim2.2[2]) + labs(title="d)", x="", y="")
+plot2.2 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data2.2) + th1 + 
+  labs(title="e)", x="", y="")
+plot2.3 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data2.3) + th1 + 
+  labs(title="f)", x="f=1.6, q=0.7", y="")
+
+# reading in results from surfsara setting 3
+load(paste(path.results, "SMPDG_2017_c_v02_run04.Rdata", sep=""))
+data3.1 <- melt(as.data.frame(out[[1]]))
+data3.2 <- melt(as.data.frame(out[[2]]))
+data3.3 <- melt(as.data.frame(out[[3]]))
+
+plot.big3.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data3.1) + th1
+plot.zoom3.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value),
+                                        data3.1[!(data3.1$variable %in% c("GRridge", "LR")), ]) + th2
+ylim3.1 <- c(min(boxplot(out[[1]][, -c(2, 4)], plot=FALSE)$stats),
+             max(boxplot(out[[1]][, -c(2, 4)], plot=FALSE)$stats))
+ylim3.2 <- ggplot_build(plot.big3.1)$layout$panel_ranges[[1]]$y.range[2] - 
+  c(diff(ggplot_build(plot.big3.1)$layout$panel_ranges[[1]]$y.range)/1.5,
+    diff(ggplot_build(plot.big3.1)$layout$panel_ranges[[1]]$y.range)*0.08)
+plot3.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data3.1) + th1 + 
+  annotation_custom(grob=ggplotGrob(plot.zoom3.1 + coord_cartesian(ylim=ylim3.1)), xmax=3, ymin=ylim3.2[1],
+                    ymax=ylim3.2[2]) + labs(title="g)", x="", y="")
+plot3.2 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data3.2) + th1 + 
+  labs(title="h)", x="", y="")
+plot3.3 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data3.3) + th1 + 
+  labs(title="i)", x="f=2, q=0.9", y="")
+
+# reading in results from surfsara setting 4
+load(paste(path.results, "SMPDG_2017_c_v02_run05.Rdata", sep=""))
+data4.1 <- melt(as.data.frame(out[[1]]))
+data4.2 <- melt(as.data.frame(out[[2]]))
+data4.3 <- melt(as.data.frame(out[[3]]))
+
+plot.big4.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data4.1) + th1
+plot.zoom4.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value),
+                                        data4.1[!(data4.1$variable %in% c("GRridge", "LR")), ]) + th2
+ylim4.1 <- c(min(boxplot(out[[1]][, -c(2, 4)], plot=FALSE)$stats),
+             max(boxplot(out[[1]][, -c(2, 4)], plot=FALSE)$stats))
+ylim4.2 <- ggplot_build(plot.big4.1)$layout$panel_ranges[[1]]$y.range[2] - 
+  c(diff(ggplot_build(plot.big4.1)$layout$panel_ranges[[1]]$y.range)/1.5,
+    diff(ggplot_build(plot.big4.1)$layout$panel_ranges[[1]]$y.range)*0.08)
+plot4.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data4.1) + th1 + 
+  annotation_custom(grob=ggplotGrob(plot.zoom4.1 + coord_cartesian(ylim=ylim4.1)), xmax=3, ymin=ylim4.2[1],
+                    ymax=ylim4.2[2]) + labs(title="a)", x="", y="")
+plot4.2 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data4.2) + th1 + 
+  labs(title="b)", x="", y="")
+plot4.3 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data4.3) + th1 + 
+  labs(title="c)", x="f=1.3, q=0.7", y="")
+
+# reading in results from surfsara setting 5
+load(paste(path.results, "SMPDG_2017_c_v02_run06.Rdata", sep=""))
+data5.1 <- melt(as.data.frame(out[[1]]))
+data5.2 <- melt(as.data.frame(out[[2]]))
+data5.3 <- melt(as.data.frame(out[[3]]))
+
+plot.big5.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data5.1) + th1
+plot.zoom5.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value),
+                                        data5.1[!(data5.1$variable %in% c("GRridge", "LR", "EN")), ]) + th2
+ylim5.1 <- c(min(boxplot(out[[1]][, -c(2, 4, 5)], plot=FALSE)$stats),
+             max(boxplot(out[[1]][, -c(2, 4, 5)], plot=FALSE)$stats))
+ylim5.2 <- ggplot_build(plot.big5.1)$layout$panel_ranges[[1]]$y.range[2] - 
+  c(diff(ggplot_build(plot.big5.1)$layout$panel_ranges[[1]]$y.range)/1.5,
+    diff(ggplot_build(plot.big5.1)$layout$panel_ranges[[1]]$y.range)*0.08)
+plot5.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data5.1) + th1 + 
+  annotation_custom(grob=ggplotGrob(plot.zoom5.1 + coord_cartesian(ylim=ylim5.1)), xmax=3, ymin=ylim5.2[1],
+                    ymax=ylim5.2[2]) + labs(title="d)", x="", y="")
+plot5.2 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data5.2) + th1 + 
+  labs(title="e)", x="", y="")
+plot5.3 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data5.3) + th1 + 
+  labs(title="f)", x="f=1.6, q=0", y="")
+
+boxplot(out[[1]][, -c(2, 4, 5)], outline=FALSE)
+
+# visualize
+windows()
+grid.arrange(plot1.1, plot2.1, plot3.1,
+             plot1.2, plot2.2, plot3.2,
+             plot1.3, plot2.3, plot3.3, ncol=3, nrow=3)
+
+windows()
+grid.arrange(plot4.1, plot5.1,
+             plot4.2, plot5.2,
+             plot4.3, plot5.3, ncol=2, nrow=3)
+
+# save to png
+g1 <- arrangeGrob(plot1.1, plot2.1, plot3.1,
+                  plot1.2, plot2.2, plot3.2,
+                  plot1.3, plot2.3, plot3.3, ncol=3, nrow=3)
+g2 <- arrangeGrob(plot4.1, plot5.1,
+                  plot4.2, plot5.2,
+                  plot4.3, plot5.3, ncol=2, nrow=3)
+ggsave(paste(path.graph, "ENVB_sim01_V01.png", sep=""), g1, device="png", width=297, height=210,
+       units="mm", dpi=300)
+ggsave(paste(path.graph, "ENVB_sim02_V01.png", sep=""), g2, device="png", width=297, height=210,
+       units="mm", dpi=300)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+################################## TESTING SPARSE GROUP LASSO ##################################
+library(SGL)
+
+set.seed(123)
+n <- 100           # Nb of observations    
+ntest <- 1000          ## Nb of test set observations     
+p <- 200            # Nb of variables per group
+G <- 10            # Nb of groups
+meanBeta <- 0.01   # Beta variances per group are VarBeta*(1:G); use this for CorX=0.5
+CorX <- 0.5       # correlation within variable block
+Nblock <- 10*G    # number of correlation blocks
+
+nrep <- 3  #number of repeats per simulation setting
+fac <- 1.3   #tunes how much weaker each next group is. The '2' means that the second group is twice as weak as the first, etc
+fract <- 0 #tunes the sparsity per group. E.g. 0.9 means that 9/10 betas in a group are set to 0
+
+reps <- rev(sapply(0:(G - 1), function(i) {fac^(-i)}))
+meansB <- rep(reps, each=p)*meanBeta/mean(rep(reps, each=p))
+Beta <- meansB
+Beta <- rev(sparsify(Beta, frac=fract))
+      
+### FITTING THE MODELS
+pblock <- G*p/Nblock
+grs <- rep(1:G, each=p)
+P <- G*p #Complete number of variables
+X <- Reduce(cbind, lapply(1:Nblock, function(z) {
+  matrix(rep(rnorm(n, sd=sqrt(CorX/(1 - CorX))), times=pblock), n, pblock)})) + 
+  matrix(rnorm(n*G*p), n, G*p)
+X <- t((t(X) - apply(t(X), 1, mean))/apply(t(X), 1, sd))
+      
+lpred <- X %*% Beta 
+logisticintercept <- 0
+prob <- 1/(1 + exp(-(lpred + logisticintercept)))
+Y <- rbinom(length(prob), 1, prob)
+      
+# ENVB
+vbSim <- envb2(x=X, y=Y, groups=grs, lambda1=1, lambda2=500, maxiter=1000, epsilon=1e-06, trace=TRUE, 
+               intercept=TRUE)
+vb2Sim <- penalized(Y, X, unpenalized=~1, lambda1=vbSim$lambda1, lambda2=rep(vbSim$lambda2, each=p),
+                    model="logistic")
+      
+# GRridge
+groups <- CreatePartition(grs, grsize=p, uniform=T, decreasing=F)
+partsim <- list(grouping=groups)
+grSim <- tryCatch({
+  grridge(t(X), Y, unpenal=~1, partsim, savepredobj="all", innfold=10, method="stable")},
+  error=function(war) {return(NULL)})
+      
+# ridge
+rrSim <- optL2(Y, X, unpenalized=~1, lambda1=0, model="logistic", fold=10)
+      
+# lasso
+lrSim <- optL1(Y, X, unpenalized=~1, lambda2=0, model="logistic", fold=10)
+      
+# elastic net
+enSim <- optL2(Y, X, unpenalized=~1, lambda1=vbSim$lambda1, model="logistic", fold=10)
+
+# sparse group lasso
+sglSim <- cvSGL(list(x=X, y=Y), grs, type="logit", standardize=FALSE, verbose=TRUE)
+
+# calculating mse
+grMse <- var((grSim$betas - Beta)^2)
+vbMse <- var((vbSim$mu[-1] - Beta)^2)
+vb2Mse <- var((vb2Sim@penalized - Beta)^2)
+rrMse <- var((rrSim$fullfit@penalized - Beta)^2)
+lrMse <- var((lrSim$fullfit@penalized - Beta)^2)
+enMse <- var((enSim$fullfit@penalized - Beta)^2)
+sglMse <- var((sglSim$fit$beta[, which.min(sglSim$lldiff)] - Beta)^2)
+msemat <- c(vbMse, vb2Mse, grMse, rrMse, lrMse, enMse, sglMse)
+
+### TESTING THE MODELS
+# making the test data
+Xtest <- Reduce(cbind, lapply(1:Nblock, function(z) {
+  matrix(rep(rnorm(ntest, sd=sqrt(CorX/(1 - CorX))), times=pblock), ntest, pblock)})) + 
+  matrix(rnorm(ntest*G*p), ntest, G*p)
+lpredtest <- Xtest %*% Beta
+logisticintercept <- 0
+
+probtest <- 1/(1 + exp(-(lpredtest + logisticintercept)))
+Ytest <- rbinom(length(probtest), 1, probtest)
+
+# making predictions
+grPred <- predict.grridge(grSim, t(Xtest))
+vbPred <- 1/(1 + exp(-(cbind(1, Xtest) %*% vbSim$mu)))
+vb2Pred <- predict(vb2Sim, Xtest)
+rrPred <- predict(rrSim$fullfit, Xtest)
+lrPred <- predict(lrSim$fullfit, Xtest)
+enPred <- predict(enSim$fullfit, Xtest)
+sglPred <- 1/(1 + exp(-(cbind(1, Xtest) %*% c(sglSim$fit$intercepts[which.min(sglSim$lldiff)], 
+                                              sglSim$fit$beta[, which.min(sglSim$lldiff)]))))
+
+# brier residuals
+grBrier <- mean((grPred[, 2] - probtest)^2)
+vbBrier <- mean((vbPred - probtest)^2)
+vb2Brier <- mean((vb2Pred - probtest)^2)
+rrBrier <- mean((rrPred - probtest)^2)
+lrBrier <- mean((lrPred - probtest)^2)
+enBrier <- mean((enPred - probtest)^2)
+sglBrier <- mean((sglPred - probtest)^2)
+briermat <- c(vbBrier, vb2Brier, grBrier, rrBrier, lrBrier, enBrier, sglBrier)
+
+# AUC
+cutoffs <- rev(seq(0, 1, by=0.005))
+grRoc <- GRridge::roc(probs=as.numeric(grPred), true=Ytest, cutoffs)
+vbRoc <- GRridge::roc(probs=as.numeric(vbPred), true=Ytest, cutoffs)
+vb2Roc <- GRridge::roc(probs=as.numeric(vb2Pred), true=Ytest, cutoffs)
+rrRoc <- GRridge::roc(probs=as.numeric(rrPred), true=Ytest, cutoffs)
+lrRoc <- GRridge::roc(probs=as.numeric(lrPred), true=Ytest, cutoffs)
+enRoc <- GRridge::roc(probs=as.numeric(enPred), true=Ytest, cutoffs)
+sglRoc <- GRridge::roc(probs=as.numeric(sglPred), true=Ytest, cutoffs)
+aucmat <- c(GRridge::auc(vbRoc), GRridge::auc(vb2Roc), GRridge::auc(grRoc), GRridge::auc(rrRoc), 
+            GRridge::auc(lrRoc), GRridge::auc(enRoc), GRridge::auc(sglRoc))
+
 

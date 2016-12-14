@@ -3,7 +3,7 @@
 # version: 01                                                         #
 # author: Magnus Münch                                                #
 # created: 01-11-2016                                                 #
-# last edited: 07-11-2016                                             #
+# last edited: 01-12-2016                                             #
 #######################################################################
 
 ###############################  notes  ###############################
@@ -22,7 +22,7 @@ library(GeneralizedHyperbolic)
 
 ### functions
 # import the Cpp Gibbs sampler
-sourceCpp(paste(path.code, "ENgibbs_V01.cpp", sep=""))
+sourceCpp(paste(path.code, "ENgibbs.cpp", sep=""))
 
 # functions to simulate elastic net prior model parameters
 qtrunc <- function(p, spec, a = -Inf, b = Inf, ...) {
@@ -84,7 +84,7 @@ ENVB <- function(y, x, lambda1, lambda2, b0, S0, eps, maxiter) {
     
     Om <- diag((0.5/ciold)*tanh(ciold/2))
     Z <- diag(sqrt(phi/chiold))
-  
+    
     sigma <- solve(t(x) %*% Om %*% x + lambda2*diag(p) + lambda2*Z)
     mu <- as.numeric(sigma %*% (t(x) %*% kappa))
     ci <- as.numeric(sqrt(colSums(t(x) * (sigma %*% t(x))) + (colSums(t(x)*mu))^2))
@@ -116,18 +116,18 @@ mllapprox <- function(lambda2, lambda1, mu, sigma, phi, chi) {
 }
 
 # Gibbs sampler
-ENgibbs <- function(x, y, lambda1, lambda2, b0, K, mll=FALSE) {
+ENgibbs <- function(x, y, m, lambda1, lambda2, b0, intercept, K, mll=FALSE) {
   
   n <- nrow(x)
   p <- ncol(x)
   if(length(lambda2)==1) {
     lambda2 <- rep(lambda2, p)
   }
-  
-  sam <- gibbsC(x, y, n, p, lambda1, lambda2, b0, K)
-  beta <- t(sam[1:p, (K + 1):(2*K)])
-  tau <- t(sam[1:p, (2*K + 1):(3*K)])
-  omega <- t(sam[1:n, 1:K])
+
+  sam <- gibbsC(x, y, m, n, p, lambda1, lambda2, b0, intercept, K)
+  beta <- sam$beta
+  tau <- sam$tau
+  omega <- sam$omega
   
   if(mll) {
     mll <- mllGibbs(y, x, beta, omega, tau)
@@ -194,7 +194,7 @@ denbeta <- function(x, lambda1, lambda2, log.d=FALSE) {
   return(dens)
 }
 
-### data
+### simulation
 set.seed(123)
 n <- 50
 p <- 12
@@ -202,14 +202,16 @@ x <- matrix(rnorm(n*p), ncol=p, nrow=n)
 lambda1 <- 1
 lambda2 <- 1
 beta <- renbeta(p, lambda1=lambda1, lambda2=lambda2)
-y <- rbinom(n, 1, exp(x %*% beta)/(1 + exp(x %*% beta)))
+m <- rep(1, n)
+y <- rbinom(n, m, exp(x %*% beta)/(1 + exp(x %*% beta)))
 
-seq.lambda2 <- c(seq(0.05, 0.45, 0.05), seq(0.5, 16, 0.5))
+seq.lambda2 <- c(seq(0.05, 0.45, 0.05), seq(0.5, 16, 0.5))[1]
 out.mll <- matrix(NA, ncol=2, nrow=length(seq.lambda2))
 for(l in 1:length(seq.lambda2)) {
   fit.VB <- ENVB(y, x, lambda1=1, lambda2=seq.lambda2[l], b0=beta, S0=diag(p), eps=1e-06, 
                  maxiter=500)
-  fit.Gibbs <- ENgibbs(x, y, lambda1=1, lambda2=seq.lambda2[l], b0=beta, K=50000, mll=TRUE)
+  fit.Gibbs <- ENgibbs(x, y, m, lambda1=1, lambda2=seq.lambda2[l], b0=c(0, beta), intercept=TRUE, 
+                       K=50000, mll=TRUE)
   fit.pen <- penalized(y, x, unpenalized=~0, lambda1=1, lambda2=seq.lambda2[l], model="logistic")
   out.mll[l, ] <- c(fit.VB$mll, fit.Gibbs$mll)
 }
@@ -258,118 +260,6 @@ par(mfrow=c(1, 1))
 
 
 
-plot(beta, fit.VB$mu)
-plot(beta, bgibbs)
-plot(fit.VB$mu, bgibbs)
 
-
-
-
-
-
-
-
-
-# 
-# 
-# library(statmod)
-# 
-# rinvgauss.self1 <- function(n, mean, shape) {
-#   nu <- rnorm(n)
-#   y <- nu^2
-#   x <- mean + mean^2*y/(2*shape) - mean*sqrt(4*mean*shape*y + mean^2*y^2)/(2*shape)
-#   z <- runif(n)
-#   s <- ifelse(z <= mean/(mean + x), x, mean^2/x)
-#   return(s)
-# }
-# 
-# rinvgauss.self2 <- function(n, chi, psi) {
-#   y <- rnorm(n)
-#   u <- runif(n)
-#   z <- sqrt(psi/chi) + 0.5*y^2/chi - sqrt(y^2*sqrt(psi/chi^3) + y^4/(4*chi^2))
-#   x <- ifelse(u <= 1/(1 + z*sqrt(chi/psi)), z, psi/(chi*z))
-#   return(x)
-# }
-# 
-# rinvgauss.self3 <- function(n, chi, psi) {
-#   mean <- sqrt(chi/psi)
-#   shape <- chi
-#   nu <- rnorm(n)
-#   y <- nu^2
-#   x <- mean + mean^2*y/(2*shape) - mean*sqrt(4*mean*shape*y + mean^2*y^2)/(2*shape)
-#   z <- runif(n)
-#   s <- ifelse(z <= mean/(mean + x), x, mean^2/x)
-#   return(s)
-# }
-# 
-# test1 <- replicate(10000, rtauC(beta[1], lambda1, seq.lambda2[l]))
-# test2 <- sapply(seq(0, 2000, 0.1), dinvgauss, mean=2*seq.lambda2[l]*abs(beta[1])/lambda1, 
-#                    dispersion=seq.lambda2[l]*beta[1]^2)
-# hist(test1, breaks=50, freq=FALSE)
-# lines(seq(0, 2000, 0.1), test2)
-# 
-# mu=2*seq.lambda2[l]*abs(beta[1])/lambda1
-# lambda=seq.lambda2[l]*beta[1]^2
-# vec psi = pow(lambda1,2.0)/(4.0*lambda2);
-# vec chi = lambda2 % pow(beta,2.0);
-# 
-# chi <- 30
-# psi <- 5
-# test1 <- rgig(10000, param=c(chi, psi, 0.5))
-# #test2 <- rinvgauss(10000, mean=sqrt(psi/chi), shape=psi)
-# #test3 <- rinvgauss.self1(10000, mean=sqrt(psi/chi), shape=psi)
-# test4 <- rinvgauss.self2(10000, chi=chi, psi=psi)
-# #test5 <- rinvgauss.self3(10000, chi=psi, psi=chi)
-# hist(test1, breaks=80, freq=FALSE)
-# #hist(1/test2, breaks=80, freq=FALSE, add=TRUE)
-# #hist(1/test3, breaks=80, freq=FALSE, add=TRUE)
-# hist(1/test4, breaks=80, freq=FALSE, add=TRUE)
-# #hist(1/test5, breaks=80, freq=FALSE, add=TRUE)
-# 
-# 
-# chi <- c(1, 10)
-# psi <- 1
-# test1 <- rgig(10000, param=c(chi[1], psi, 0.5))
-# test2 <- rgig(10000, param=c(chi[2], psi, 0.5))
-# hist(test1, freq=FALSE, breaks=80)
-# hist(test2, freq=FALSE, breaks=80)
-# 
-# 
-# 
-# 
-# dgig.self <- function(x, psi, chi, lambda) {
-#   
-#   (psi/chi)^(lambda/2)/(2*besselK(sqrt(psi*chi), lambda))*x^(lambda - 1)*exp(-0.5*(chi/x + psi*x))
-#   
-# }
-# digauss.self <- function(x, mu, lambda) {
-#   
-#   sqrt(lambda/(2*pi*x^3))*exp(-0.5*lambda*(x - mu)^2/(mu^2*x))
-#   
-# }
-# x <- seq(0, 10, 0.01)
-# dens1 <- dgig.self(x, 1, 1, 0.5)
-# dens2 <- dgig(x, 1, 1, 0.5)
-# dens3 <- digauss.self(1/x, 1, 1)
-# plot(x, dens1, type="l")
-# lines(x, dens2)
-# 
-# 
-# plot(x, dens3, type="l")
-# lines(x, dens1)
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-
-
-
-
-
-
-
+### data
 

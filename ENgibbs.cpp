@@ -847,7 +847,6 @@ double PolyaGammaSP::y_eval(double v) {
 }
 
 
-//**************************** output function *****************************//
 vec rpg_hybrid(std::vector<double> & h, std::vector<double> & z, int num) {
   
   std::vector<double> x(num,0.0);
@@ -885,8 +884,25 @@ vec rpg_hybrid(std::vector<double> & h, std::vector<double> & z, int num) {
   
 }
 
+
+//**************************** output functions *****************************//
 // [[Rcpp::export]]
-vec romegaC(vec beta, mat x, int n, int p) {
+vec romegaC(vec beta, mat x, vec m, int n, int p, bool intercept) {
+  
+  vec evec(n,fill::ones);
+  if(intercept) {
+    x = join_rows(evec,x);
+  }
+  vec z = x*beta;
+  
+  std::vector<double> m2 = conv_to< std::vector<double> >::from(m);
+  std::vector<double> z2 = conv_to< std::vector<double> >::from(z);
+  vec out = rpg_hybrid(m2, z2, n);
+  return out;
+}
+
+/*vec romegaC(vec beta, mat x, int n, int p, bool intercept) {
+  
   std::vector<double> z(n, 0.0);
   std::vector<double> h(n, 1.0);
   for(int i=0; i<n; i++) {
@@ -896,31 +912,38 @@ vec romegaC(vec beta, mat x, int n, int p) {
   }  
   vec out = rpg_hybrid(h, z, n);
   return out;
-}
+}*/
 
 
 // [[Rcpp::export]]
-vec rtauC(vec beta, double lambda1, vec lambda2) {
-   
+vec rtauC(vec beta0, int p, double lambda1, vec lambda2, bool intercept) {
+  
+  vec beta(p);
+  if(intercept) {
+    beta = beta0.rows(1,p);
+  } else {
+    beta = beta0;
+  }
 	vec psi = pow(lambda1,2.0)/(4.0*lambda2);
-	vec chi = lambda2 % pow(beta,2.0);
-  	int p = beta.n_rows;
-  	vec tau(p);
+	vec chi = lambda2 % square(beta);
+  vec tau(p);
   	
 	vec Y(p,fill::randn);
-	vec Ysq = Y % Y;
+	vec Ysq = square(Y);
 	vec U(p,fill::randu);
-	vec prob(p);
-	vec z(p);	
-
+	//vec z(p);
+	//vec prob(p);
+	vec z = sqrt(psi/chi) + Ysq/(2.0*chi) - sqrt(sqrt(psi)%Ysq/(chi%sqrt(chi)) + square(Ysq)/(4.0*square(chi)));	
+	vec prob = 1.0/(1.0 + z%sqrt(chi/psi));
+	
 	for(int i=0; i<p; i++) {
 		
-		z(i)=sqrt(psi(i)/chi(i)) + Ysq(i)/(2.0*chi(i)) - sqrt(sqrt(psi(i))*Ysq(i)/pow(chi(i),1.5) + pow(Ysq(i),2.0)/(4.0*pow(chi(i),2.0)));
-		prob(i) = 1.0/(1.0 + z(i)*sqrt(chi(i)/psi(i)));
+		//z(i)=sqrt(psi(i)/chi(i)) + Ysq(i)/(2.0*chi(i)) - sqrt(sqrt(psi(i))*Ysq(i)/pow(chi(i),1.5) + pow(Ysq(i),2.0)/(4.0*pow(chi(i),2.0)));
+		//prob(i) = 1.0/(1.0 + z(i)*sqrt(chi(i)/psi(i)));
 		if(U(i) <= prob(i))
 			tau(i) = 1.0/z(i) + 1.0;
 		else
-			tau(i) = chi(i)*z(i)/psi(i) + 1.0;
+			tau(i) = chi(i)*(i)/psi(i) + 1.0;
 
 	}
 
@@ -929,84 +952,85 @@ vec rtauC(vec beta, double lambda1, vec lambda2) {
 }
 
 // [[Rcpp::export]]
-vec rbetaC(vec om, vec tau, vec lambda2, mat x, vec y, int n, int p) {
+vec rbetaC(mat x, vec kappa, int n, int p, vec tau, vec om, vec lambda2, bool intercept) {
    
-	mat Om(n,n,fill::zeros);
-	mat Z(p,p,fill::zeros);
-	vec ka(n);	
-
-	for(int i=0; i<p; i++) {
-	
-		Z(i,i) = lambda2(i)*tau(i)/(tau(i) - 1.0);
-	
-	}
-
-	for(int i=0; i<n; i++) {
-
-		Om(i,i) = om(i);
-		ka(i) = y(i) - 0.5;
-	
-	}
-	
-	mat Vinv = x.t()*Om*x + Z;
-	mat V = inv_sympd(Vinv);
+  vec evec(n,fill::ones);
+  mat xaug = join_rows(evec,x);
+  mat trx = x.t();
+  vec hinv = 1/lambda2 - 1/(lambda2%tau);
+  vec ominv = 1/om;
+  int p0 = p;
+  if(intercept) {
+    p0 += 1;
+  }
   
-	vec mu = V*x.t()*ka;
-
-	vec beta0 = randn(p);
-	rowvec beta = beta0.t()*chol(V);
-	return beta.t() + mu;
+  double invtrom;
+  mat Omadj(n,n);
+  mat txhinv = trx.each_col() % hinv;
+  mat xtrxom(n,n);
+  mat Ainv(p,p);
+  vec ainvxom(p);
+  mat sigma(p0,p0);
+  vec sigmapart(p);
+  vec mu(p0);
+	
+	if (intercept) {
+	  invtrom = 1/sum(om);
+	  Omadj = diagmat(om) - invtrom*(om*om.t());
+	  xtrxom = x*txhinv*Omadj;
+	  xtrxom.diag() += 1;
+	  Ainv= diagmat(hinv) - txhinv*Omadj*xtrxom.i()*txhinv.t();
+	  ainvxom = Ainv*trx*om;
+	  sigmapart = -invtrom*ainvxom;
+	  sigma(0,0) = as_scalar(invtrom + pow(invtrom,2.0)*(om.t()*x*ainvxom));
+	  sigma.submat(1,0,p,0) = sigmapart;
+	  sigma.submat(0,1,0,p) = sigmapart.t();
+	  sigma.submat(1,1,p,p) = Ainv;
+	  mu = sigma*xaug.t()*kappa;
+	} else {
+	  xtrxom = x*txhinv + diagmat(ominv);
+	  sigma = diagmat(hinv) - txhinv*xtrxom.i()*txhinv.t();
+	  mu = sigma*trx*kappa;
+	}
+	
+	vec beta0 = randn(p0);
+	vec beta = chol(sigma)*beta0 + mu;
+	return beta;
 
 }
 
 
 
-
-
-
-
 // [[Rcpp::export]]
-mat gibbsC(mat x, vec y, int n, int p, double lambda1, vec lambda2, vec b0, int K) {
+List gibbsC(mat x, vec y, vec m, int n, int p, double lambda1, vec lambda2, vec b0, bool intercept, int K) {
   
-  mat seq_beta(p, K);
+  int p0 = p;
+  if(intercept) {
+    p0 += 1;
+  }
+  mat seq_beta(p0, K);
   mat seq_omega(n, K);
   mat seq_tau(p, K);
-  int rowsout = std::max(n,p);
-  int colsout = K*3;
-  mat out(rowsout,colsout);
-
+  
+  vec kappa = y - 0.5*m;
+  
   vec beta = b0;
   vec omega(n);
   vec tau(p);  
     
   for(int k=0; k<K; k++) {
-    omega = romegaC(beta, x, n, p);
-    tau = rtauC(beta, lambda1, lambda2);
-    beta = rbetaC(omega, tau, lambda2, x, y, n, p);
+    omega = romegaC(beta, x, m, n, p, intercept);
+    tau = rtauC(beta, p, lambda1, lambda2, intercept);
+    beta = rbetaC(x, kappa, n, p, tau, omega, lambda2, intercept);
 
-    for(int j=0; j<p; ++j) {
-      seq_tau(j,k) = tau(j);
-      seq_beta(j,k) = beta(j);
-    }
-    for(int i=0; i<n; i++) {
-      seq_omega(i,k) = omega(i);
-    }
+    seq_tau.submat(0,k,p-1,k) = tau;
+    seq_beta.submat(0,k,p0-1,k) = beta;
+    seq_omega.submat(0,k,n-1,k) = omega;
+    
     
   }
   
-  int colbeta;
-  int coltau;
-  for(int k=0; k<K; k++) {
-    for(int j=0; j<p; j++) {
-      colbeta = K + k;
-      coltau = 2*K + k;
-      out(j,colbeta) = seq_beta(j,k);
-      out(j,coltau) = seq_tau(j,k);
-    }
-    for(int i=0; i<n; i++) {
-      out(i,k) = seq_omega(i,k);
-    }
-  }
-
-  return out;
+  return List::create(Named("beta") = seq_beta,
+                      Named("tau") = seq_tau,
+                      Named("omega") = seq_omega);
 }
