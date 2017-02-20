@@ -9,7 +9,8 @@
 
 
 ###############################  notes  ###############################
-
+# 11-01-2017: run VBEM until convergence, then optimise               #
+#             hyperparameters once                                    #
 #######################################################################
 
 ### paths
@@ -210,17 +211,19 @@ enfit <- function(x, y, intercept=TRUE, standardize=TRUE, alpha=NULL, psel, nlam
   
 }
 
+
 intercept=TRUE
 psel=50
 alpha=NULL
-standardize=FALSE
+standardize=FALSE 
 nlambda=1000
-nfolds=10 
+nfolds=10
 foldid=NULL
 maxiter=1000
 epsilon=1e-07
 trace=TRUE
 
+# general fitting function
 enhybrid <- function(x, y, groupid, intercept=TRUE, psel, alpha=NULL, standardize=FALSE, nlambda=1000, nfolds=10, 
                      foldid=NULL, maxiter=1000, epsilon=1e-07, trace=TRUE) {
   
@@ -252,25 +255,19 @@ enhybrid <- function(x, y, groupid, intercept=TRUE, psel, alpha=NULL, standardiz
   for(a in 1:length(seq.alpha)) {
     fit <- glmnet(x, y, family="binomial", alpha=seq.alpha[a], dfmax=psel, standardize=standardize, 
                   intercept=intercept, nlambda=nlambda)
-    # cv.fit <- cv.glmnet(x, y, family="binomial", alpha=seq.alpha[a], lambda=fit$lambda, standardize=standardize, 
-    #                     intercept=intercept, foldid=foldid)
-    # seq.lam[a] <- cv.fit$lambda[which.min(cv.fit$cvm)]
-    # seq.df[a] <- fit$df[which.min(cv.fit$cvm)]
-    # seq.cvll[a] <- min(cv.fit$cvm)
-    
-    cv.fit <- cv.glmnet(x, y, family="binomial", alpha=seq.alpha[a], 
-                        lambda=tail(fit$lambda, n=2L), standardize=standardize, 
+    cv.fit <- cv.glmnet(x, y, family="binomial", alpha=seq.alpha[a], lambda=fit$lambda, standardize=standardize,
                         intercept=intercept, foldid=foldid)
-    seq.lam[a] <- tail(fit$lambda, n=1L)
-    seq.df[a] <- tail(fit$df, n=1L)
-    seq.cvll[a] <- tail(cv.fit$cvm, n=1L)
+    seq.lam[a] <- cv.fit$lambda[which.min(cv.fit$cvm)]
+    seq.df[a] <- fit$df[which.min(cv.fit$cvm)]
+    seq.cvll[a] <- min(cv.fit$cvm)
+    
+    # cv.fit <- cv.glmnet(x, y, family="binomial", alpha=seq.alpha[a], 
+    #                     lambda=tail(fit$lambda, n=2L), standardize=standardize, 
+    #                     intercept=intercept, foldid=foldid)
+    # seq.lam[a] <- tail(fit$lambda, n=1L)
+    # seq.df[a] <- tail(fit$df, n=1L)
+    # seq.cvll[a] <- tail(cv.fit$cvm, n=1L)
   }
-  
-  
-  test <- cbind(lam1=seq.lam*seq.alpha, lam2=0.5*seq.lam*(1 - seq.alpha), cvll=seq.cvll)
-  plot(test[, 1], test[, 2])
-  plot(test[, 1], test[, 3])
-  plot(test[, 2], test[, 3])
   
   # cross-validated penalty parameters
   alpha <- seq.alpha[which.min(seq.cvll)]
@@ -321,26 +318,39 @@ enhybrid <- function(x, y, groupid, intercept=TRUE, psel, alpha=NULL, standardiz
   lambda2vec <- rep(lambda2*lambdag, times=sizes)
   phi <- lambda1^2/(4*lambda2vec)
   
-  seq.mll <- mllold <- 0
-  conv <- FALSE
-  niter <- 0
-  s <- 0
+  seq.mll <- mllold <- s <- seq.s <- niter1 <- seq.val <- 0
+  conv1 <- FALSE
   
-  while(!conv & (niter < maxiter)) {
+  while(!conv1 & (niter1 < maxiter)) {
     
-    niter <- niter + 1
+    niter1 <- niter1 + 1
     
     if(trace) {
-      cat("\r", "Iteration: ", niter, ", lambda multipliers: [", paste(round(lambdag, 6), collapse=", "), 
-                "]", sep="")
+      cat("\r", "Iteration: ", niter1, ", lambda multipliers: [", paste(round(lambdag, 6), collapse=", "), 
+          "]", sep="")
     }
     
-    # estimation of new model parameter (done in Cpp)
-    new.param <- est_param(x, kappa, m, n, p, ciold, phi, chiold, lambda2vec, intercept)
-    sigma <- new.param$sigma
-    mu <- as.numeric(new.param$mu)
-    ci <- as.numeric(new.param$ci)
-    chi <- as.numeric(new.param$chi)
+    # VBEM updates (until convergence)
+    conv2 <- FALSE
+    niter2 <- 0
+    while(!conv2 & (niter2 < maxiter)) {
+      
+      niter2 <- niter2 + 1
+      
+      new.param <- est_param(x, kappa, m, n, p, ciold, phi, chiold, lambda2vec, intercept)
+      sigma <- new.param$sigma
+      mu <- as.numeric(new.param$mu)
+      ci <- as.numeric(new.param$ci)
+      chi <- as.numeric(new.param$chi)
+      
+      conv2 <- max(abs(c(sigma - sigmaold, mu - muold))) < epsilon
+      
+      sigmaold <- sigma
+      muold <- mu
+      ciold <- ci
+      chiold <- chi
+      
+    }
     
     # fixed parameters needed in mll calculation
     e.beta <- mu[(intercept + 1):(p + intercept)]
@@ -375,6 +385,8 @@ enhybrid <- function(x, y, groupid, intercept=TRUE, psel, alpha=NULL, standardiz
                  lambda1=lambda1, lambda2=lambda2, sum1=sum1, sum2=sum2, sizes=sizes)
     lambdag <- opt$par[-1]
     s <- opt$par[1]
+    seq.s <- c(seq.s, s)
+    seq.val <- c(seq.val, opt$value)
     # opt <- optim(c(s, lambdagold), magnitude, method="L-BFGS-B", lower=c(-Inf, rep(0.001, times=G)),
     #              upper=rep(Inf, times=G + 1), control=list(maxit=10000),
     #              lambda1=lambda1, lambda2=lambda2, sum1=sum1, sum2=sum2, sizes=sizes)
@@ -392,23 +404,13 @@ enhybrid <- function(x, y, groupid, intercept=TRUE, psel, alpha=NULL, standardiz
     # calculate the marginal likelihood of the model
     mll <- p*log(lambda1) - 0.5*lambda2*sum(lambdag*sum2) - lambda1^2/(8*lambda2)*sum(sum1/lambdag) -
       sum(sizes*pnorm(-lambda1/sqrt(4*lambda2*lambdag), log.p=TRUE))
-    # mll <- p*log(lambda1) - 0.5*sum(lambda2g*sum2) - 0.125*lambda1^2*sum(sum1/lambda2g) -
-    #   sum(sizes*pnorm(-lambda1/sqrt(4*lambda2g), log.p=TRUE))
     seq.mll <- c(seq.mll, mll)
     
-    # check the convergence of the model parameters
-    # conv1 <- max(abs(c(diag(sigma) - diag(sigmaold), mu - muold))) < epsilon
-    conv1 <- TRUE
-    #conv2 <- max(abs(lambdag - lambdagold)) < epsilon
-    conv2 <- abs(seq.mll[niter + 1] - seq.mll[niter]) < epsilon
-    #conv <- conv1 | conv2
-    conv <- conv2
+    # check the convergence of the marginal likelihood
+    #conv1 <- abs(seq.mll[niter1 + 1] - seq.mll[niter1]) < epsilon
+    conv1 <- max(abs(c(lambdag - lambdagold))) < epsilon
     
-    # update old parameters to new ones
-    sigmaold <- sigma
-    muold <- mu
-    ciold <- ci
-    chiold <- chi
+    # update old penalty parameters and mll to new ones
     lambdagold <- lambdag
     lambda2vec <- rep(lambdagold*lambda2, times=sizes)
     mll <- mllold
@@ -420,7 +422,7 @@ enhybrid <- function(x, y, groupid, intercept=TRUE, psel, alpha=NULL, standardiz
   final.fit <- penalized(y, x, unpenalized=as.formula(unpenal), lambda1=lambda1, lambda2=rep(lambda2g, sizes),
                          model="logistic", standardize=standardize)
   
-  out <- list(niter=niter, conv=conv, lambda1=lambda1, lambda2=lambda2g, final.fit=final.fit, mu=mu, 
+  out <- list(niter=niter1, conv=conv1, lambda1=lambda1, lambda2=lambda2g, final.fit=final.fit, mu=mu, 
               sigma=sigma, ci=ci, chi=chi, mll=seq.mll)
   return(out)
   

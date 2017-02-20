@@ -373,18 +373,19 @@ library(grid)
 library(gridExtra)
 library(grid)
 
+# general plot settings
+th1 <- theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
+             panel.background=element_blank(), axis.line=element_line(colour="black"),
+             plot.title=element_text(hjust=0.5))
+th2 <- theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
+             panel.background=element_blank(), axis.line=element_line(colour="black"),
+             axis.title.y=element_blank(), axis.title.x=element_blank())
+
 # results from surfsara setting 1
 load(paste(path.results, "SMPDG_2017_c_v02_run02.Rdata", sep=""))
 data1.1 <- melt(as.data.frame(out[[1]]))
 data1.2 <- melt(as.data.frame(out[[2]]))
 data1.3 <- melt(as.data.frame(out[[3]]))
-
-th1 <- theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
-            panel.background=element_blank(), axis.line=element_line(colour="black"),
-            plot.title=element_text(hjust=0.5))
-th2 <- theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
-             panel.background=element_blank(), axis.line=element_line(colour="black"),
-             axis.title.y=element_blank(), axis.title.x=element_blank())
 
 plot.big1.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data1.1) + th1
 plot.zoom1.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value),
@@ -447,16 +448,16 @@ plot3.3 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data3.3) + th1 +
   labs(title="i)", x="f=2, q=0.9", y="")
 
 # reading in results from surfsara setting 4
-load(paste(path.results, "SMPDG_2017_c_v02_run05.Rdata", sep=""))
+load(paste(path.results, "SMPDG_2017_c_v02_run06.Rdata", sep=""))
 data4.1 <- melt(as.data.frame(out[[1]]))
 data4.2 <- melt(as.data.frame(out[[2]]))
 data4.3 <- melt(as.data.frame(out[[3]]))
 
 plot.big4.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data4.1) + th1
 plot.zoom4.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value),
-                                        data4.1[!(data4.1$variable %in% c("GRridge", "LR")), ]) + th2
-ylim4.1 <- c(min(boxplot(out[[1]][, -c(2, 4)], plot=FALSE)$stats),
-             max(boxplot(out[[1]][, -c(2, 4)], plot=FALSE)$stats))
+                                        data4.1[!(data4.1$variable %in% c("GRridge", "LR", "EN")), ]) + th2
+ylim4.1 <- c(min(boxplot(out[[1]][, -c(2, 4, 5)], plot=FALSE)$stats),
+             max(boxplot(out[[1]][, -c(2, 4, 5)], plot=FALSE)$stats))
 ylim4.2 <- ggplot_build(plot.big4.1)$layout$panel_ranges[[1]]$y.range[2] - 
   c(diff(ggplot_build(plot.big4.1)$layout$panel_ranges[[1]]$y.range)/1.5,
     diff(ggplot_build(plot.big4.1)$layout$panel_ranges[[1]]$y.range)*0.08)
@@ -466,19 +467,19 @@ plot4.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data4.1) + th1 +
 plot4.2 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data4.2) + th1 + 
   labs(title="b)", x="", y="")
 plot4.3 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data4.3) + th1 + 
-  labs(title="c)", x="f=1.3, q=0.7", y="")
+  labs(title="c)", x="f=1.6, q=0", y="")
 
 # reading in results from surfsara setting 5
-load(paste(path.results, "SMPDG_2017_c_v02_run06.Rdata", sep=""))
+load(paste(path.results, "SMPDG_2017_c_v02_run07.Rdata", sep=""))
 data5.1 <- melt(as.data.frame(out[[1]]))
 data5.2 <- melt(as.data.frame(out[[2]]))
 data5.3 <- melt(as.data.frame(out[[3]]))
 
 plot.big5.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data5.1) + th1
 plot.zoom5.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value),
-                                        data5.1[!(data5.1$variable %in% c("GRridge", "LR", "EN")), ]) + th2
-ylim5.1 <- c(min(boxplot(out[[1]][, -c(2, 4, 5)], plot=FALSE)$stats),
-             max(boxplot(out[[1]][, -c(2, 4, 5)], plot=FALSE)$stats))
+                                        data5.1[!(data5.1$variable %in% c("GRridge", "LR")), ]) + th2
+ylim5.1 <- c(min(boxplot(out[[1]][, -c(2, 4)], plot=FALSE)$stats),
+             max(boxplot(out[[1]][, -c(2, 4)], plot=FALSE)$stats))
 ylim5.2 <- ggplot_build(plot.big5.1)$layout$panel_ranges[[1]]$y.range[2] - 
   c(diff(ggplot_build(plot.big5.1)$layout$panel_ranges[[1]]$y.range)/1.5,
     diff(ggplot_build(plot.big5.1)$layout$panel_ranges[[1]]$y.range)*0.08)
@@ -488,39 +489,134 @@ plot5.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data5.1) + th1 +
 plot5.2 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data5.2) + th1 + 
   labs(title="e)", x="", y="")
 plot5.3 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data5.3) + th1 + 
-  labs(title="f)", x="f=1.6, q=0", y="")
+  labs(title="f)", x="f=2, q=0", y="")
 
-boxplot(out[[1]][, -c(2, 4, 5)], outline=FALSE)
+# reading in results from surfsara setting 6
+load(paste(path.results, "SMPDG_2017_c_v02_run05.Rdata", sep=""))
+data6.1 <- melt(as.data.frame(out[[1]]))
+data6.2 <- melt(as.data.frame(out[[2]]))
+data6.3 <- melt(as.data.frame(out[[3]]))
+
+plot.big6.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data6.1) + th1
+plot.zoom6.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value),
+                                        data6.1[!(data6.1$variable %in% c("GRridge", "LR")), ]) + th2
+ylim6.1 <- c(min(boxplot(out[[1]][, -c(2, 4)], plot=FALSE)$stats),
+             max(boxplot(out[[1]][, -c(2, 4)], plot=FALSE)$stats))
+ylim6.2 <- ggplot_build(plot.big6.1)$layout$panel_ranges[[1]]$y.range[2] - 
+  c(diff(ggplot_build(plot.big6.1)$layout$panel_ranges[[1]]$y.range)/1.5,
+    diff(ggplot_build(plot.big6.1)$layout$panel_ranges[[1]]$y.range)*0.08)
+plot6.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data6.1) + th1 + 
+  annotation_custom(grob=ggplotGrob(plot.zoom6.1 + coord_cartesian(ylim=ylim6.1)), xmax=3, ymin=ylim6.2[1],
+                    ymax=ylim6.2[2]) + labs(title="d)", x="", y="Average MSE")
+plot6.2 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data6.2) + th1 + 
+  labs(title="e)", x="", y="Mean Brier residuals")
+plot6.3 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data6.3) + th1 + 
+  labs(title="f)", x="f=1.3, q=0.7", y="AUC")
+
+# reading in results from surfsara setting 7
+load(paste(path.results, "SMPDG_2017_c_v02_run08.Rdata", sep=""))
+data7.1 <- melt(as.data.frame(out[[1]]))
+data7.2 <- melt(as.data.frame(out[[2]]))
+data7.3 <- melt(as.data.frame(out[[3]]))
+
+plot.big7.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data7.1) + th1
+plot.zoom7.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value),
+                                        data7.1[!(data7.1$variable %in% c("GRridge", "LR")), ]) + th2
+ylim7.1 <- c(min(boxplot(out[[1]][, -c(2, 4)], plot=FALSE)$stats),
+             max(boxplot(out[[1]][, -c(2, 4)], plot=FALSE)$stats))
+ylim7.2 <- ggplot_build(plot.big7.1)$layout$panel_ranges[[1]]$y.range[2] - 
+  c(diff(ggplot_build(plot.big7.1)$layout$panel_ranges[[1]]$y.range)/1.5,
+    diff(ggplot_build(plot.big7.1)$layout$panel_ranges[[1]]$y.range)*0.08)
+plot7.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data7.1) + th1 + 
+  annotation_custom(grob=ggplotGrob(plot.zoom7.1 + coord_cartesian(ylim=ylim7.1)), xmax=3, ymin=ylim7.2[1],
+                    ymax=ylim7.2[2]) + labs(title="d)", x="", y="")
+plot7.2 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data7.2) + th1 + 
+  labs(title="e)", x="", y="")
+plot7.3 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data7.3) + th1 + 
+  labs(title="f)", x="f=2, q=0.7", y="")
+
+# reading in results from surfsara setting 8
+load(paste(path.results, "SMPDG_2017_c_v02_run09.Rdata", sep=""))
+data8.1 <- melt(as.data.frame(out[[1]]))
+data8.2 <- melt(as.data.frame(out[[2]]))
+data8.3 <- melt(as.data.frame(out[[3]]))
+
+plot.big8.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data8.1) + th1
+plot.zoom8.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value),
+                                        data8.1[!(data8.1$variable %in% c("GRridge", "LR")), ]) + th2
+ylim8.1 <- c(min(boxplot(out[[1]][, -c(2, 4)], plot=FALSE)$stats),
+             max(boxplot(out[[1]][, -c(2, 4)], plot=FALSE)$stats))
+ylim8.2 <- ggplot_build(plot.big8.1)$layout$panel_ranges[[1]]$y.range[2] - 
+  c(diff(ggplot_build(plot.big8.1)$layout$panel_ranges[[1]]$y.range)/1.5,
+    diff(ggplot_build(plot.big8.1)$layout$panel_ranges[[1]]$y.range)*0.08)
+plot8.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data8.1) + th1 + 
+  annotation_custom(grob=ggplotGrob(plot.zoom8.1 + coord_cartesian(ylim=ylim8.1)), xmax=3, ymin=ylim8.2[1],
+                    ymax=ylim8.2[2]) + labs(title="d)", x="", y="Average MSE")
+plot8.2 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data8.2) + th1 + 
+  labs(title="e)", x="", y="Mean Brier residuals")
+plot8.3 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data8.3) + th1 + 
+  labs(title="f)", x="f=1.3, q=0.9", y="AUC")
+
+# reading in results from surfsara setting 9
+load(paste(path.results, "SMPDG_2017_c_v02_run10.Rdata", sep=""))
+data9.1 <- melt(as.data.frame(out[[1]]))
+data9.2 <- melt(as.data.frame(out[[2]]))
+data9.3 <- melt(as.data.frame(out[[3]]))
+
+plot.big9.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data9.1) + th1
+plot.zoom9.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value),
+                                        data9.1[!(data9.1$variable %in% c("GRridge", "LR")), ]) + th2
+ylim9.1 <- c(min(boxplot(out[[1]][, -c(2, 4)], plot=FALSE)$stats),
+             max(boxplot(out[[1]][, -c(2, 4)], plot=FALSE)$stats))
+ylim9.2 <- ggplot_build(plot.big9.1)$layout$panel_ranges[[1]]$y.range[2] - 
+  c(diff(ggplot_build(plot.big9.1)$layout$panel_ranges[[1]]$y.range)/1.5,
+    diff(ggplot_build(plot.big9.1)$layout$panel_ranges[[1]]$y.range)*0.08)
+plot9.1 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data9.1) + th1 + 
+  annotation_custom(grob=ggplotGrob(plot.zoom9.1 + coord_cartesian(ylim=ylim9.1)), xmax=3, ymin=ylim9.2[1],
+                    ymax=ylim9.2[2]) + labs(title="d)", x="", y="")
+plot9.2 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data9.2) + th1 + 
+  labs(title="e)", x="", y="")
+plot9.3 <- ggplot() + geom_boxplot(aes(x=variable, y=value), data9.3) + th1 + 
+  labs(title="f)", x="f=1.6, q=0.9", y="")
 
 # visualize
 windows()
-grid.arrange(plot1.1, plot2.1, plot3.1,
-             plot1.2, plot2.2, plot3.2,
-             plot1.3, plot2.3, plot3.3, ncol=3, nrow=3)
+grid.arrange(plot1.1, plot4.1, plot5.1,
+             plot1.2, plot4.2, plot5.2,
+             plot1.3, plot4.3, plot5.3, ncol=3, nrow=3)
 
 windows()
-grid.arrange(plot4.1, plot5.1,
-             plot4.2, plot5.2,
-             plot4.3, plot5.3, ncol=2, nrow=3)
+grid.arrange(plot6.1, plot2.1, plot7.1,
+             plot6.2, plot2.2, plot7.2,
+             plot6.3, plot2.3, plot7.3, ncol=3, nrow=3)
+
+windows()
+grid.arrange(plot8.1, plot9.1, plot3.1,
+             plot8.2, plot9.2, plot3.2,
+             plot8.3, plot9.3, plot3.3, ncol=3, nrow=3)
 
 # save to png
-g1 <- arrangeGrob(plot1.1, plot2.1, plot3.1,
-                  plot1.2, plot2.2, plot3.2,
-                  plot1.3, plot2.3, plot3.3, ncol=3, nrow=3)
-g2 <- arrangeGrob(plot4.1, plot5.1,
-                  plot4.2, plot5.2,
-                  plot4.3, plot5.3, ncol=2, nrow=3)
+g1 <- arrangeGrob(plot1.1, plot4.1, plot5.1,
+                  plot1.2, plot4.2, plot5.2,
+                  plot1.3, plot4.3, plot5.3, ncol=3, nrow=3)
+g2 <- arrangeGrob(plot6.1, plot2.1, plot7.1,
+                  plot6.2, plot2.2, plot7.2,
+                  plot6.3, plot2.3, plot7.3, ncol=3, nrow=3)
+g3 <- arrangeGrob(plot8.1, plot9.1, plot3.1,
+                  plot8.2, plot9.2, plot3.2,
+                  plot8.3, plot9.3, plot3.3, ncol=3, nrow=3)
 ggsave(paste(path.graph, "ENVB_sim01_V01.png", sep=""), g1, device="png", width=297, height=210,
        units="mm", dpi=300)
 ggsave(paste(path.graph, "ENVB_sim02_V01.png", sep=""), g2, device="png", width=297, height=210,
        units="mm", dpi=300)
+ggsave(paste(path.graph, "ENVB_sim03_V01.png", sep=""), g3, device="png", width=297, height=210,
+       units="mm", dpi=300)
 
 
 
-
-
-
-
+gposter <- arrangeGrob(plot1.1, plot6.1, plot8.1, ncol=3, nrow=1)
+ggsave("C:/Users/Magnus/Documents/phd/poster_talks/SMPGD_2017/graphs/ENVB_MSE_V01.png", gposter, 
+       device="png", width=560, height=280, units="mm", dpi=200)
 
 
 
@@ -647,3 +743,4 @@ aucmat <- c(GRridge::auc(vbRoc), GRridge::auc(vb2Roc), GRridge::auc(grRoc), GRri
             GRridge::auc(lrRoc), GRridge::auc(enRoc), GRridge::auc(sglRoc))
 
 
+out <- parfun(3)

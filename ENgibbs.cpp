@@ -917,6 +917,7 @@ vec romegaC(vec beta, mat x, vec m, int n, int p, bool intercept) {
 
 // [[Rcpp::export]]
 vec rtauC(vec beta0, int p, double lambda1, vec lambda2, bool intercept) {
+// mat rtauC(vec beta0, int p, double lambda1, vec lambda2, bool intercept) {
   
   vec beta(p);
   if(intercept) {
@@ -943,10 +944,22 @@ vec rtauC(vec beta0, int p, double lambda1, vec lambda2, bool intercept) {
 		if(U(i) <= prob(i))
 			tau(i) = 1.0/z(i) + 1.0;
 		else
-			tau(i) = chi(i)*(i)/psi(i) + 1.0;
+			tau(i) = chi(i)*z(i)/psi(i) + 1.0;
+		
+		if(tau(i) <= 1.0)
+		  tau(i) = 1.001;
 
 	}
 
+	// mat test(p,7);
+	// test.submat(0,0,p-1,0) = psi;
+	// test.submat(0,1,p-1,1) = chi;
+	// test.submat(0,2,p-1,2) = Y;
+	// test.submat(0,3,p-1,3) = U;
+	// test.submat(0,4,p-1,4) = z;
+	// test.submat(0,5,p-1,5) = prob;
+	// test.submat(0,6,p-1,6) = tau;
+	// return test;
 	return tau;
 
 }
@@ -1014,12 +1027,15 @@ List gibbsC(mat x, vec y, vec m, int n, int p, double lambda1, vec lambda2, vec 
   
   vec kappa = y - 0.5*m;
   
-  vec beta = b0;
+  mat beta = b0;
   vec omega(n);
   vec tau(p);  
-    
+  // vec tau = b0;
+  // mat test(p,7);
+  // 
   for(int k=0; k<K; k++) {
     omega = romegaC(beta, x, m, n, p, intercept);
+    // test = rtauC(beta, p, lambda1, lambda2, intercept);
     tau = rtauC(beta, p, lambda1, lambda2, intercept);
     beta = rbetaC(x, kappa, n, p, tau, omega, lambda2, intercept);
 
@@ -1032,5 +1048,6 @@ List gibbsC(mat x, vec y, vec m, int n, int p, double lambda1, vec lambda2, vec 
   
   return List::create(Named("beta") = seq_beta,
                       Named("tau") = seq_tau,
+  // return List::create(Named("tau") = test,
                       Named("omega") = seq_omega);
 }

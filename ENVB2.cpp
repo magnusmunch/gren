@@ -27,6 +27,10 @@ List est_param(mat x, vec kappa, vec m, int n, int p, vec ciold, vec phi, vec ch
     vec om = 0.5*m/ciold%tanh(ciold/2);
     vec ominv = 1/om;
     vec hinv = 1/h;
+    int p0 = p;
+    if(intercept) {
+      p0 += p0;
+    }
 
     double invtrom;
     mat Omadj(n,n);
@@ -35,9 +39,8 @@ List est_param(mat x, vec kappa, vec m, int n, int p, vec ciold, vec phi, vec ch
     mat Ainv(p,p);
     vec ainvxom(p);
     mat sigma(p + 1,p + 1);
-    vec sigmapart(p);
     vec mu(p + 1);
-    vec varmean;
+    vec varmean(p0);
     
     if (intercept) {
       invtrom = 1/sum(om);
@@ -46,10 +49,9 @@ List est_param(mat x, vec kappa, vec m, int n, int p, vec ciold, vec phi, vec ch
       xtrxom.diag() += 1;
       Ainv= diagmat(hinv) - txhinv*Omadj*xtrxom.i()*txhinv.t();
       ainvxom = Ainv*trx*om;
-      sigmapart = -invtrom*ainvxom;
       sigma(0,0) = as_scalar(invtrom + pow(invtrom,2.0)*(om.t()*x*ainvxom));
-      sigma.submat(1,0,p,0) = sigmapart;
-      sigma.submat(0,1,0,p) = sigmapart.t();
+      sigma.submat(1,0,p,0) = -invtrom*ainvxom;
+      sigma.submat(0,1,0,p) = -invtrom*ainvxom.t();
       sigma.submat(1,1,p,p) = Ainv;
       mu = sigma*xaug.t()*kappa;
       ciold = sqrt(diagvec(xaug*sigma*xaug.t()) + square(xaug*mu));
@@ -69,3 +71,5 @@ List est_param(mat x, vec kappa, vec m, int n, int p, vec ciold, vec phi, vec ch
                         Named("ci") = ciold,
                         Named("chi") = chiold);
 }
+
+

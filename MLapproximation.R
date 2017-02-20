@@ -23,6 +23,7 @@ library(GeneralizedHyperbolic)
 ### functions
 # import the Cpp Gibbs sampler
 sourceCpp(paste(path.code, "ENgibbs.cpp", sep=""))
+sourceCpp(paste(path.code, "ENVB2.cpp", sep=""))
 
 # functions to simulate elastic net prior model parameters
 qtrunc <- function(p, spec, a = -Inf, b = Inf, ...) {
@@ -64,7 +65,7 @@ renbeta <- function(p, lambda1, lambda2) {
 }
 
 # simple ENVB function
-ENVB <- function(y, x, lambda1, lambda2, b0, S0, eps, maxiter) {
+ENVB <- function(y, x, m, lambda1, lambda2, b0, S0, intercept, eps, maxiter) {
   
   p <- ncol(x)
   kappa <- y - 0.5
@@ -73,22 +74,26 @@ ENVB <- function(y, x, lambda1, lambda2, b0, S0, eps, maxiter) {
   mu <- muold <- b0
   sigma <- sigmaold <- S0
   
-  ci <- ciold <- as.numeric(sqrt(colSums(t(x) * (sigma %*% t(x))) + (colSums(t(x)*mu))^2))
-  chi <- chiold <- as.numeric(lambda2*(diag(sigma) + mu^2))
-  
+  if(intercept) {
+    xaug <- cbind(1, x)
+    ci <- ciold <- as.numeric(sqrt(colSums(t(xaug) * (sigma %*% t(xaug))) + (colSums(t(xaug)*mu))^2))
+    chi <- chiold <- as.numeric(lambda2*(diag(sigma[-1, -1]) + mu[-1]^2))
+  } else {
+    ci <- ciold <- as.numeric(sqrt(colSums(t(x) * (sigma %*% t(x))) + (colSums(t(x)*mu))^2))
+    chi <- chiold <- as.numeric(lambda2*(diag(sigma) + mu^2))
+  }
+    
   niter <- 0
   conv <- FALSE
   while(!(conv | (niter==maxiter))) {
     
     niter <- niter + 1
     
-    Om <- diag((0.5/ciold)*tanh(ciold/2))
-    Z <- diag(sqrt(phi/chiold))
-    
-    sigma <- solve(t(x) %*% Om %*% x + lambda2*diag(p) + lambda2*Z)
-    mu <- as.numeric(sigma %*% (t(x) %*% kappa))
-    ci <- as.numeric(sqrt(colSums(t(x) * (sigma %*% t(x))) + (colSums(t(x)*mu))^2))
-    chi <- as.numeric(lambda2*(diag(sigma) + mu^2))
+    newparam <- est_param(x, kappa, m, n, p, ciold, rep(phi, p), chiold, rep(lambda2, p), intercept)
+    sigma <- newparam$sigma
+    mu <- newparam$mu
+    ci <- newparam$ci
+    chi <- newparam$chi
     
     conv <- max(abs(c(sigma - sigmaold, mu - muold, ci - ciold, chi - chiold))) < eps
     
@@ -99,9 +104,10 @@ ENVB <- function(y, x, lambda1, lambda2, b0, S0, eps, maxiter) {
     
   }
   
-  mll <- mllapprox(lambda2, lambda1, mu, sigma, phi, chi)
+  # mll <- mllapprox(lambda2, lambda1, mu, sigma, phi, chi)
   
-  out <- list(mu=mu, sigma=sigma, ci=ci, chi=chi, mll=mll, conv=conv, niter=niter)
+  # out <- list(mu=mu, sigma=sigma, ci=ci, chi=chi, mll=mll, conv=conv, niter=niter)
+  out <- list(mu=mu, sigma=sigma, ci=ci, chi=chi, conv=conv, niter=niter)
   return(out)
 
 }
@@ -141,13 +147,13 @@ ENgibbs <- function(x, y, m, lambda1, lambda2, b0, intercept, K, mll=FALSE) {
 }
 
 # marginal likelihood calculation on Gibbs samples
-mllGibbs <- function(y, x, beta, omega, tau) {
+mllGibbs <- function(y, x, m, beta, omega, tau) {
   n <- nrow(x)
   K <- nrow(beta)
   bstar <- apply(beta, 2, function(b) {d <- density(b); return(d$x[which.max(d$y)])})
   ostar <- apply(omega, 2, function(o) {d <- density(o); return(d$x[which.max(d$y)])})
   
-  ll <- -n*log(2) - 0.5*t(bstar) %*% t(x) %*% diag(ostar) %*% x %*% bstar + 
+  ll <- -sum(m)*log(2) - 0.5*t(bstar) %*% t(x) %*% diag(ostar) %*% x %*% bstar + 
     t(y) %*% x %*% bstar - 0.5*sum(x %*% bstar)
   pom <- sum(dpg(ostar, 1, 0, log.d=TRUE)) - 
     sum(dpg(ostar, 1, as.numeric(x %*% bstar), log.d=TRUE))
@@ -208,27 +214,27 @@ y <- rbinom(n, m, exp(x %*% beta)/(1 + exp(x %*% beta)))
 seq.lambda2 <- c(seq(0.05, 0.45, 0.05), seq(0.5, 16, 0.5))[1]
 out.mll <- matrix(NA, ncol=2, nrow=length(seq.lambda2))
 for(l in 1:length(seq.lambda2)) {
-  fit.VB <- ENVB(y, x, lambda1=1, lambda2=seq.lambda2[l], b0=beta, S0=diag(p), eps=1e-06, 
-                 maxiter=500)
+  fit.VB <- ENVB(y, x, m, lambda1=1, lambda2=seq.lambda2[l], b0=c(0, beta), S0=diag(p + 1), intercept=TRUE, 
+                 eps=1e-06, maxiter=500)
   fit.Gibbs <- ENgibbs(x, y, m, lambda1=1, lambda2=seq.lambda2[l], b0=c(0, beta), intercept=TRUE, 
-                       K=50000, mll=TRUE)
+                       K=50000, mll=FALSE)
   fit.pen <- penalized(y, x, unpenalized=~0, lambda1=1, lambda2=seq.lambda2[l], model="logistic")
-  out.mll[l, ] <- c(fit.VB$mll, fit.Gibbs$mll)
+  #out.mll[l, ] <- c(fit.VB$mll, fit.Gibbs$mll)
 }
 
 
-plot(seq.lambda2, (out.mll[, 2] - min(out.mll[, 2]))/(max(out.mll[, 2]) - min(out.mll[, 2])), 
-     type="l")
-lines(seq.lambda2, (out.mll[, 1] - min(out.mll[, 1]))/(max(out.mll[, 1]) - min(out.mll[, 1])))
+# plot(seq.lambda2, (out.mll[, 2] - min(out.mll[, 2]))/(max(out.mll[, 2]) - min(out.mll[, 2])), 
+#      type="l")
+# lines(seq.lambda2, (out.mll[, 1] - min(out.mll[, 1]))/(max(out.mll[, 1]) - min(out.mll[, 1])))
 
 
-bgibbs <- apply(fit.Gibbs$beta[-c(1:5000), ], 2, function(b) {
+bgibbs <- apply(fit.Gibbs$beta[, -c(1:10000)], 1, function(b) {
   d <- density(b); return(d$x[which.max(d$y)])})
 windows()
 par(mfrow=c(3, 4))
 for(j in 1:p) {
-  h <- hist(fit.Gibbs$beta[-c(1:5000), j], plot=FALSE, breaks=80)
-  hist(fit.Gibbs$beta[-c(1:5000), j], freq=FALSE, breaks=80, col=128,
+  h <- hist(fit.Gibbs$beta[j, -c(1:10000)], plot=FALSE, breaks=80)
+  hist(fit.Gibbs$beta[j, -c(1:10000)], freq=FALSE, breaks=80, col=128,
        ylim=c(0, max(c(h$density, dnorm(fit.VB$mu[j], mean=fit.VB$mu[j], 
                                         sd=sqrt(fit.VB$sigma[j, j]))))), 
        xlab=expression(beta), main=paste(letters[j], ")", sep=""))  

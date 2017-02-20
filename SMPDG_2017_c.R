@@ -381,9 +381,9 @@ parfun <- function(r) {
 #sfLibrary(snowfall)
 #sfExportAll()
 #out <- sfSapply(1:nrow(vsettings), parfun)
-out <- parfun(8)
+out <- parfun(9)
 #names(out) <- apply(vsettings, 1, paste, c("fac", "fract"), collapse=", ")
-save(out, file=paste(path.results, "SMPDG_2017_c_v02_run09.Rdata", sep=""))
+save(out, file=paste(path.results, "SMPDG_2017_c_v02_run10.Rdata", sep=""))
 #sfStop()
 
 
