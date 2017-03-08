@@ -3,10 +3,13 @@
 #include <vector>
 #include <math.h>
 #include <exception>
-#define ARMA_DONT_USE_CXX11
+//#define ARMA_DONT_USE_CXX11
 #include <RcppArmadillo.h>
+#include <random>
+#include <chrono>
 
 // [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::plugins(cpp11)]]
 
 using namespace Rcpp;
 using namespace arma;
@@ -885,7 +888,17 @@ vec rpg_hybrid(std::vector<double> & h, std::vector<double> & z, int num) {
 }
 
 
-//**************************** output functions *****************************//
+//**************************** parameter sample functions *****************************//
+// class rpar {
+//   
+//   public:
+//   
+//     vec romegaC(vec beta, mat x, vec m, int n, int p, bool intercept);
+//     vec rtauC(vec beta0, int p, double lambda1, vec lambda2, bool intercept);
+//     vec rbetaC(mat x, vec kappa, int n, int p, vec tau, vec om, vec lambda2, bool intercept);
+//   
+// }; // rpar
+
 // [[Rcpp::export]]
 vec romegaC(vec beta, mat x, vec m, int n, int p, bool intercept) {
   
@@ -914,12 +927,17 @@ vec romegaC(vec beta, mat x, vec m, int n, int p, bool intercept) {
   return out;
 }*/
 
-
 // [[Rcpp::export]]
+//double rtauC(vec beta0, int p, double lambda1, vec lambda2, bool intercept) {
 vec rtauC(vec beta0, int p, double lambda1, vec lambda2, bool intercept) {
 // mat rtauC(vec beta0, int p, double lambda1, vec lambda2, bool intercept) {
   
-  vec beta(p);
+  //std::random_device rd;
+  std::mt19937 gen{static_cast<unsigned int>(std::chrono::high_resolution_clock::now().time_since_epoch().count())};
+  std::normal_distribution<double> dn(0.0,1.0);
+  std::uniform_real_distribution<double> du(0.0,1.0);
+  
+  vec beta(p), tau(p);
   if(intercept) {
     beta = beta0.rows(1,p);
   } else {
@@ -927,29 +945,30 @@ vec rtauC(vec beta0, int p, double lambda1, vec lambda2, bool intercept) {
   }
 	vec psi = pow(lambda1,2.0)/(4.0*lambda2);
 	vec chi = lambda2 % square(beta);
-  vec tau(p);
   	
-	vec Y(p,fill::randn);
-	vec Ysq = square(Y);
-	vec U(p,fill::randu);
-	//vec z(p);
-	//vec prob(p);
-	vec z = sqrt(psi/chi) + Ysq/(2.0*chi) - sqrt(sqrt(psi)%Ysq/(chi%sqrt(chi)) + square(Ysq)/(4.0*square(chi)));	
-	vec prob = 1.0/(1.0 + z%sqrt(chi/psi));
+	double Y, Ysq, U, z, prob;
 	
 	for(int i=0; i<p; i++) {
-		
-		//z(i)=sqrt(psi(i)/chi(i)) + Ysq(i)/(2.0*chi(i)) - sqrt(sqrt(psi(i))*Ysq(i)/pow(chi(i),1.5) + pow(Ysq(i),2.0)/(4.0*pow(chi(i),2.0)));
-		//prob(i) = 1.0/(1.0 + z(i)*sqrt(chi(i)/psi(i)));
-		if(U(i) <= prob(i))
-			tau(i) = 1.0/z(i) + 1.0;
-		else
-			tau(i) = chi(i)*z(i)/psi(i) + 1.0;
-		
-		if(tau(i) <= 1.0)
-		  tau(i) = 1.001;
+	  bool isfin = false;
+		while(isfin==false) {
+		  Y = dn(gen);
+	    Ysq = pow(Y,2.0);
+	    U = du(gen);
+		  z = sqrt(psi(i)/chi(i)) + Ysq/(2.0*chi(i)) - sqrt(sqrt(psi(i))*Ysq/pow(chi(i),1.5) + pow(Ysq,2.0)/(4.0*pow(chi(i),2.0)));
+		  prob = 1.0/(1.0 + z*sqrt(chi(i)/psi(i)));
+		  if(U <= prob)
+			  tau(i) = 1.0/z + 1.0;
+		  else
+			  tau(i) = chi(i)*z/psi(i) + 1.0;
 
+		  if(tau(i) <= 1.0)
+		    tau(i) = 1.001;
+
+		  isfin = (z!=0.0);
+		}
 	}
+	
+	//Y = dn(gen);
 
 	// mat test(p,7);
 	// test.submat(0,0,p-1,0) = psi;
@@ -960,9 +979,55 @@ vec rtauC(vec beta0, int p, double lambda1, vec lambda2, bool intercept) {
 	// test.submat(0,5,p-1,5) = prob;
 	// test.submat(0,6,p-1,6) = tau;
 	// return test;
+	//return tau;
 	return tau;
 
 }
+
+// // [[Rcpp::export]]
+// vec rtauC(vec beta0, int p, double lambda1, vec lambda2, bool intercept) {
+//   // mat rtauC(vec beta0, int p, double lambda1, vec lambda2, bool intercept) {
+//   
+//   vec beta(p);
+//   if(intercept) {
+//     beta = beta0.rows(1,p);
+//   } else {
+//     beta = beta0;
+//   }
+//   vec psi = pow(lambda1,2.0)/(4.0*lambda2);
+//   vec chi = lambda2 % square(beta);
+//   vec tau(p);
+//   
+//   vec Y(p,fill::randn);
+//   vec Ysq = square(Y);
+//   vec U(p,fill::randu);
+//   
+//   vec z = sqrt(psi/chi) + Ysq/(2.0*chi) - sqrt(sqrt(psi)%Ysq/(chi%sqrt(chi)) + square(Ysq)/(4.0*square(chi)));	
+//   vec prob = 1.0/(1.0 + z%sqrt(chi/psi));
+//   
+//   for(int i=0; i<p; i++) {
+//     if(U(i) <= prob(i))
+//       tau(i) = 1.0/z(i) + 1.0;
+//     else
+//       tau(i) = chi(i)*z(i)/psi(i) + 1.0;
+//     
+//     if(tau(i) <= 1.0)
+//       tau(i) = 1.001;
+//     
+//   }
+//   
+//   // mat test(p,7);
+//   // test.submat(0,0,p-1,0) = psi;
+//   // test.submat(0,1,p-1,1) = chi;
+//   // test.submat(0,2,p-1,2) = Y;
+//   // test.submat(0,3,p-1,3) = U;
+//   // test.submat(0,4,p-1,4) = z;
+//   // test.submat(0,5,p-1,5) = prob;
+//   // test.submat(0,6,p-1,6) = tau;
+//   // return test;
+//   return tau;
+//   
+// }
 
 // [[Rcpp::export]]
 vec rbetaC(mat x, vec kappa, int n, int p, vec tau, vec om, vec lambda2, bool intercept) {
@@ -982,9 +1047,8 @@ vec rbetaC(mat x, vec kappa, int n, int p, vec tau, vec om, vec lambda2, bool in
   mat txhinv = trx.each_col() % hinv;
   mat xtrxom(n,n);
   mat Ainv(p,p);
-  vec ainvxom(p);
+  vec ainvxom(p), sigmapart(p);
   mat sigma(p0,p0);
-  vec sigmapart(p);
   vec mu(p0);
 	
 	if (intercept) {
@@ -1035,7 +1099,6 @@ List gibbsC(mat x, vec y, vec m, int n, int p, double lambda1, vec lambda2, vec 
   // 
   for(int k=0; k<K; k++) {
     omega = romegaC(beta, x, m, n, p, intercept);
-    // test = rtauC(beta, p, lambda1, lambda2, intercept);
     tau = rtauC(beta, p, lambda1, lambda2, intercept);
     beta = rbetaC(x, kappa, n, p, tau, omega, lambda2, intercept);
 
