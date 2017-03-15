@@ -1,262 +1,28 @@
 ##############################  preamble  #############################
-# MCEM implemented in R                                               #
+# testing grMCEM                                                      #
 # version: 01                                                         #
 # author: Magnus Münch                                                #
-# created: 03-02-2016                                                 #
-# last edited: 07-02-2016                                             #
+# created: 15-03-2017                                                 #
+# last edited: 15-03-2017                                             #
 #######################################################################
 
 ###############################  notes  ###############################
-# 01-03-2017: This only optimises one lambda2, compares VBEM, MCEM,   #
-#             CV and MoM                                              #
+#                                                                     #
 #######################################################################
 
 ### paths
-path.res <- "C:/Users/Magnus/Documents/phd/ENVB/results/"
-path.code <- "C:/Users/Magnus/Documents/phd/ENVB/code/"
+path.rcode <- "C:/Users/Magnus/Documents/phd/ENVB/code/"
 path.graph <- "C:/Users/Magnus/Documents/phd/ENVB/graphs/"
 path.data <- "C:/Users/Magnus/Documents/phd/data/"
+path.res <- "C:/Users/Magnus/Documents/phd/ENVB/results/"
 
-### libraries
-library(Rcpp)
-library(penalized)
-library(glmnet)
+## libraries
 library(GRridge)
 library(mvtnorm)
-#library(nloptr)
+library(grpreg)
 
-### functions
-# source function to sample from posterior
-sourceCpp(paste(path.code, "ENGibbs.cpp", sep=""))
-sourceCpp(paste(path.code, "ENVB2.cpp", sep=""))
-
-# functions to simulate elastic net prior model parameters
-qtrunc <- function(p, spec, a = -Inf, b = Inf, ...) {
-  
-  tt <- p
-  G <- get(paste("p", spec, sep = ""), mode = "function")
-  Gin <- get(paste("q", spec, sep = ""), mode = "function")
-  tt <- Gin(G(a, ...) + p*(G(b, ...) - G(a, ...)), ...)
-  return(tt)
-  
-}
-
-rtrunc <- function(n, spec, a = -Inf, b = Inf, ...){
-  
-  x <- u <- runif(n, min = 0, max = 1)
-  x <- qtrunc(u, spec, a = a, b = b,...)
-  return(x)
-  
-}
-
-renbeta <- function(p, lambda1, lambda2) {
-  
-  if(lambda1==0) {
-    beta <- rnorm(p, 0, sqrt(1/lambda2))
-  } else if(lambda2==0) {
-    u <- runif(p) - 0.5
-    beta <- -2*sign(u)*log(1 - 2*abs(u))/lambda1
-  } else {
-    shape <- 0.5
-    scale <- 8*lambda2/lambda1^2
-    tau <- rtrunc(n=p, spec="gamma", a=1, b=Inf, shape=shape, scale=scale)
-    tau <- ifelse(tau < 1, 1, tau)
-    sigma <- ifelse(is.infinite(tau), 1/lambda2, 
-                    (tau - 1)/(lambda2*tau))
-    beta <- rnorm(p, 0, sqrt(sigma))
-  }
-  return(beta)
-  
-}
-
-grlowermll <- function(loglambdag, lambda2, sizes, sum1) {
-  mll <- 0.5*lambda2*sum(sum1*exp(loglambdag)) - 0.5*sum(sizes*loglambdag)
-  grad <- 0.5*lambda2*sum1*exp(loglambdag) - 0.5*sizes
-  out <- list(objective=mll, gradient=grad)
-  return(out)
-}
-
-grconstr <- function(loglambdag, lambda2, sizes, sum1) {
-  constr <- sum(sizes*loglambdag)
-  grad <- sizes
-  out <- list(constraints=constr, jacobian=grad)
-  return(out)
-}
-
-grmagn <- function(par, lambda2, sizes, sum1) {
-  s <- par[1]
-  loglambdag <- par[-1]
-  magn <- sum((0.5*lambda2*sum1*exp(loglambdag) - 0.5*sizes + s*sizes)^2) + sum(sizes*loglambdag)^2
-  return(magn)
-}
-
-cv.pen <- function(x, y, intercept) {
-  n <- nrow(x)
-  seq.alpha <- seq(0.01, 0.99, length.out=50)
-  seq.lam <- seq.df <- seq.cvll <- numeric(length(seq.alpha))
-  for(a in 1:length(seq.alpha)) {
-    cv.fit <- cv.glmnet(x, y, family="binomial", alpha=seq.alpha[a], standardize=FALSE,
-                        intercept=intercept)
-    ind <- which(cv.fit$lambda==cv.fit$lambda.min)
-    seq.lam[a] <- cv.fit$lambda.min
-    seq.df[a] <- cv.fit$nzero[ind]
-    seq.cvll[a] <- cv.fit$cvm[ind]
-  }
-  lambda1 <- 2*n*seq.alpha*seq.lam
-  #lambda1 <- n*seq.alpha*seq.lam
-  lambda2 <- n*(1 - seq.alpha)*seq.lam
-  
-  out <- list(lambda1=lambda1, lambda2=lambda2, cvll=seq.cvll)
-  return(out)
-}
-
-cv.grVBEM <- function(x, y, m, groups, lambda1=NULL, lambda2=NULL, sigma0, 
-                      intercept=TRUE, eps=1e-5, maxiter=100, nfolds, foldid=NULL) {
-  
-  n <- ncol(x)
-  if(is.null(foldid)) {
-    rest <- n %% nfolds
-    foldsize <- c(rep(n %/% nfolds + as.numeric(rest!=0), times=rest),
-                  rep(n %/% nfolds, times=nfolds - rest))
-    foldid <- sample(rep(1:nfolds, times=foldsize))
-  }
-  
-  preds <- numeric(n)
-  for(k in 1:nfolds) {
-    cat("\r", "Fold ", k, sep="")
-    xtrain <- x[foldid!=k, ]
-    xtest <- x[foldid==k, ]
-    ytrain <- y[foldid!=k]
-    mtrain <- rep(1, times=sum(foldid!=k))
-
-    fit.grVBEM <- grVBEM(xtrain, ytrain, m=mtrain, groups=groups, lambda1=lambda1, 
-                         lambda2=lambda2, sigma0=sigma0, intercept=intercept, 
-                         eps=eps, maxiter=maxiter)
-    best <- fit.grVBEM$mu
-    if(intercept) {
-      preds[foldid==k] <- as.numeric(exp(cbind(1, xtest) %*% best)/
-                                       (1 + exp(cbind(1, xtest) %*% best)))  
-    } else {
-      preds[foldid==k] <- as.numeric(exp(xtest %*% best)/
-                                       (1 + exp(xtest %*% best)))  
-    }
-    
-  }
-  
-  return(preds)
-
-}
-
-grVBEM <- function(x, y, m, groups, lambda1=NULL, lambda2=NULL, sigma0, intercept, eps, maxiter) {
-  
-  # assigning fixed (throughout algorithm) variables
-  sizes <- rle(groups)$lengths
-  G <- length(unique(groups))
-  p <- ncol(x)
-  n <- nrow(x)
-  kappa <- y - m/2
-  
-  # if no penalty parameters are given we estimate them by cross-validation
-  if(is.null(lambda1) | is.null(lambda2)) {
-    cat("\r", "Estimating global lambda1 and lambda2 by cross-validation", sep="")
-    opt.glob <- cv.pen(x, y, intercept)
-    lambda1 <- opt.glob$lambda1[which.min(opt.glob$cvll)]
-    lambda2 <- opt.glob$lambda2[which.min(opt.glob$cvll)]
-    cat("\n", "Global lambda1 and lambda2 estimated at ", round(lambda1, 2), " and ", 
-        round(lambda2, 2), sep="")
-  }
-  
-  # in the multiplier setting phi does not change
-  phi <- 0.25*lambda1^2/lambda2
-  
-  # starting values for lambdag and lagrange multiplier s
-  lambdagold <- lambdagseq <- rep(1, G)
-  if(intercept) {
-    xadj <- cbind(1, x)
-    lambdagvec <- c(0, rep(lambdagold, sizes))
-  } else {
-    xadj <- x
-    lambdagvec <- rep(lambdagold, sizes)
-  }
-  s <- 0
-  
-  sigmaold <- sigma0
-  muold <- as.numeric(sigmaold %*% t(xadj) %*% as.matrix(kappa))
-  ci <- as.numeric(sqrt(colSums(t(xadj) * (sigmaold %*% t(xadj))) + (colSums(t(xadj)*muold))^2))
-  chi <- as.numeric(lambda2*lambdagvec*(diag(sigmaold) + muold^2))[(intercept + 1):(intercept + p)]
-  
-  # sum is needed in optimisation routine
-  sum1 <- sapply(1:G, function(g) {
-    ind <- which(groups==g) + intercept; 
-    return(sum((diag(sigmaold)[ind] + muold[ind]^2)*(1 + sqrt(phi/chi[ind - intercept]))))})
-  
-  # keeping track of things:
-  lowermllseq <- 0.5*sum(sizes*log(lambdagold)) - 0.5*lambda2*sum(lambdagold*sum1)
-  niter2seq <- numeric(0)
-  
-  # outer loop of algorithm:
-  conv1 <- FALSE
-  iter1 <- 0
-  cat("\n", "Estimating penalty multipliers by empirical Bayes", sep="")
-  while(!conv1 & (iter1 < maxiter)) {
-    iter1 <- iter1 + 1
-    
-    # estimating new lambdag
-    # local_opts <- list(algorithm="NLOPT_LD_MMA", xtol_rel= 1.0e-7)
-    # opts <- list(algorithm="NLOPT_LD_AUGLAG", xtol_rel=1.0e-7, maxeval=1000,
-    #              local_opts=local_opts)
-    # opt <- nloptr(x0=log(lambdag), eval_f=grlowermll, eval_g_eq=grconstr,
-    #               opts=opts, lambda2=lambda2, sizes=as.numeric(sizes), sum1=sum1)
-    opt <- optim(par=c(s, log(lambdagold)), fn=grmagn, lambda2=lambda2, sizes=sizes, sum1=sum1,
-                 method="Nelder-Mead", control=list(maxit=1000))
-    s <- opt$par[1]
-    lambdag <- exp(opt$par[-1])
-    lambdagseq <- cbind(lambdagseq, lambdag)
-    
-    # inner loop of algorithm:
-    conv2 <- 0
-    iter2 <- 0
-    while(!conv2 & (iter2 < maxiter)) {
-      iter2 <- iter2 + 1
-      
-      # estimating new model parameters
-      newparam <- est_param(x, kappa, m, n, p, ci, rep(phi, p), chi, rep(lambdag*lambda2, sizes), intercept)
-      sigma <- newparam$sigma
-      mu <- newparam$mu
-      ci <- newparam$ci
-      chi <- newparam$chi
-      
-      # checking convergence of inner loop
-      conv2 <- max(c(abs((mu - muold)/muold), abs(diag((sigma - sigmaold)/sigmaold)))) < eps
-      
-      muold <- mu
-      sigmaold <- sigma
-    }
-    niter2seq <- c(niter2seq, iter2)
-    
-    # sum is needed in optimisation routine
-    sum1 <- sapply(1:G, function(g) {
-      ind <- which(groups==g) + intercept; 
-      return(sum((diag(sigmaold)[ind] + muold[ind]^2)*(1 + sqrt(phi/chi[ind - intercept]))))})
-    
-    # keeping track of lower bound on marginal log likelihood
-    lowermllseq <- c(lowermllseq, 0.5*sum(sizes*log(lambdag)) - 0.5*lambda2*sum(lambdag*sum1))
-    
-    # checking convergence of outer loop:
-    conv1 <- max(abs((lambdag - lambdagold)/lambdagold)) < eps
-    
-    # updating lambdag for new iteration
-    lambdagold <- lambdag
-  }
-  
-  cat("\n", "Penalty multipliers estimated at ", paste(round(lambdag[-G], 2), collapse=", "), 
-      " and ", round(lambdag[G], 2), sep="")
-  out <- list(mu=mu, sigma=sigma, ci=ci, chi=chi, lambda1=lambda1, lambda2=lambda2, 
-              lambdag=lambdagseq, lowermll=lowermllseq, nouteriter=iter1, ninneriter=niter2seq, 
-              conv=conv1)
-  return(out)
-  
-}
+# source grENVB functions
+source(paste(path.rcode, "grVBEM.R", sep=""))
 
 ### simulation 5 (group wise l1 and l2 penalization)
 set.seed(123)
@@ -276,9 +42,10 @@ beta <- c(renbeta(p/G, lambda1*sqrt(lambdag[1]), lambda2*lambdag[1]),
           renbeta(p/G, lambda1*sqrt(lambdag[3]), lambda2*lambdag[3]))
 y <- rbinom(n, m, exp(x %*% beta)/(1 + exp(x %*% beta)))
 
-test5.grVBEM <- grVBEM(x, y, m, groups, lambda1=NULL, lambda2=NULL, sigma0, intercept=TRUE, 
+test5.grVBEM <- grVBEM(x, y, m, groups, lambda1=NULL, lambda2=NULL, intercept=TRUE, 
                        eps=0.001, maxiter=100)
 test5.grridge <- grridge(t(x), y, list(group=CreatePartition(as.factor(groups))), unpenal=~1)
+test5.grpreg <- cv.grpreg(x, y, group=groups, penalty="grLasso", family="binomial")
 
 ntest <- 1000
 xtest <- matrix(rnorm(ntest*p), ncol=p, nrow=ntest)
@@ -287,19 +54,24 @@ ytest <- rbinom(ntest, m, exp(xtest %*% beta)/(1 + exp(xtest %*% beta)))
 pred5.grVBEM <- as.numeric(exp(cbind(1, xtest) %*% test5.grVBEM$mu)/
                              (1 + exp(cbind(1, xtest) %*% test5.grVBEM$mu)))
 pred5.grridge <- predict.grridge(test5.grridge, t(xtest))[, 2]
+pred5.grpreg <- predict(test5.grpreg, xtest, type="response")
 pred5.truth <- as.numeric(exp(xtest %*% beta)/(1 + exp(xtest %*% beta)))
 
 auc5.grVBEM <- pROC::roc(ytest, pred5.grVBEM)$auc
 auc5.grridge <- pROC::roc(ytest, pred5.grridge)$auc
+auc5.grpreg <- pROC::roc(ytest, pred5.grpreg)$auc
 auc5.truth <- pROC::roc(ytest, pred5.truth)$auc
 
 barplot(rbind(test5.grridge$lambdamults$group, lambdag, 
               test5.grVBEM$lambdag[, test5.grVBEM$nouteriter + 1]), beside=TRUE,
         names.arg=c(expression(lambda[1]), expression(lambda[2]), expression(lambda[3])),
-        legend.text=paste(c("GRridge", "truth", "VBEM"), 
-                          paste(", AUC=", round(c(auc5.grridge, auc5.truth, auc5.grVBEM), 2)), sep=""))
+        legend.text=paste(c("GRridge", "truth", "VBEM", "grlasso"), 
+                          paste(", AUC=", round(c(auc5.grridge, auc5.truth, auc5.grVBEM, 
+                                                  auc5.grpreg), 2)), sep=""))
+
 plot(beta, test5.grVBEM$mu[-1])
 plot(beta, test5.grridge$betas)
+plot(beta, coef(test5.grpreg)[-1])
 
 ### simulation 6 (group wise l1 and l2 penalization)
 set.seed(123)
@@ -314,7 +86,7 @@ sigma0 <- diag(rchisq(p + 1, 1))
 beta <- c(rep(0.5, p/G), rep(0.8, p/G), rep(1.5, p/G))
 y <- rbinom(n, m, exp(x %*% beta)/(1 + exp(x %*% beta)))
 
-test6.grVBEM <- grVBEM(x, y, m, groups, lambda1=NULL, lambda2=NULL, sigma0, intercept=TRUE, 
+test6.grVBEM <- grVBEM(x, y, m, groups, lambda1=NULL, lambda2=NULL, intercept=TRUE, 
                        eps=0.001, maxiter=100)
 test6.grridge <- grridge(t(x), y, list(group=CreatePartition(as.factor(groups))), unpenal=~1)
 
@@ -444,7 +216,7 @@ xtest <- matrix(rnorm(ntest*p), ncol=p, nrow=ntest)
 ytest <- rbinom(ntest, m, exp(xtest %*% beta)/(1 + exp(xtest %*% beta)))
 
 pred10.grVBEM <- as.numeric(exp(cbind(1, xtest) %*% test10.grVBEM$mu)/
-                             (1 + exp(cbind(1, xtest) %*% test10.grVBEM$mu)))
+                              (1 + exp(cbind(1, xtest) %*% test10.grVBEM$mu)))
 pred10.grridge <- predict.grridge(test10.grridge, t(xtest))[, 2]
 pred10.truth <- as.numeric(exp(xtest %*% beta)/(1 + exp(xtest %*% beta)))
 
@@ -704,7 +476,7 @@ barplot(rbind(test16.grridge$lambdamults$group,
 pen.fit <- penalized(y, x, unpenalized=~1, model="logistic",
                      lambda1=rep(sqrt(test16.grridge$lambdamults$group)*test16.grVBEM$lambda1, rle(groups)$lengths),
                      lambda2=rep(test16.grridge$lambdamults$group*test16.grVBEM$lambda2, rle(groups)$lengths))
-                     
+
 
 ### data 2 (group wise l1 and l2 penalization) permuting the groups (no info)
 load(paste(path.data, "mirsData.RData", sep=""))
@@ -912,52 +684,12 @@ for(k in 1:nfolds) {
   
   fit.cvpen <- cv.pen(xtrain, ytrain, intercept=TRUE)
   fit.en <- 
-  best <- fit.grVBEM$mu
+    best <- fit.grVBEM$mu
   pred21.grVBEM[foldid==k] <- as.numeric(exp(cbind(1, xtest) %*% best)/
                                            (1 + exp(cbind(1, xtest) %*% best)))
   
 }
 
-
-
-
 auc21.grVBEM <- pROC::roc(y, pred21.grVBEM)$auc
 auc21.grridge <- pROC::roc(y, test21b.grridge[, 3])$auc
 cbind(grVBEM=round(pred21.grVBEM, 2), grridge=round(test21b.grridge[, 3], 2))
-
-
-cv.pen <- function(x, y, intercept) {
-  n <- nrow(x)
-  seq.alpha <- seq(0.01, 0.99, length.out=50)
-  seq.lam <- seq.df <- seq.cvll <- numeric(length(seq.alpha))
-  for(a in 1:length(seq.alpha)) {
-    cv.fit <- cv.glmnet(x, y, family="binomial", alpha=seq.alpha[a], standardize=FALSE,
-                        intercept=intercept)
-    ind <- which(cv.fit$lambda==cv.fit$lambda.min)
-    seq.lam[a] <- cv.fit$lambda.min
-    seq.df[a] <- cv.fit$nzero[ind]
-    seq.cvll[a] <- cv.fit$cvm[ind]
-  }
-  lambda1 <- 2*n*seq.alpha*seq.lam
-  #lambda1 <- n*seq.alpha*seq.lam
-  lambda2 <- n*(1 - seq.alpha)*seq.lam
-  
-  out <- list(lambda1=lambda1, lambda2=lambda2, cvll=seq.cvll)
-  return(out)
-}
-
-
-testdens <- function(x, lambda1, lambda2) {
-  c <- 0.5*sqrt(2*lambda2)*dnorm(lambda1/sqrt(2*lambda2))/pnorm(-lambda1/sqrt(2*lambda2))
-  dens <- c*exp(-lambda1*abs(x) - lambda2*x^2)
-  return(dens)
-}
-integrate(testdens, lower=-10, upper=10, lambda1=4, lambda2=1)
-
-
-
-
-
-
-
-
