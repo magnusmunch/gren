@@ -13,6 +13,7 @@
 ### paths
 path.rcode <- "~/EBEN/code/"
 path.res <- "~/EBEN/results/"
+path.tab <- "C:/Users/Magnus/Documents/phd/ENVB/tables/"
 
 ### libraries
 library(Rcpp)
@@ -29,7 +30,7 @@ source(paste(path.rcode, "grVBEM.R", sep=""))
 ### the simulation
 set.seed(123)
 settings <- cbind(expand.grid(f=c(1.3, 1.6, 2), q=c(0, 0.7, 0.9)), G=10, 
-                  pg=200, meanbeta=0.01, nblock=20, rho=0.3, sigma2=1, m=1)
+                  pg=100, meanbeta=0.01, nblock=20, rho=0.3, sigma2=1, m=1)
 n <- 100
 ntest <- 1000
 reps <- 50
@@ -101,12 +102,51 @@ for(s in 1:nrow(settings)) {
   # naming the columns and saving the objects
   colnames(aucmat) <- colnames(briermat) <- c("truth", "grridge", "grVBEM", "grpred", "ridge")
   assign(paste("setting", s, sep=""), list(auc=aucmat, brier=briermat))
-  save(list=paste("setting", s, sep=""), file=paste(path.res, "grVBEM_res1_setting", s, ".Rdata", sep=""))
+  save(list=paste("setting", s, sep=""), file=paste(path.res, "grVBEM_res2_setting", s, ".Rdata", sep=""))
   
 }
 
-# load(paste("C:/Users/Magnus/Documents/phd/ENVB/results/", 
-#            "grVBEM_res1_setting1.Rdata", sep=""))
+# load("C:/Users/Magnus/Documents/phd/ENVB/results/grVBEM_res2_setting1.Rdata")
+# load("C:/Users/Magnus/Documents/phd/ENVB/results/grVBEM_res2_setting2.Rdata")
+# load("C:/Users/Magnus/Documents/phd/ENVB/results/grVBEM_res2_setting3.Rdata")
+# load("C:/Users/Magnus/Documents/phd/ENVB/results/grVBEM_res2_setting4.Rdata")
+# load("C:/Users/Magnus/Documents/phd/ENVB/results/grVBEM_res2_setting5.Rdata")
+# load("C:/Users/Magnus/Documents/phd/ENVB/results/grVBEM_res2_setting6.Rdata")
+# load("C:/Users/Magnus/Documents/phd/ENVB/results/grVBEM_res2_setting7.Rdata")
+# load("C:/Users/Magnus/Documents/phd/ENVB/results/grVBEM_res2_setting8.Rdata")
+# load("C:/Users/Magnus/Documents/phd/ENVB/results/grVBEM_res2_setting9.Rdata")
+# 
+# tab1 <- cbind(settings[order(settings$f), c(1:2)], 
+#               t(sapply(1:nrow(settings), function(s) {
+#                 apply(get(paste("setting", s, sep=""))$auc, 2, function(m) {
+#                   paste(format(round(median(m), 2), nsmall=2), " (", 
+#                         format(round(min(m), 2), nsmall=2), ")", sep="")})})))
+# names(tab1)[3:7] <- c("True", "GRridge", "GRen", "Group-lasso", "Ridge")
+# write.table(tab1, file=paste(path.tab, "grVBEM_sim2_tab1.csv", sep=""), quote=FALSE, sep=",", 
+#             row.names=FALSE, col.names=TRUE)
+# 
 # boxplot(setting1$auc)
+# boxplot(setting2$auc)
+# boxplot(setting3$auc)
+# boxplot(setting4$auc)
+# boxplot(setting5$auc)
+# boxplot(setting6$auc)
+# boxplot(setting7$auc)
+# boxplot(setting8$auc)
+# boxplot(setting9$auc)
+# 
 # boxplot(setting1$brier)
+# boxplot(setting2$brier)
+# boxplot(setting3$brier)
+# boxplot(setting4$brier)
+# boxplot(setting5$brier)
+# boxplot(setting6$brier)
+# boxplot(setting7$brier)
+# boxplot(setting8$brier)
+# boxplot(setting9$brier)
+
+
+
+
+
 

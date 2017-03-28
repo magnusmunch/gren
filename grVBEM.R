@@ -13,12 +13,10 @@
 #######################################################################
 
 # paths
-path.ccode <- "C:/Users/Magnus/Documents/phd/ENVB/code/"
+path.ccode <- as.character(ifelse(Sys.info()[1]=="Windows","C:/Users/Magnus/Documents/phd/ENVB/code/" ,"~/EBEN/code/"))
 
 ### libraries
 library(Rcpp)
-library(penalized)
-library(glmnet)
 
 ### functions
 # source function for variational Bayes
@@ -86,11 +84,11 @@ cv.pen <- function(x, y, intercept) {
   #lambda1 <- n*seq.alpha*seq.lam
   lambda2 <- n*(1 - seq.alpha)*seq.lam
   
-  out <- list(lambda1=lambda1, lambda2=lambda2, cvll=seq.cvll)
+  out <- list(lambda1=lambda1, lambda2=lambda2, alpha=seq.alpha, lambda=seq.lam, cvll=seq.cvll)
   return(out)
 }
 
-grVBEM <- function(x, y, m, groups, lambda1=NULL, lambda2=NULL, intercept, eps, maxiter) {
+grVBEM <- function(x, y, m, groups, lambda1=NULL, lambda2=NULL, intercept, eps, maxiter, QNacc=FALSE) {
   
   # assigning fixed (throughout algorithm) variables
   sizes <- rle(groups)$lengths
@@ -126,7 +124,7 @@ grVBEM <- function(x, y, m, groups, lambda1=NULL, lambda2=NULL, intercept, eps, 
   # starting values for mu and sigma
   fit.pen <- penalized(y, x, unpenalized=formula(ifelse(intercept, "~1", "~0")), 
                        model="logistic", lambda1=0, 
-                       lambda2=0.5*(lambda1 + lambda2), trace=FALSE)
+                       lambda2=2*(lambda1 + lambda2), trace=FALSE)
   #muold <- coef(fit.pen, which="all")
   b0 <- coef(fit.pen, which="all")
   pred0 <- as.numeric(exp(xadj %*% b0)/(1 + exp(xadj %*% b0)))
@@ -135,7 +133,7 @@ grVBEM <- function(x, y, m, groups, lambda1=NULL, lambda2=NULL, intercept, eps, 
   svdxw <- svd(xw)
   d <- svdxw$d
   v <- svdxw$v
-  invmat <- d^2/(d^2 + lambda1 + lambda2)^2
+  invmat <- d^2/(d^2 + 4*(lambda1 + lambda2))^2
   sigmaold <- t(t(v)*invmat) %*% t(v)
   
   # rest of the starting values follow from that
@@ -149,8 +147,12 @@ grVBEM <- function(x, y, m, groups, lambda1=NULL, lambda2=NULL, intercept, eps, 
     return(sum((diag(sigmaold)[ind] + muold[ind]^2)*(1 + sqrt(phi/chi[ind - intercept]))))})
   
   # keeping track of things:
-  lowermllseq <- 0.5*sum(sizes*log(lambdagold)) - 0.5*lambda2*sum(lambdagold*sum1)
+  lowermllseq <- sum(sizes*log(lambdagold)) - 0.5*lambda2*sum(lambdagold*sum1)
   niter2seq <- numeric(0)
+  
+  
+  time1 <- time2 <- numeric(3)
+  
   
   # outer loop of algorithm:
   conv1 <- FALSE
@@ -165,15 +167,23 @@ grVBEM <- function(x, y, m, groups, lambda1=NULL, lambda2=NULL, intercept, eps, 
     #              local_opts=local_opts)
     # opt <- nloptr(x0=log(lambdag), eval_f=grlowermll, eval_g_eq=grconstr,
     #               opts=opts, lambda2=lambda2, sizes=as.numeric(sizes), sum1=sum1)
+    ptc <- proc.time()[1:3]
     opt <- optim(par=c(s, log(lambdagold)), fn=grmagn, lambda2=lambda2, sizes=sizes, sum1=sum1,
                  method="Nelder-Mead", control=list(maxit=1000))
+    time1 <- cbind(time1, proc.time()[1:3] - ptc[1:3])
     s <- opt$par[1]
     lambdag <- exp(opt$par[-1])
     lambdagseq <- cbind(lambdagseq, lambdag)
     
+    if(QNacc) {
+      
+    }
+    
     # inner loop of algorithm:
     conv2 <- 0
     iter2 <- 0
+    
+    ptc <- proc.time()[1:3]
     while(!conv2 & (iter2 < maxiter)) {
       iter2 <- iter2 + 1
       
@@ -190,6 +200,8 @@ grVBEM <- function(x, y, m, groups, lambda1=NULL, lambda2=NULL, intercept, eps, 
       muold <- mu
       sigmaold <- sigma
     }
+    time2 <- cbind(time2, proc.time()[1:3] - ptc[1:3])
+    
     niter2seq <- c(niter2seq, iter2)
     
     # sum is needed in optimisation routine
@@ -198,7 +210,7 @@ grVBEM <- function(x, y, m, groups, lambda1=NULL, lambda2=NULL, intercept, eps, 
       return(sum((diag(sigmaold)[ind] + muold[ind]^2)*(1 + sqrt(phi/chi[ind - intercept]))))})
     
     # keeping track of lower bound on marginal log likelihood
-    lowermllseq <- c(lowermllseq, 0.5*sum(sizes*log(lambdag)) - 0.5*lambda2*sum(lambdag*sum1))
+    lowermllseq <- c(lowermllseq, sum(sizes*log(lambdag)) - 0.5*lambda2*sum(lambdag*sum1))
     
     # checking convergence of outer loop:
     conv1 <- max(abs((lambdag - lambdagold)/lambdagold)) < eps
@@ -213,7 +225,7 @@ grVBEM <- function(x, y, m, groups, lambda1=NULL, lambda2=NULL, intercept, eps, 
   
   out <- list(mu=mu, sigma=sigma, ci=ci, chi=chi, lambda1=lambda1, lambda2=lambda2, 
               lambdag=lambdagseq, lowermll=lowermllseq, nouteriter=iter1, ninneriter=niter2seq, 
-              conv=conv1)
+              conv=conv1, opttime=time1, vbtime=time2)
   return(out)
   
 }
@@ -221,6 +233,23 @@ grVBEM <- function(x, y, m, groups, lambda1=NULL, lambda2=NULL, intercept, eps, 
 
 
 
+path.ccode <- as.character(ifelse(Sys.info()[1]=="Windows","C:/Users/Magnus/Documents/phd/ENVB/code/" ,"~/EBEN/code/"))
+sourceCpp(paste(path.ccode, "ENVB2.cpp", sep=""))
 
+library(mvtnorm)
+n <- 100
+p <- 2000
+rho <- 0.3
+sigma <- matrix(rho, ncol=p, nrow=p)
+diag(sigma) <- 1
+x <- rmvnorm(n, mean=rep(0, p), sigma=sigma)
+kappa <- rchisq(n, df=1)
+m <- rep(1, n)
+ciold <- rchisq(n, df=1)
+phi <- rep(1, p)
+chiold <- rep(1, p)
+lambda2 <- rep(1, p)
+intercept <- TRUE
+test <- est_param(x, kappa, m, n, p, ciold, phi, chiold, lambda2, intercept)
 
 

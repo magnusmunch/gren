@@ -20,6 +20,9 @@ path.res <- "C:/Users/Magnus/Documents/phd/ENVB/results/"
 library(GRridge)
 library(mvtnorm)
 library(grpreg)
+library(SGL)
+library(psych)
+library(glmnet)
 
 # source grENVB functions
 source(paste(path.rcode, "grVBEM.R", sep=""))
@@ -46,6 +49,7 @@ test5.grVBEM <- grVBEM(x, y, m, groups, lambda1=NULL, lambda2=NULL, intercept=TR
                        eps=0.001, maxiter=100)
 test5.grridge <- grridge(t(x), y, list(group=CreatePartition(as.factor(groups))), unpenal=~1)
 test5.grpreg <- cv.grpreg(x, y, group=groups, penalty="grLasso", family="binomial")
+test5.SGL <- cvSGL(list(x=x, y=y), type="logit")
 
 ntest <- 1000
 xtest <- matrix(rnorm(ntest*p), ncol=p, nrow=ntest)
@@ -55,23 +59,28 @@ pred5.grVBEM <- as.numeric(exp(cbind(1, xtest) %*% test5.grVBEM$mu)/
                              (1 + exp(cbind(1, xtest) %*% test5.grVBEM$mu)))
 pred5.grridge <- predict.grridge(test5.grridge, t(xtest))[, 2]
 pred5.grpreg <- predict(test5.grpreg, xtest, type="response")
+pred5.SGL <- as.numeric(exp(cbind(1, xtest) %*% c(test5.SGL$fit$intercepts[which.min(test5.SGL$lldiff)], test5.SGL$fit$beta[, which.min(test5.SGL$lldiff)]))/
+                          (1 + exp(cbind(1, xtest) %*% c(test5.SGL$fit$intercepts[which.min(test5.SGL$lldiff)], test5.SGL$fit$beta[, which.min(test5.SGL$lldiff)]))))
 pred5.truth <- as.numeric(exp(xtest %*% beta)/(1 + exp(xtest %*% beta)))
 
 auc5.grVBEM <- pROC::roc(ytest, pred5.grVBEM)$auc
 auc5.grridge <- pROC::roc(ytest, pred5.grridge)$auc
 auc5.grpreg <- pROC::roc(ytest, pred5.grpreg)$auc
+auc5.SGL <- pROC::roc(ytest, pred5.SGL)$auc
 auc5.truth <- pROC::roc(ytest, pred5.truth)$auc
 
 barplot(rbind(test5.grridge$lambdamults$group, lambdag, 
               test5.grVBEM$lambdag[, test5.grVBEM$nouteriter + 1]), beside=TRUE,
         names.arg=c(expression(lambda[1]), expression(lambda[2]), expression(lambda[3])),
-        legend.text=paste(c("GRridge", "truth", "VBEM", "grlasso"), 
+        legend.text=paste(c("GRridge", "truth", "VBEM", "grlasso", "SGL"), 
                           paste(", AUC=", round(c(auc5.grridge, auc5.truth, auc5.grVBEM, 
-                                                  auc5.grpreg), 2)), sep=""))
+                                                  auc5.grpreg, auc5.SGL), 2)), sep=""),
+        args.legend=list(x="topleft"))
 
 plot(beta, test5.grVBEM$mu[-1])
 plot(beta, test5.grridge$betas)
 plot(beta, coef(test5.grpreg)[-1])
+plot(beta, test5.SGL$fit$beta[, which.min(test5.SGL$lldiff)])
 
 ### simulation 6 (group wise l1 and l2 penalization)
 set.seed(123)
@@ -89,6 +98,7 @@ y <- rbinom(n, m, exp(x %*% beta)/(1 + exp(x %*% beta)))
 test6.grVBEM <- grVBEM(x, y, m, groups, lambda1=NULL, lambda2=NULL, intercept=TRUE, 
                        eps=0.001, maxiter=100)
 test6.grridge <- grridge(t(x), y, list(group=CreatePartition(as.factor(groups))), unpenal=~1)
+test6.grpreg <- cv.grpreg(x, y, group=groups, penalty="grLasso", family="binomial")
 
 ntest <- 1000
 xtest <- matrix(rnorm(ntest*p), ncol=p, nrow=ntest)
@@ -97,19 +107,23 @@ ytest <- rbinom(ntest, m, exp(xtest %*% beta)/(1 + exp(xtest %*% beta)))
 pred6.grVBEM <- as.numeric(exp(cbind(1, xtest) %*% test6.grVBEM$mu)/
                              (1 + exp(cbind(1, xtest) %*% test6.grVBEM$mu)))
 pred6.grridge <- predict.grridge(test6.grridge, t(xtest))[, 2]
+pred6.grpreg <- predict(test6.grpreg, xtest, type="response")
 pred6.truth <- as.numeric(exp(xtest %*% beta)/(1 + xtest %*% beta))
 
 auc6.grVBEM <- pROC::roc(ytest, pred6.grVBEM)$auc
 auc6.grridge <- pROC::roc(ytest, pred6.grridge)$auc
+auc6.grpreg <- pROC::roc(ytest, pred6.grpreg)$auc
 auc6.truth <- pROC::roc(ytest, pred6.truth)$auc
 
 barplot(rbind(test6.grridge$lambdamults$group,
               test6.grVBEM$lambdag[, test6.grVBEM$nouteriter + 1]), 
         beside=TRUE, names.arg=c(expression(lambda[1]), expression(lambda[2]), expression(lambda[3])),
-        legend.text=paste(c("GRridge", "VBEM", "truth"), 
-                          paste(", AUC=", round(c(auc6.grridge, auc6.grVBEM, auc6.truth), 2)), sep=""))
+        legend.text=paste(c("GRridge", "VBEM", "truth", "grlasso"), 
+                          paste(", AUC=", round(c(auc6.grridge, auc6.grVBEM, auc6.truth,
+                                                  auc6.grpreg), 2)), sep=""))
 plot(beta, test6.grVBEM$mu[-1])
 plot(beta, test6.grridge$betas)
+plot(beta, coef(test6.grpreg)[-1])
 
 ### simulation 7 (group wise l1 and l2 penalization)
 set.seed(123)
@@ -335,7 +349,7 @@ sigma0 <- diag(rchisq(p + 1, 1))
 beta <- rep(0, p)
 y <- rbinom(n, m, exp(x %*% beta)/(1 + exp(x %*% beta)))
 
-test13.grVBEM <- grVBEM(x, y, m, groups, lambda1=NULL, lambda2=NULL, sigma0, intercept=TRUE, 
+test13.grVBEM <- grVBEM(x, y, m, groups, lambda1=NULL, lambda2=NULL, intercept=TRUE, 
                         eps=0.001, maxiter=100)
 test13.grridge <- grridge(t(x), y, unpenal=~1, innfold=10,
                           list(group=CreatePartition(as.factor(groups))))
@@ -456,16 +470,9 @@ y <- as.numeric(mirsData$response) - 1
 n <- nrow(x)
 p <- ncol(x)
 m <- rep(1, n)
-fit.optL2 <- optL2(y, x, unpenalized=~1, lambda1=0, model="logistic")
-b0 <- coef(fit.optL2$fullfit)
-pred.b0 <- as.numeric(exp(cbind(1, x) %*% b0)/(1 + exp(cbind(1, x) %*% b0)))
-W <- diag(sqrt(pred.b0*(1 - pred.b0)))
-Xw <- W %*% cbind(1, x)
-invmat <- solve(t(Xw) %*% Xw + diag(c(0, rep(2*fit.optL2$lambda, p))))
-sigma0 <- invmat %*% t(Xw) %*% Xw %*% invmat
 
-test16.grVBEM <- grVBEM(x, y, m, groups, lambda1=NULL, lambda2=NULL, sigma0, 
-                        intercept=TRUE, eps=0.001, maxiter=500)
+test16.grVBEM <- grVBEM(x, y, m, groups, lambda1=NULL, lambda2=NULL, intercept=TRUE, eps=0.001, 
+                        maxiter=500)
 test16.grridge <- grridge(t(x), y, list(group=CreatePartition(as.factor(groups))), unpenal=~1)
 
 barplot(rbind(test16.grridge$lambdamults$group, 
@@ -693,3 +700,70 @@ for(k in 1:nfolds) {
 auc21.grVBEM <- pROC::roc(y, pred21.grVBEM)$auc
 auc21.grridge <- pROC::roc(y, test21b.grridge[, 3])$auc
 cbind(grVBEM=round(pred21.grVBEM, 2), grridge=round(test21b.grridge[, 3], 2))
+
+### simulation 19 (variable selection)
+set.seed(123)
+n <- 100
+p <- 150
+G <- 3
+groups <- rep(1:G, each=p/G)
+rho <- 0.3
+sigma <- matrix(rho, ncol=p, nrow=p)
+diag(sigma) <- 1
+x <- rmvnorm(n, mean=rep(0, p), sigma=sigma)
+m <- rep(1, n)
+q <- 0.3 # proportion set to zero per group
+beta <- c(rep(0, q*p/G), rep(0.03, (1 - q)*p/G), rep(0, q*p/G), rep(0.05, (1 - q)*p/G), rep(0, q*p/G), 
+          rep(0.08, (1 - q)*p/G))
+y <- rbinom(n, m, exp(x %*% beta)/(1 + exp(x %*% beta)))
+
+test22.grVBEM <- grVBEM(x, y, m, groups, lambda1=NULL, lambda2=NULL, intercept=TRUE, eps=0.001, maxiter=500)
+test22.grVBEMsel <- penalized(y, x, unpenalized=~1, model="logistic",
+                              lambda1=rep(0.5*test22.grVBEM$lambda1*sqrt(test22.grVBEM$lambdag[, test22.grVBEM$nouteriter + 1]), each=p/G),
+                              lambda2=rep(0.5*test22.grVBEM$lambda2*test22.grVBEM$lambdag[, test22.grVBEM$nouteriter + 1], each=p/G))
+test22.grridge <- grridge(t(x), y, list(group=CreatePartition(as.factor(groups))), unpenal=~1)
+test22.grridgesel <- grridge(t(x), y, list(group=CreatePartition(as.factor(groups))), unpenal=~1, selectionEN=TRUE,
+                             maxsel=sum(test22.grVBEMsel@penalized!=0))
+
+ntest <- 1000
+xtest <- matrix(rnorm(ntest*p), ncol=p, nrow=ntest)
+ytest <- rbinom(ntest, m, exp(xtest %*% beta)/(1 + exp(xtest %*% beta)))
+
+pred22.grVBEM <- as.numeric(exp(cbind(1, xtest) %*% test22.grVBEM$mu)/
+                              (1 + exp(cbind(1, xtest) %*% test22.grVBEM$mu)))
+pred22.grVBEMsel <- predict(test22.grVBEMsel, xtest)
+pred22.grridge <- predict.grridge(test22.grridge, t(xtest))[, 2]
+pred22.grridgesel <- predict.grridge(test22.grridgesel, t(xtest))[, 2]
+pred22.truth <- as.numeric(exp(xtest %*% beta)/(1 + exp(xtest %*% beta)))
+
+kappa22.grVBEM <- cohen.kappa(cbind(as.numeric(beta!=0), as.numeric(test22.grVBEMsel@penalized!=0)))$kappa
+kappa22.grridge <- cohen.kappa(cbind(as.numeric(beta!=0), 
+                                     sapply(1:p, function(j) {ifelse(j %in% test22.grridgesel$resEN$whichEN, 1, 0)})))$kappa
+
+auc22.grVBEM <- pROC::roc(ytest, pred22.grVBEM)$auc
+auc22.grVBEMsel <- pROC::roc(ytest, pred22.grVBEMsel)$auc
+auc22.grridge <- pROC::roc(ytest, pred22.grridge)$auc
+auc22.grridgesel <- pROC::roc(ytest, pred22.grridgesel)$auc
+auc22.truth <- pROC::roc(ytest, pred22.truth)$auc
+
+barplot(rbind(test22.grridge$lambdamults$group, 
+              test22.grVBEM$lambdag[, test22.grVBEM$nouteriter + 1]), 
+        beside=TRUE, names.arg=c(expression(lambda[1]), expression(lambda[2]), 
+                                 expression(lambda[3])),
+        legend.text=paste(c("GRridge", "GRridge + sel", "VBEM", "VBEM + sel", "truth"), 
+                          paste(", AUC=", round(c(auc22.grridge, auc22.grridgesel, auc22.grVBEM, auc22.grVBEMsel, 
+                                                  auc22.truth), 2)), sep=""))
+plot(beta, test22.grVBEM$mu[-1])
+plot(beta, test22.grridge$betas)
+
+
+
+
+
+
+
+
+
+
+
+
