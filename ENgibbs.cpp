@@ -1,4 +1,4 @@
-#include <R.h>
+// #include <R.h>
 #include <Rmath.h>
 #include <vector>
 #include <math.h>
@@ -1076,6 +1076,24 @@ vec rbetaC(mat x, vec kappa, int n, int p, vec tau, vec om, vec lambda2, bool in
 
 }
 
+// [[Rcpp::export]]
+vec rbetaC2(mat x, vec kappa, int n, int p, vec tau, vec om, vec lambda2) {
+
+  vec D = 1/lambda2 - 1/(lambda2%tau);
+  vec omsq = sqrt(om);
+  mat Phi = x.each_col()%omsq;
+  mat Phit = Phi.t();
+  vec u = randn(p)%sqrt(D);
+  vec delta = randn(n);
+  vec upsilon = Phi*u + delta;
+  mat mat1 = (Phi.each_row()%D.t())*Phit;
+  mat1.diag() += 1;
+  vec w = mat1.i()*(kappa/omsq - upsilon);
+  vec beta = u + (Phit.each_col()%D)*w;
+
+  return beta;
+
+}
 
 
 // [[Rcpp::export]]
@@ -1100,7 +1118,8 @@ List gibbsC(mat x, vec y, vec m, int n, int p, double lambda1, vec lambda2, vec 
   for(int k=0; k<K; k++) {
     omega = romegaC(beta, x, m, n, p, intercept);
     tau = rtauC(beta, p, lambda1, lambda2, intercept);
-    beta = rbetaC(x, kappa, n, p, tau, omega, lambda2, intercept);
+    // beta = rbetaC(x, kappa, n, p, tau, omega, lambda2, intercept);
+    beta = rbetaC2(x, kappa, n, p, tau, omega, lambda2);
 
     seq_tau.submat(0,k,p-1,k) = tau;
     seq_beta.submat(0,k,p0-1,k) = beta;

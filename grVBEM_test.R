@@ -1,7 +1,7 @@
 ##############################  preamble  #############################
 # testing grMCEM                                                      #
 # version: 01                                                         #
-# author: Magnus Münch                                                #
+# author: Magnus M?nch                                                #
 # created: 15-03-2017                                                 #
 # last edited: 15-03-2017                                             #
 #######################################################################
@@ -11,10 +11,10 @@
 #######################################################################
 
 ### paths
-path.rcode <- "C:/Users/Magnus/Documents/phd/ENVB/code/"
-path.graph <- "C:/Users/Magnus/Documents/phd/ENVB/graphs/"
-path.data <- "C:/Users/Magnus/Documents/phd/data/"
-path.res <- "C:/Users/Magnus/Documents/phd/ENVB/results/"
+path.code <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/code/" ,"~/EBEN/code/"))
+path.graph <- "/Users/magnusmunch/Documents/PhD/EBEN/graphs/"
+path.data <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/data/" ,"~/EBEN/data/"))
+path.res <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/results/" ,"~/EBEN/results/"))
 
 ## libraries
 library(GRridge)
@@ -25,7 +25,7 @@ library(psych)
 library(glmnet)
 
 # source grENVB functions
-source(paste(path.rcode, "grVBEM.R", sep=""))
+source(paste(path.code, "grVBEM.R", sep=""))
 
 ### simulation 4 (one partition)
 set.seed(123)
@@ -45,9 +45,10 @@ beta <- c(renbeta(p/G, lambda1*sqrt(lambdag[1]), lambda2*lambdag[1]),
           renbeta(p/G, lambda1*sqrt(lambdag[3]), lambda2*lambdag[3]))
 y <- rbinom(n, m, exp(x %*% beta)/(1 + exp(x %*% beta)))
 
-test4.grVBEM1 <- grVBEM(x, y, m, groups, lambda1=NULL, lambda2=NULL, intercept=TRUE, 
-                       eps=0.00001, maxiter=100, trace=TRUE, QNacc=FALSE)
-test4.grVBEM2 <- grVBEM(x, y, m, groups, lambda1=NULL, lambda2=NULL, intercept=TRUE, 
+test4.grVBEM1 <- grVBEM2(x, y, m, list(groups=groups), lambda1=NULL, lambda2=NULL, intercept=TRUE, 
+                         monotone=FALSE, posterior=FALSE, ELBO=TRUE, eps=0.00001, maxiter=100, trace=TRUE, 
+                         alphastart=NULL)
+brew test4.grVBEM2 <- grVBEM(x, y, m, groups, lambda1=NULL, lambda2=NULL, intercept=TRUE, 
                         eps=0.00001, maxiter=100, trace=TRUE, QNacc=TRUE)
 test4.grridge <- grridge(t(x), y, list(CreatePartition(as.factor(groups))), unpenal=~1)
 test4.grpreg <- cv.grpreg(x, y, group=groups, penalty="grLasso", family="binomial")
@@ -842,20 +843,108 @@ plot(beta, test22.grridge$betas)
 
 
 
+# data 6 (Verlaat data)
+set.seed(2017)
+data(dataVerlaat)
+partitions <- list(annotation=sort(as.numeric(CpGann)))
+x <- apply(datcenVerlaat, 1, function(x) {(x - mean(x))/sd(x)})[, order(as.numeric(CpGann))]
+y <- respVerlaat
+n <- nrow(x)
+p <- ncol(x)
+m <- rep(1, n)
+
+test23.grVBEM <- grVBEM2(x, y, m, partitions, lambda1=0.8936099, lambda2=0.2624093, 
+                         intercept=TRUE, posterior=FALSE, eps=0.001, maxiter=500, trace=TRUE)
+test23.grridge <- grridge(t(x), y, list(annotation=CreatePartition(as.factor(partitions[[1]]))), 
+                          unpenal=~1, optl=22033)
+
+barplot(rbind(test23.grridge$lambdamults$annotation, 
+              test23.grVBEM$lambdag$annotation[, test23.grVBEM$nouteriter + 1]), 
+        beside=TRUE, names.arg=levels(CpGann), legend.text=c("GRridge", "VBEM"),
+        args.legend=list(x="topleft", fill=c(gray.colors(2), 0, 0), lty=c(NA, NA, 2, 2),
+                         border=c(rep(1, 2), 0, 0), merge=TRUE, seg.len=1))
+abline(h=1, lty=2)
+
+
+# simulation 15
+set.seed(234)
+n <- 100
+p <- 900
+G <- 3
+groups <- rep(1:G, each=p/G)
+rho <- 0.3
+sigma <- matrix(rho, ncol=p, nrow=p)
+diag(sigma) <- 1
+x <- rmvnorm(n, mean=rep(0, p), sigma=sigma)
+m <- rep(1, n)
+b0 <- rnorm(p + 1)
+sigma0 <- diag(rchisq(p + 1, 1))
+beta <- c(rep(0, p/G), rep(0.004, p/G), rep(0.008, p/G))
+y <- rbinom(n, m, exp(x %*% beta)/(1 + exp(x %*% beta)))
+
+test24.grVBEM <- grVBEM2(x, y, m, groups, lambda1=4.586998, lambda2=0.1726289, 
+                         intercept=TRUE, posterior=TRUE, eps=0.001, maxiter=100, trace=TRUE)
+test24.grridge <- grridge(t(x), y, unpenal=~1, #innfold=10,
+                          list(group=CreatePartition(as.factor(groups))))
+
+ntest <- 1000
+xtest <- matrix(rnorm(ntest*p), ncol=p, nrow=ntest)
+ytest <- rbinom(ntest, m, exp(xtest %*% beta)/(1 + exp(xtest %*% beta)))
+
+pred24.grVBEM <- as.numeric(exp(cbind(1, xtest) %*% test24.grVBEM$mu)/
+                              (1 + exp(cbind(1, xtest) %*% test24.grVBEM$mu)))
+pred24.grridge <- predict.grridge(test24.grridge, t(xtest))[, 2]
+pred24.truth <- as.numeric(exp(xtest %*% beta)/(1 + exp(xtest %*% beta)))
+
+auc24.grVBEM <- pROC::roc(ytest, pred24.grVBEM)$auc
+auc24.grridge <- pROC::roc(ytest, pred24.grridge)$auc
+auc24.truth <- pROC::roc(ytest, pred24.truth)$auc
+
+barplot(rbind(test24.grridge$lambdamults$group, 
+              test24.grVBEM$lambdag$partition1[, test24.grVBEM$nouteriter + 1]), 
+        beside=TRUE, names.arg=c(expression(lambda[1]), expression(lambda[2]), 
+                                 expression(lambda[3])),
+        legend.text=paste(c("GRridge", "VBEM", "truth"), 
+                          paste(", AUC=", round(c(auc24.grridge, auc24.grVBEM, auc24.truth), 2)), 
+                          sep=""),
+        args.legend=list(x="bottomright"))
+abline(h=1, lty=2)
+plot(beta, test24.grVBEM$mu[-1])
+plot(beta, test24.grridge$betas)
+plot(as.numeric(test24.grVBEM$mu)[-1], test24.grridge$betas)
+
+# simulation 16
+set.seed(234)
+n <- 100
+p <- 900
+G <- 9
+partitions <- list(mono=rep(1:G, each=p/G))
+rho <- 0.3
+sigma <- matrix(rho, ncol=p, nrow=p)
+diag(sigma) <- 1
+x <- rmvnorm(n, mean=rep(0, p), sigma=sigma)
+m <- rep(1, n)
+b0 <- rnorm(p + 1)
+sigma0 <- diag(rchisq(p + 1, 1))
+beta <- c(rep(0.1, p/G), rep(0, p - p/G))
+y <- rbinom(n, m, exp(x %*% beta)/(1 + exp(x %*% beta)))
+
+test25.grVBEM <- grVBEM2(x, y, m, partitions, lambda1=5.220753, lambda2=0.02636744, intercept=TRUE, 
+                         monotone=TRUE, posterior=FALSE, eps=0.00001, maxiter=500, trace=TRUE,
+                         alphastart=c(0.3, exp(seq(0.1, 0.3, length.out=G-1))))
+
+
+plot(test25.grVBEM$lambdag$mono[1, ], type="l", ylim=range(test25.grVBEM$lambdag$mono))
+lines(test25.grVBEM$lambdag$mono[2, ], col=2)
+lines(test25.grVBEM$lambdag$mono[3, ], col=3)
+lines(test25.grVBEM$lambdag$mono[4, ], col=4)
+lines(test25.grVBEM$lambdag$mono[5, ], col=5)
+lines(test25.grVBEM$lambdag$mono[6, ], col=6)
+lines(test25.grVBEM$lambdag$mono[7, ], col=7)
+lines(test25.grVBEM$lambdag$mono[8, ], col=8)
+lines(test25.grVBEM$lambdag$mono[9, ], col=9)
 
 
 
-m1 <- matrix(rnorm(10*5), ncol=10, nrow=5)
-svdm1 <- svd(m1)
-str(svdm1)
-
-
-m1 %*% diag(c(0, 0, 1, 0, 0)) %*% m1
-
-m1 <- diag(c(1:10))
-m2 <- diag(rep(1:5, each=2))
-m1 %*% m2
-m2 %*% m1
-sqrt(m2) %*% m1 %*% sqrt(m2)
 
 
