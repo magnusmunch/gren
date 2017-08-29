@@ -1,19 +1,20 @@
 ##############################  preamble  #############################
 # Gibbs sampler implemented in R                                      #
 # version: 02                                                         #
-# author: Magnus Münch                                                #
+# author: Magnus M?nch                                                #
 # created: 06-12-2016                                                 #
 # last edited: 06-12-2016                                             #
 #######################################################################
 
 ###############################  notes  ###############################
-# 06-12-2016: Can include an intercept                                #
+# 06-12-2016: Can include an intercept                                #    
+# 12-06-2017: without intercept version of beta sampler is incorrect  #
 #######################################################################
 
 ### paths
-path.res <- "C:/Users/Magnus/Documents/phd/review/results/"
-path.code <- "C:/Users/Magnus/Documents/phd/ENVB/code/"
-path.graph <- "C:/Users/Magnus/Documents/phd/ENVB/graphs/"
+path.res <- "/Users/magnusmunch/Documents/PhD/EBEN/code/results"
+path.code <- "/Users/magnusmunch/Documents/PhD/EBEN/code/"
+path.graph <- "/Users/magnusmunch/Documents/PhD/EBEN/graphs/"
 
 ### libraries
 library(mvtnorm)
@@ -90,7 +91,7 @@ rtau <- function(beta, lambda1, lambda2, intercept) {
     z <- sqrt(psi/chi) + 0.5*y^2/chi - sqrt(sqrt(psi)*y^2/(chi^1.5) + 0.25*y^4/(chi^2))
     tau <- ifelse(u <= 1/(1 + z*sqrt(chi/psi)), 1/z + 1, chi*z/psi + 1)
   }
-  return(tau)
+  return(as.numeric(tau))
 }
 
 # sample beta from MVN
@@ -129,7 +130,7 @@ rbeta <- function(x, kappa, tau, omega, lambda2, intercept) {
   beta0 <- rnorm(p + intercept)
   beta <- chol(sigma) %*% beta0 + mu
   #beta <- as.numeric(rmvnorm(1, mean=mu, sigma=sigma))
-  return(beta)
+  return(as.numeric(beta))
 }
 
 # the Gibbs sampler
