@@ -375,8 +375,4 @@ List est_param3(mat xr, mat xu, vec kappa, vec m, int n, int p, vec ciold, doubl
 }
 
 
-<<<<<<< HEAD
-=======
 
-
->>>>>>> grEBEN
