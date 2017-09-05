@@ -64,21 +64,122 @@ renbeta <- function(p, lambda1, lambda2) {
   
 }
 
+
+
+library(MASS)
+library(pROC)
+
+set.seed(2018)
+n <- 200
+ntest <- 1000
+p <- 150
+G <- 3
+x <- apply(matrix(rnegbin(n*p, mu=20, theta=1), ncol=p, nrow=n), 2, function(var) 
+  {(var - mean(var))/sd(var)})
+lambda1 <- 1
+lambda2 <- 1
+lambdag <- c(2, 1, 0.5)
+m <- rep(1, n)
+beta <- as.numeric(sapply(1:G, function(g) {return(renbeta(p/G, sqrt(lambdag[g])*lambda1, lambdag[g]*lambda2))}))
+y <- rbinom(n, m, exp(x %*% beta)/(1 + exp(x %*% beta)))
+partitions <- list(group1=rep(1:G, each=p/G))
+
+xtest <- matrix(rnegbin(ntest*p, mu=20, theta=1), ncol=p, nrow=ntest)
+ytest <- rbinom(ntest, m, exp(xtest %*% beta)/(1 + exp(xtest %*% beta)))
+
+pselseq <- c(51:100)
+# aucmat <- matrix(NA, ncol=5, nrow=length(pselseq))
+for(cursel in 1:length(pselseq)) {
+  psel <- pselseq[cursel]
+  print(paste("psel:", psel))
+  
+  fit.grEBEN <- grEBEN(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=partitions, lambda1=NULL, lambda2=NULL, 
+                       monotone=list(FALSE, FALSE), psel=psel, posterior=FALSE, ELBO=FALSE, eps=0.001, maxiter=500, trace=FALSE)
+  fit.GRridge <- grridge(t(x), y, partitions=list(group1=CreatePartition(as.factor(partitions$group1))), monotone=FALSE, 
+                         selectionEN=TRUE, maxsel=psel, trace=FALSE)
+
+
+  auc.grEBEN <- c(roc(ytest, predict.grEBEN(fit.grEBEN, xtest, unpenalized=NULL, type="nogroups"))$auc,
+                  roc(ytest, predict.grEBEN(fit.grEBEN, xtest, unpenalized=NULL, type="selection"))$auc)
+  auc.GRridge <- c(roc(ytest, predict.grridge(fit.GRridge, t(xtest))[, 1])$auc,
+                   roc(ytest, predict.grridge(fit.GRridge, t(xtest))[, 2])$auc,
+                   roc(ytest, predict.grridge(fit.GRridge, t(xtest))[, 3])$auc)
+  aucmat[46 + cursel, ] <- c(auc.grEBEN, auc.GRridge)
+}
+
+plot(pselseq, aucmat[, 1], col=2, ylim=range(aucmat), lty=1, type="l", ylab="AUC", xlab="Number of selected variables")
+lines(pselseq, aucmat[, 2], col=3, lty=1)
+lines(pselseq, aucmat[, 3], col=4, lty=2)
+lines(pselseq, aucmat[, 4], col=5, lty=2)
+lines(pselseq, aucmat[, 5], col=6, lty=2)
+legend("bottomright", legend=c("enet", "grEBEN+sel", "ridge", "GRridge", "GRridge+sel"), lty=c(1, 1, 2, 2, 2), col=c(2:6))
+
+
+plot(pselseq, aucmat2[, 1], col=2, ylim=range(aucmat2), type="l", ylab="AUC", xlab="Number of selected variables")
+lines(pselseq, aucmat2[, 2], col=3)
+legend("topleft", legend=c("grEBEN", "GRridge"), lty=1, col=c(2, 3))
+
+
+barplot(rbind(test4$lambdag$group1[, test4$nouteriter + 1], lambdag, test7$lambdamults$group1), 
+        beside=TRUE)
+
+
+
+# pred1.1 <- predict.grEBEN(test1, xtest, unpenalized=NULL, type="VB")
+# pred1.2 <- predict.grEBEN(test1, xtest, unpenalized=NULL, type="penalized")
+# pred1.3 <- predict.grEBEN(test1, xtest, unpenalized=NULL, type="nogroups")
+pred4.1 <- predict.grEBEN(test4, xtest, unpenalized=NULL, type="VB")
+pred4.2 <- predict.grEBEN(test4, xtest, unpenalized=NULL, type="penalized")
+pred4.3 <- predict.grEBEN(test4, xtest, unpenalized=NULL, type="nogroups")
+pred4.4 <- predict.grEBEN(test4, xtest, unpenalized=NULL, type="selection")
+# pred5.1 <- predict.grridge(test5, t(xtest))[, 2]
+# pred5.2 <- predict.grridge(test5, t(xtest))[, 1]
+pred7.1 <- predict.grridge(test7, t(xtest))[, 2]
+pred7.2 <- predict.grridge(test7, t(xtest))[, 1]
+pred7.3 <- predict.grridge(test7, t(xtest))[, 3]
+
+# roc(ytest, pred1.1)$auc
+# roc(ytest, pred1.2)$auc
+# roc(ytest, pred1.3)$auc
+roc(ytest, pred4.1)$auc
+roc(ytest, pred4.2)$auc
+roc(ytest, pred4.3)$auc
+roc(ytest, pred4.4)$auc
+
+# roc(ytest, pred5.1)$auc
+# roc(ytest, pred5.2)$auc
+roc(ytest, pred7.1)$auc
+roc(ytest, pred7.2)$auc
+roc(ytest, pred7.3)$auc
+
+table(ifelse(c(1:p) %in% test7$resEN$whichEN, 1, 0), as.numeric(test4$beta.sel!=0)[-1])
+
+unpenalized=NULL
+intercept=TRUE
+lambda1=120.397
+lambda2=402.8668
+psel=100
+posterior=FALSE
+ELBO=TRUE
+eps=0.001
+maxiter=500
+trace=TRUE
+monotone=list(TRUE, TRUE)
+
 # function for estimation
-grEBEN <- function(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=NULL, codata=NULL, 
-                   lambda1=NULL, lambda2=NULL, maxsel=NULL, posterior=FALSE, ELBO=TRUE, eps=0.001, 
-                   maxiter=500, trace=TRUE) {
+grEBEN <- function(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=NULL, lambda1=NULL, lambda2=NULL, 
+                   monotone=NULL, psel=NULL, posterior=FALSE, ELBO=TRUE, eps=0.001, maxiter=500, trace=TRUE) {
   
   # save argument list
   args <- list(x=x, y=y, m=m, unpenalized=unpenalized, intercept=intercept, partitions=partitions, 
-               codata=codata, lambda1=lambda1, lambda2=lambda2, maxsel=maxsel, posterior=posterior, 
+               lambda1=lambda1, lambda2=lambda2, psel=psel, posterior=posterior, 
                ELBO=ELBO, eps=eps, maxiter=maxiter, trace=trace)
   
   # if no penalty parameters are given we estimate them by cross-validation
   if(is.null(lambda1) | is.null(lambda2)) {
     if(trace) {cat("\r", "Estimating global lambda1 and lambda2 by cross-validation", sep="")}
     srt <- proc.time()[3]
-    opt.glob <- cv.pen(x, y, intercept)
+    opt.glob <- cv.pen(x, y, unpenalized, intercept, psel=psel)
     cv.time <- proc.time()[3] - srt
     lambda1 <- opt.glob$lambda1bayes[which.min(opt.glob$cvll)]
     lambda2 <- opt.glob$lambda2bayes[which.min(opt.glob$cvll)]
@@ -90,29 +191,21 @@ grEBEN <- function(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=NULL, c
   lambda <- (0.5*lambda1 + lambda2)/n
   
   # assigning fixed (throughout algorithm) variables
-  if(!is.null(partitions)) {
-    if(!is.list(partitions) & is.null(names(partitions))) {
-      partitions <- list(partition1=partitions)
-    } else if(is.null(names(partitions))) {
-      names(partitions) <- paste("partition", 1:length(partitions), sep="")
-    }
-    partnames <- names(partitions)
-    nparts <- length(partitions)
-    sizes <- lapply(partitions, function(part) {rle(sort(part))$lengths})
-    G <- lapply(partitions, function(part) {length(unique(part))})
-  } else {
-    if(!is.list(codata)) {codata <- list(codata1=codata)}
-    partitions <- lapply(codata, function(part) {return(c(1:p))})
-    if(is.null(names(codata))) {
-      names(partitions) <- paste("codata", 1:length(partitions), sep="")
-    } else {
-      names(partitions) <- names(codata)
-    }
-    partnames <- names(partitions)
-    nparts <- length(partitions)
-    sizes <- lapply(partitions, function(part) {return(rep(1, p))})
-    G <- lapply(partitions, function(part) {return(p)})
+  if(!is.list(partitions) & is.null(names(partitions))) {
+    partitions <- list(partition1=partitions)
+  } else if(is.null(names(partitions))) {
+    names(partitions) <- paste("partition", 1:length(partitions), sep="")
   }
+  partnames <- names(partitions)
+  nparts <- length(partitions)
+  if(is.null(monotone)) {
+    monotone <- list(monotone=rep(FALSE, nparts), decreasing=rep(FALSE, nparts))
+  }
+  if(is.null(names(monotone))) {
+    names(monotone) <- c("monotone", "decreasing")
+  }
+  sizes <- lapply(partitions, function(part) {rle(sort(part))$lengths})
+  G <- lapply(partitions, function(part) {length(unique(part))})
   xr <- x
   x <- cbind(unpenalized, xr)
   r <- ncol(xr)
@@ -132,9 +225,6 @@ grEBEN <- function(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=NULL, c
   # starting values for lambdag, lagrange multiplier s
   lambdagnew <- lambdag <- lambdagold <- lambdagseq <- lapply(G, function(gpart) {rep(1, gpart)})
   lambdamultvecold <- rep(1, r)
-  # if(!is.null(codata)) {a <- 1}
-  # if(!is.null(codata)) {a <- rep(1, 3)}
-  if(!is.null(codata)) {a <- rep(1, 2)}
   s <- 0
   
   # starting values for the model parameters
@@ -176,26 +266,16 @@ grEBEN <- function(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=NULL, c
     iter1 <- iter1 + 1
     
     # estimating new lambdag
-    if(is.null(codata)) {
-      opt <- optim(par=c(s, log(unlist(lambdag, use.names=FALSE))), fn=fopt_groups, lambda2=lambda2, 
-                   nparts=nparts, partsind=partsind, partsmat=partsmat, sizes=unlist(sizes), G=G, 
-                   sum1=sum1, method="Nelder-Mead", control=list(maxit=5000))
-      
-      lambdagnew <- split(exp(opt$par[-1]), factor(rep(partnames, unlist(G)), levels=partnames))
-    } else {
-      opt <- optim(par=c(s, a), fn=fopt_cont, codata=unlist(codata, use.names=FALSE), lambda2=lambda2, 
-                   nparts=nparts, partsind=partsind, partsmat=partsmat, sizes=unlist(sizes), G=G, 
-                   sum1=sum1, method="Nelder-Mead", control=list(maxit=5000))
-      # a <- opt$par[2]
-      # a <- opt$par[-1]
-      a <- c(exp(opt$par[2]), opt$par[3])
-      # lambdagnew <- split(unlist(codata)^a, factor(rep(partnames, unlist(G)), levels=partnames))
-      # lambdagnew <- split(a[1]*exp(-a[2]*exp(-a[3]*unlist(codata))), 
-      #                     factor(rep(partnames, unlist(G)), levels=partnames))
-      lambdagnew <- split(a[1]*exp(a[2]*unlist(codata)), 
-                          factor(rep(partnames, unlist(G)), levels=partnames))
-      
-    }
+    opt <- optim(par=c(s, log(unlist(lambdag, use.names=FALSE))), fn=fopt_groups, lambda2=lambda2, 
+                 nparts=nparts, partsind=partsind, partsmat=partsmat, sizes=unlist(sizes), G=G, 
+                 sum1=sum1, method="Nelder-Mead", control=list(maxit=5000))
+    lambdagnew <- split(exp(opt$par[-1]), factor(rep(partnames, unlist(G)), levels=partnames))
+    lambdagnew <- sapply(1:nparts, function(part) {
+        if(monotone$monotone[part]) {
+          return(as.numeric(pava(lambdagnew[[part]], sizes[[part]], monotone$decreasing[part])))
+        } else {
+          return(lambdagnew[[part]])
+        }}, simplify=FALSE)
     s <- opt$par[1]
     lambdagseq <- sapply(1:nparts, function(part) {cbind(lambdagseq[[part]], lambdagnew[[part]])}, simplify=FALSE)
     names(lambdagseq) <- partnames
@@ -215,13 +295,14 @@ grEBEN <- function(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=NULL, c
       mu <- as.numeric(newparam$mu)
       ci <- as.numeric(newparam$ci)
       chi <- as.numeric(newparam$chi)
-      ELBOnew <- newparam$elbo
-      ELBOseq <- c(ELBOseq, ELBOnew)
+      if(ELBO) {
+        ELBOnew <- newparam$elbo
+        ELBOseq <- c(ELBOseq, ELBOnew)
+      }
       
       # checking convergence of inner loop
       conv2 <- (max(c(abs((mu - muold)/ifelse(muold==0, muold + 0.00001, muold)), 
                       abs((dsigma - dsigmaold)/ifelse(dsigmaold==0, dsigmaold + 0.00001, dsigmaold)))) < eps)
-      ELBOold <- ELBOnew
       muold <- mu
       dsigmaold <- dsigma
       ciold <- ci
@@ -269,37 +350,104 @@ grEBEN <- function(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=NULL, c
   }
   
   # variable selection
-  if(!is.null(maxsel)) {
+  if(!is.null(psel)) {
     
+    # weighting the x matrix by lambda multipliers
+    xw <- t(t(x)/c(rep(1, u), sqrt(lambdamultvec)))
+    
+    # setting the ratio of smallest to largest lambda and length of lambda sequence
+    lambda.min.ratio <- ifelse(n < p, 0.01, 0.0001)
+    nlambda <- 100
+    
+    # loop to find the number of variables
+    lambdaseq <- NULL
+    found <- inbet <- FALSE
+    count <- 0
+    while(!found) {
+      suppressWarnings(fit.df <- glmnet(xw, y, family="binomial", alpha=alpha, 
+                                        nlambda=nlambda, lambda=lambdaseq, standardize=FALSE, 
+                                        intercept=intercept, penalty.factor=c(rep(0, u), rep(1, r)),
+                                        dfmax=ifelse(is.null(lambdaseq), psel + u, p + 1)))
+      if(any(fit.df$df==psel)) {
+        if(tail(fit.df$df, n=1L)==psel & !inbet) {
+          
+          lambdamax <- tail(fit.df$lambda[fit.df$df==psel], n=1L)
+          lambdamin <- lambdamax*lambda.min.ratio
+        } else {
+          found <- TRUE
+        }
+      } else if(all(fit.df$df < psel)) {
+        lambdamax <- tail(fit.df$lambda, n=1L)
+        lambdamin <- lambdamax*lambda.min.ratio
+      } else if(all(fit.df$df > psel)) {
+        lambdamax <- max(abs(t(x) %*% (y - mean(y)*(1 - mean(y)))))/(n*alpha)
+        lambdamin <- max(fit.df$lambda)
+        inbet <- TRUE
+        count <- count + 1
+        if(count==5) {
+          found <- TRUE
+        }
+      } else if(length(unique(lambdaseq))==1) {
+        found <- TRUE
+      } else {
+        ind <- c(rle(fit.df$df < psel)$lengths[1], rle(fit.df$df < psel)$lengths[1] + 1)
+        lambdamax <- max(fit.df$lambda[ind])
+        lambdamin <- min(fit.df$lambda[ind])
+        inbet <- TRUE
+      }
+      if(!found) {
+        lambdaseq <- exp(seq(log(lambdamax), log(lambdamin), length.out=nlambda))
+      }    
+    }
+    ind <- ifelse(any(fit.df$df==psel), tail(which(fit.df$df==psel), n=1L),
+                  which.max(fit.df$df[which.min(abs(fit.df$df - psel))]))
+    beta.sel <- as.numeric(coef(fit.df)[, ind])/c(rep(1, u + intercept), sqrt(lambdamultvec))
   }
   
+  
   # run penalized regression for prediction purposes
-  fit.final <- glmnet(x=t(t(x)/c(rep(1, u), sqrt(lambdamultvec))), y=ymat, family="binomial", alpha=0, 
-                      lambda=(1 - alpha)*lambda + alpha*lambda, standardize=FALSE, intercept=intercept, 
+  fit.final <- glmnet(x=t(t(x)/c(rep(1, u), sqrt(lambdamultvec))), y=ymat, family="binomial", 
+                      alpha=alpha, lambda=lambda, standardize=FALSE, intercept=intercept, 
                       penalty.factor=c(rep(0, u), rep(1, r)))
   beta <- as.numeric(coef(fit.final))/c(rep(1, u + intercept), sqrt(lambdamultvec))
+  fit.final.nogroups <- glmnet(x, y, family="binomial", alpha=alpha, lambda=lambda, 
+                               standardize=FALSE, penalty.factor=c(rep(0, u), rep(1, r)))
+  beta.nogroups <- as.numeric(coef(fit.final.nogroups))
   
-  if(ELBO) {
+  if(ELBO & !is.null(psel)) {
     out <- list(mu=mu, sigma=dsigma, ci=ci, chi=chi, lambda1=lambda1, lambda2=lambda2, 
                 lambdag=lambdagseq, ELBO=ELBOseq, nouteriter=iter1, ninneriter=niter2seq, 
-                conv=conv1, pen.beta=beta, args=args)
+                conv=conv1, beta=beta, beta.nogroups=beta.nogroups, beta.sel=beta.sel, args=args)
+  } else if(ELBO & is.null(psel)) {
+    out <- list(mu=mu, sigma=dsigma, ci=ci, chi=chi, lambda1=lambda1, lambda2=lambda2, 
+                lambdag=lambdagseq, ELBO=ELBOseq, nouteriter=iter1, ninneriter=niter2seq, 
+                conv=conv1, beta=beta, beta.nogroups=beta.nogroups, args=args)
+  } else if(!ELBO & !is.null(psel)) {
+    out <- list(mu=mu, sigma=dsigma, ci=ci, chi=chi, lambda1=lambda1, lambda2=lambda2, 
+                lambdag=lambdagseq, nouteriter=iter1, ninneriter=niter2seq, 
+                conv=conv1, beta=beta, beta.nogroups=beta.nogroups, beta.sel=beta.sel, args=args)
   } else {
     out <- list(mu=mu, sigma=dsigma, ci=ci, chi=chi, lambda1=lambda1, lambda2=lambda2, 
                 lambdag=lambdagseq, nouteriter=iter1, ninneriter=niter2seq, 
-                conv=conv1, pen.beta=beta, args=args)
+                conv=conv1, beta=beta, beta.nogroups=beta.nogroups, args=args)
   }
   return(out)
   
 }
 
 # function to cross-validate the penalty parameters
-cv.pen <- function(x, y, intercept) {
+cv.pen <- function(xr, y, unpenalized=NULL, intercept, psel=NULL) {
+  r <- ncol(xr)
+  u <- ifelse(is.null(ncol(unpenalized)), 0, ncol(unpenalized))
+  x <- cbind(unpenalized, xr)
+  p <- ncol(x)
   n <- nrow(x)
   seq.alpha <- seq(0.01, 0.99, length.out=50)
   seq.lam <- seq.df <- seq.cvll <- numeric(length(seq.alpha))
   for(a in 1:length(seq.alpha)) {
     cv.fit <- cv.glmnet(x, y, family="binomial", alpha=seq.alpha[a], standardize=FALSE,
-                        intercept=intercept)
+                        intercept=intercept, penalty.factor=c(rep(0, u), rep(1, r)),
+                        dfmax=ifelse(is.null(psel), p + 1, psel + u))
     ind <- which(cv.fit$lambda==cv.fit$lambda.min)
     seq.lam[a] <- cv.fit$lambda.min
     seq.df[a] <- cv.fit$nzero[ind]
@@ -335,56 +483,6 @@ fopt_groups <- function(par, lambda2, nparts, partsind, partsmat, sizes, G, sum1
   return(magn)
   
 }
-
-# for continuous co-data
-# lambdaj = cj^alpha
-# fopt_cont <- function(par, codata, lambda2, nparts, partsind, partsmat, sizes, G, sum1) {
-#   
-#   s <- par[1]
-#   alpha <- par[2]
-#   
-#   sum2 <- sum(log(codata))
-#   magn <- sqrt((0.5*lambda2*sum(codata^alpha*log(codata)*sum1) + (s - 0.5)*sum2)^2 + alpha^2*sum2^2)
-#     
-#   return(magn)
-# }
-
-# lambdaj = alpha1*exp(-alpha2*exp(-alpha3*cj))
-# fopt_cont <- function(par, codata, lambda2, nparts, partsind, partsmat, sizes, G, sum1) {
-#   
-#   p <- length(codata)
-#   s <- par[1]
-#   a1 <- par[2]
-#   a2 <- par[3]
-#   a3 <- par[4]
-#   
-#   ej <- exp(-a3*codata)
-#   ej2 <- exp(-a2*ej)
-#   der1 <- (s*p - p/2)/a1 + 0.5*lambda2*sum(ej2*sum1)
-#   der2 <- 0.5*sum(ej) - 0.5*lambda2*a1*sum(ej2*sum1*ej) - s*sum(ej)
-#   der3 <- 0.5*lambda2*a1*sum(ej2*sum1*a2*ej*codata) - 0.5*a2*sum(ej*codata) + s*a2*sum(ej*codata)
-#   ders <- p*log(a1) - a2*sum(ej)
-#   
-#   magn <- ifelse(a1<=0, Inf, sqrt(der1^2 + der2^2 + der3^2 + ders^2))
-#   return(magn)
-# }
-
-# lambdaj = alpha1*exp(alpha2*cj)
-fopt_cont <- function(par, codata, lambda2, nparts, partsind, partsmat, sizes, G, sum1) {
-  
-  p <- length(codata)
-  s <- par[1]
-  loga1 <- par[2]
-  a2 <- par[3]
-  
-  sum2 <- sum(codata)
-  der1 <- 0.5*lambda2*sum(exp(loga1 + a2*codata)*sum1) + (s - 0.5)*p
-  der2 <- 0.5*lambda2*sum(exp(loga1 + a2*codata)*sum1*codata) + (s - 0.5)*sum2
-  ders <- p*loga1 + a2*sum2
-  magn <- sqrt(der1^2 + der2^2 + ders^2)
-  return(magn)
-}
-
 
 # variable selection after the VBEM
 select.grEBEN <- function(object, x, y, m, partitions, lambda1=NULL, lambda2=NULL, nsel, intercept, 
@@ -452,14 +550,21 @@ select.grEBEN <- function(object, x, y, m, partitions, lambda1=NULL, lambda2=NUL
 }
 
 # function to make predictions from estimated model
-predict.grEBEN <- function(object, newx, unpenalized=NULL, type=c("VB", "penalized")) {
+predict.grEBEN <- function(object, newx, unpenalized=NULL, 
+                           type=c("VB", "penalized", "nogroups", "selection")) {
   newx <- cbind(unpenalized, newx)
   if(object$args$intercept) {newx = cbind(1, newx)}
   if(type=="VB") {
     lpred <- newx %*% as.matrix(object$mu)
     ppred <- exp(lpred)/(1 + exp(lpred))
+  } else if(type=="penalized") {
+    lpred <- newx %*% as.matrix(object$beta)
+    ppred <- exp(lpred)/(1 + exp(lpred))
+  } else if(type=="nogroups") {
+    lpred <- newx %*% as.matrix(object$beta.nogroups)
+    ppred <- exp(lpred)/(1 + exp(lpred))
   } else {
-    lpred <- newx %*% as.matrix(object$pen.beta)
+    lpred <- newx %*% as.matrix(object$beta.sel)
     ppred <- exp(lpred)/(1 + exp(lpred))
   }
   return(as.numeric(ppred))
