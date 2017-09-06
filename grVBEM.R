@@ -15,6 +15,8 @@
 
 # paths
 path.code <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/code/" ,"~/EBEN/code/"))
+path.graph <- "/Users/magnusmunch/Documents/PhD/EBEN/graphs/"
+path.res <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/results/" ,"~/EBEN/results/"))
 
 ### libraries
 library(Rcpp)
@@ -64,107 +66,6 @@ renbeta <- function(p, lambda1, lambda2) {
   
 }
 
-
-
-library(MASS)
-library(pROC)
-
-set.seed(2018)
-n <- 200
-ntest <- 1000
-p <- 150
-G <- 3
-x <- apply(matrix(rnegbin(n*p, mu=20, theta=1), ncol=p, nrow=n), 2, function(var) 
-  {(var - mean(var))/sd(var)})
-lambda1 <- 1
-lambda2 <- 1
-lambdag <- c(2, 1, 0.5)
-m <- rep(1, n)
-beta <- as.numeric(sapply(1:G, function(g) {return(renbeta(p/G, sqrt(lambdag[g])*lambda1, lambdag[g]*lambda2))}))
-y <- rbinom(n, m, exp(x %*% beta)/(1 + exp(x %*% beta)))
-partitions <- list(group1=rep(1:G, each=p/G))
-
-xtest <- matrix(rnegbin(ntest*p, mu=20, theta=1), ncol=p, nrow=ntest)
-ytest <- rbinom(ntest, m, exp(xtest %*% beta)/(1 + exp(xtest %*% beta)))
-
-pselseq <- c(51:100)
-# aucmat <- matrix(NA, ncol=5, nrow=length(pselseq))
-for(cursel in 1:length(pselseq)) {
-  psel <- pselseq[cursel]
-  print(paste("psel:", psel))
-  
-  fit.grEBEN <- grEBEN(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=partitions, lambda1=NULL, lambda2=NULL, 
-                       monotone=list(FALSE, FALSE), psel=psel, posterior=FALSE, ELBO=FALSE, eps=0.001, maxiter=500, trace=FALSE)
-  fit.GRridge <- grridge(t(x), y, partitions=list(group1=CreatePartition(as.factor(partitions$group1))), monotone=FALSE, 
-                         selectionEN=TRUE, maxsel=psel, trace=FALSE)
-
-
-  auc.grEBEN <- c(roc(ytest, predict.grEBEN(fit.grEBEN, xtest, unpenalized=NULL, type="nogroups"))$auc,
-                  roc(ytest, predict.grEBEN(fit.grEBEN, xtest, unpenalized=NULL, type="selection"))$auc)
-  auc.GRridge <- c(roc(ytest, predict.grridge(fit.GRridge, t(xtest))[, 1])$auc,
-                   roc(ytest, predict.grridge(fit.GRridge, t(xtest))[, 2])$auc,
-                   roc(ytest, predict.grridge(fit.GRridge, t(xtest))[, 3])$auc)
-  aucmat[46 + cursel, ] <- c(auc.grEBEN, auc.GRridge)
-}
-
-plot(pselseq, aucmat[, 1], col=2, ylim=range(aucmat), lty=1, type="l", ylab="AUC", xlab="Number of selected variables")
-lines(pselseq, aucmat[, 2], col=3, lty=1)
-lines(pselseq, aucmat[, 3], col=4, lty=2)
-lines(pselseq, aucmat[, 4], col=5, lty=2)
-lines(pselseq, aucmat[, 5], col=6, lty=2)
-legend("bottomright", legend=c("enet", "grEBEN+sel", "ridge", "GRridge", "GRridge+sel"), lty=c(1, 1, 2, 2, 2), col=c(2:6))
-
-
-plot(pselseq, aucmat2[, 1], col=2, ylim=range(aucmat2), type="l", ylab="AUC", xlab="Number of selected variables")
-lines(pselseq, aucmat2[, 2], col=3)
-legend("topleft", legend=c("grEBEN", "GRridge"), lty=1, col=c(2, 3))
-
-
-barplot(rbind(test4$lambdag$group1[, test4$nouteriter + 1], lambdag, test7$lambdamults$group1), 
-        beside=TRUE)
-
-
-
-# pred1.1 <- predict.grEBEN(test1, xtest, unpenalized=NULL, type="VB")
-# pred1.2 <- predict.grEBEN(test1, xtest, unpenalized=NULL, type="penalized")
-# pred1.3 <- predict.grEBEN(test1, xtest, unpenalized=NULL, type="nogroups")
-pred4.1 <- predict.grEBEN(test4, xtest, unpenalized=NULL, type="VB")
-pred4.2 <- predict.grEBEN(test4, xtest, unpenalized=NULL, type="penalized")
-pred4.3 <- predict.grEBEN(test4, xtest, unpenalized=NULL, type="nogroups")
-pred4.4 <- predict.grEBEN(test4, xtest, unpenalized=NULL, type="selection")
-# pred5.1 <- predict.grridge(test5, t(xtest))[, 2]
-# pred5.2 <- predict.grridge(test5, t(xtest))[, 1]
-pred7.1 <- predict.grridge(test7, t(xtest))[, 2]
-pred7.2 <- predict.grridge(test7, t(xtest))[, 1]
-pred7.3 <- predict.grridge(test7, t(xtest))[, 3]
-
-# roc(ytest, pred1.1)$auc
-# roc(ytest, pred1.2)$auc
-# roc(ytest, pred1.3)$auc
-roc(ytest, pred4.1)$auc
-roc(ytest, pred4.2)$auc
-roc(ytest, pred4.3)$auc
-roc(ytest, pred4.4)$auc
-
-# roc(ytest, pred5.1)$auc
-# roc(ytest, pred5.2)$auc
-roc(ytest, pred7.1)$auc
-roc(ytest, pred7.2)$auc
-roc(ytest, pred7.3)$auc
-
-table(ifelse(c(1:p) %in% test7$resEN$whichEN, 1, 0), as.numeric(test4$beta.sel!=0)[-1])
-
-unpenalized=NULL
-intercept=TRUE
-lambda1=120.397
-lambda2=402.8668
-psel=100
-posterior=FALSE
-ELBO=TRUE
-eps=0.001
-maxiter=500
-trace=TRUE
-monotone=list(TRUE, TRUE)
 
 # function for estimation
 grEBEN <- function(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=NULL, lambda1=NULL, lambda2=NULL, 
