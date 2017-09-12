@@ -66,7 +66,6 @@ renbeta <- function(p, lambda1, lambda2) {
   
 }
 
-
 # function for estimation
 grEBEN <- function(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=NULL, lambda1=NULL, lambda2=NULL, 
                    monotone=NULL, psel=NULL, posterior=FALSE, ELBO=TRUE, eps=0.001, maxiter=500, trace=TRUE) {
@@ -139,14 +138,13 @@ grEBEN <- function(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=NULL, l
   ciold <- as.numeric(startparam$ci)
   chiold <- as.numeric(startparam$chi)
   
-  cursec <- 1
   # calculating the sums needed in optimisation routine
   intsec <- do.call("paste", c(partitions, sep=" "))
   uintsec <- unique(intsec)
   sum1 <- sapply(1:length(uintsec), function(cursec) {
     ind <- which(intsec==uintsec[[cursec]]) + intercept;
     sum((dsigmaold[ind + u] + muold[ind + u]^2)*(1 + sqrt(phi/chiold[ind - intercept])))})
-  intsizes <- as.numeric(t(table(as.data.frame(matrix(unlist(partitions), ncol=nparts)))))
+  intsizes <- rle(sort(intsec))$lengths[match(uintsec, rle(sort(intsec))$values)]
   partsmat <- unique(matrix(unlist(partitions), ncol=nparts))
   partsind <- rep(1:nparts, times=unlist(G))
   
@@ -169,7 +167,7 @@ grEBEN <- function(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=NULL, l
     # estimating new lambdag
     opt <- optim(par=c(s, log(unlist(lambdag, use.names=FALSE))), fn=fopt_groups, lambda2=lambda2, 
                  nparts=nparts, partsind=partsind, partsmat=partsmat, sizes=unlist(sizes), G=G, 
-                 sum1=sum1, method="Nelder-Mead", control=list(maxit=5000))
+                 sum1=sum1, method="Nelder-Mead", control=list(maxit=100000))
     lambdagnew <- split(exp(opt$par[-1]), factor(rep(partnames, unlist(G)), levels=partnames))
     lambdagnew <- sapply(1:nparts, function(part) {
         if(monotone$monotone[part]) {
@@ -177,6 +175,10 @@ grEBEN <- function(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=NULL, l
         } else {
           return(lambdagnew[[part]])
         }}, simplify=FALSE)
+    if(any(monotone$monotone)) {
+      lambdagnew <- sapply(1:nparts, function(part) {exp(log(lambdagnew[[part]]) - sum(sapply(1:nparts, function(part) {
+        sum(sizes[[part]]*log(lambdagnew[[part]]))}))/(p*nparts))}, simplify=FALSE)
+    }
     s <- opt$par[1]
     lambdagseq <- sapply(1:nparts, function(part) {cbind(lambdagseq[[part]], lambdagnew[[part]])}, simplify=FALSE)
     names(lambdagseq) <- partnames
@@ -470,3 +472,8 @@ predict.grEBEN <- function(object, newx, unpenalized=NULL,
   }
   return(as.numeric(ppred))
 }
+
+
+
+
+
