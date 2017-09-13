@@ -64,17 +64,14 @@ mirsfamily$Family.Conservation.2 <- (mirsfamily$Family.Conservation. > 0)*mirsfa
 abundance <- rowSums(datMirNorm[, -1])
 sds <- apply(datMirTrans, 1, sd)
 conservation <- mirsfamily$Family.Conservation.2[match(colnames(data), mirsfamily$MiRBase.ID)] + 1
-pvalues <- apply(data, 2, logreguni, resp=resp)
 
 parAbund1 <- CreatePartition(abundance, ngroup=5, uniform=TRUE, decreasing=TRUE)
 parSds1 <- CreatePartition(sds, decreasing=TRUE, uniform=TRUE, ngroup=5)
 parCons1 <- CreatePartition(as.factor(conservation))
-parPval1 <- CreatePartition(pvalues, ngroup=5, uniform=TRUE)
 
 parAbund2 <- rep(1:length(parAbund1), times=unlist(lapply(parAbund1, length)))[order(unlist(parAbund1))]
 parSds2 <- rep(1:length(parSds1), times=unlist(lapply(parSds1, length)))[order(unlist(parSds1))]
 parCons2 <- conservation
-parPval2 <- rep(1:length(parPval1), times=unlist(lapply(parPval1, length)))[order(unlist(parPval1))]
 
 partitions1.1 <- list(abundance=lapply(parAbund1, function(group) {
   ifelse(group > (ncol(data) - sum(is.na(abundance) | is.na(sds) | is.na(conservation))), 
@@ -128,17 +125,20 @@ fit.enet <- glmnet(data, resp, family="binomial", intercept=TRUE, standardize=FA
 #      fit4.grEBEN, fit.enet, file=paste(path.res, "grEBEN_mirna_putri_fitted1.Rdata", sep=""))
 load(paste(path.res, "grEBEN_mirna_putri_fitted1.Rdata", sep=""))
 
-# create partitions based on the regular elastic net
-parEst1 <- CreatePartition(as.numeric(coef(fit.enet, s="lambda.min"))[-1], ngroup=5, uniform=TRUE, decreasing=TRUE)
+# create partitions based on the regular elastic net and pvalues
+pvalues <- apply(data, 2, logreguni, resp=resp)
+benet <- as.numeric(coef(fit.enet, s="lambda.min"))[-1]
+parPval1 <- CreatePartition(pvalues, ngroup=5, uniform=TRUE)
+parPval2 <- rep(1:length(parPval1), times=unlist(lapply(parPval1, length)))[order(unlist(parPval1))]
+parEst1 <- CreatePartition(benet, ngroup=5, uniform=TRUE, decreasing=TRUE)
 parEst2 <- rep(1:length(parEst1), times=unlist(lapply(parEst1, length)))[order(unlist(parEst1))]
 
-# plot p-values
+# plot p-values and elastic net estimates
+plot(log(pvalues[abs(benet) < 50]) ~ benet[abs(benet) < 50])
 boxplot(log(pvalues) ~ parEst2) # against elastic net estimates
 boxplot(log(pvalues) ~ parAbund2) # against abundances
-
-# log absolute EN estimates against conservation status
-boxplot(log(abs(as.numeric(coef(fit.enet, s="lambda.min"))[which(abs(coef(fit.enet, s="lambda.min")) < 50)]) + 1) ~ 
-          parCons2[which(abs(coef(fit.enet, s="lambda.min")) < 50)])
+boxplot(benet[abs(benet) < 50] ~ parCons2[abs(benet) < 50]) # against conservation status
+boxplot(log(abs(benet[abs(benet) < 50]) + 1) ~ parCons2[abs(benet) < 50])
 
 # plot variance of elastic net estimates against estimated lambdag
 var.enest <- sapply(1:length(unique(parCons2)[!is.na(unique(parCons2))]), function(cons) {
@@ -150,16 +150,6 @@ plot(lambdag, fit3.grEBEN$lambdag$conservation[, fit3.grEBEN$nouteriter + 1])
 plot(lambdag, fit3.GRridge$lambdamults$conservation)
 plot(fit3.grEBEN$lambdag$conservation[, fit3.grEBEN$nouteriter + 1], 
      fit3.GRridge$lambdamults$conservation)
-
-n <- nrow(data)
-p <- ncol(data)
-Sigma <- solve(t(data) %*% data)
-x <- matrix(rnorm(n*p), ncol=p, nrow=n)
-lambdag <- exp(-log(var.enest) + sum(rle(sort(conservation))$lengths*log(var.enest))/sum(!is.na(conservation)))
-apply(data, 2, mean)
-
-rle(sort(conservation))$lengths
-beta <- 
 
 # first model
 colvec <- heat.colors(5)
