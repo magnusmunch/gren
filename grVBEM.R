@@ -339,7 +339,8 @@ grEBEN <- function(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=NULL, l
 }
 
 # function to cross-validate the penalty parameters
-cv.pen <- function(xr, y, unpenalized=NULL, intercept, psel=NULL) {
+cv.pen <- function(xr, y, unpenalized=NULL, intercept, psel=NULL, nfolds=NULL) {
+  nfolds <- ifelse(is.null(NULL), 10, nfolds)
   r <- ncol(xr)
   u <- ifelse(is.null(ncol(unpenalized)), 0, ncol(unpenalized))
   x <- cbind(unpenalized, xr)
@@ -350,7 +351,7 @@ cv.pen <- function(xr, y, unpenalized=NULL, intercept, psel=NULL) {
   for(a in 1:length(seq.alpha)) {
     cv.fit <- cv.glmnet(x, y, family="binomial", alpha=seq.alpha[a], standardize=FALSE,
                         intercept=intercept, penalty.factor=c(rep(0, u), rep(1, r)),
-                        dfmax=ifelse(is.null(psel), p + 1, psel + u))
+                        dfmax=ifelse(is.null(psel), p + 1, psel + u), nfolds=nfolds)
     ind <- which(cv.fit$lambda==cv.fit$lambda.min)
     seq.lam[a] <- cv.fit$lambda.min
     seq.df[a] <- cv.fit$nzero[ind]

@@ -678,8 +678,10 @@ mygrridge <- function (highdimdata, response, partitions, unpenal = ~1, offset =
         return(length(coef[coef != 0]) - maxselec)
       }
     }
-    lam1 <- uniroot(fsel, interval = c(0, optl * 1000), maxiter = 50, 
-                    lam2 = optl)$root
+    
+    lam1 <- tryCatch(uniroot(fsel, interval = c(0, optl * 10), maxiter = 50, lam2 = optl)$root, 
+                     error={function(e) {uniroot(fsel, interval = c(0, optl * 1000), maxiter = 50, 
+                               lam2 = optl)$root}})
     penselEN0 <- penalized(responsemin, XMw0, lambda1 = lam1, 
                            lambda2 = optl, unpenalized = nopen, data = datapred, 
                            trace = FALSE, maxiter = 100)

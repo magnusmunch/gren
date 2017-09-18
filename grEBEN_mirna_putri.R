@@ -26,6 +26,9 @@ library(reshape)
 # source function for variational Bayes
 source(paste(path.code, "grVBEM.R", sep=""))
 
+# version of grridge that doesn't give errors
+source(paste(path.code, "mygrridge.R", sep=""))
+
 # p-values calculation
 logreguni <- function(dat, resp) {
   #dat <- mirblst[1,];resp <- respblood
@@ -39,8 +42,8 @@ logreguni <- function(dat, resp) {
 set.seed(1001)
 
 ### loading data
-load(paste(path.data, "normIsoProstate.RData", sep=""))
-load(paste(path.data, "ann2.RData", sep=""))
+load(paste(path.data, "normIsoProstate.Rdata", sep=""))
+load(paste(path.data, "ann2.Rdata", sep=""))
 mirsfamily <- read.table(paste(path.data, "miR_Family_Info_edit.txt", sep=""), header=TRUE, 
                          fill=TRUE, as.is=c(1, 2, 4, 5, 7))
 
@@ -91,38 +94,215 @@ partitions2.1 <- list(abundance=parAbund2[!(is.na(abundance) | is.na(sds) | is.n
 partitions2.2 <- list(abundance=parAbund2[!is.na(abundance)])
 partitions2.3 <- list(conservation=parCons2[!is.na(conservation)])
 
+# ### fit models
+# fit1.GRridge <- grridge(t(data[, !(is.na(abundance) | is.na(sds) | is.na(conservation))]), resp, partitions1.1,
+#                         monotone=c(TRUE, TRUE, FALSE))
+# fit2.GRridge <- grridge(t(data[, !is.na(abundance)]), resp, partitions1.2, monotone=TRUE)
+# fit3.GRridge <- grridge(t(data[, !is.na(conservation)]), resp, partitions1.3, monotone=FALSE)
+# fit4.GRridge <- grridge(t(data[, !(is.na(abundance) | is.na(sds) | is.na(conservation))]), resp, partitions1.1,
+#                         monotone=c(FALSE, FALSE, FALSE))
+# fit5.GRridge <- grridge(t(data[, !is.na(abundance)]), resp, partitions1.2, monotone=TRUE,
+#                         selectionEN=TRUE, maxsel=10)
+# 
+# fit1.grEBEN <- grEBEN(data[, !(is.na(abundance) | is.na(sds) | is.na(conservation))], resp, rep(1, n),
+#                       unpenalized=NULL, intercept=TRUE, partitions=partitions2.1, lambda1=NULL,
+#                       lambda2=NULL, monotone=list(monotone=c(TRUE, TRUE, FALSE), decreasing=c(FALSE, FALSE, FALSE)),
+#                       psel=NULL, posterior=FALSE, ELBO=TRUE, eps=0.001, maxiter=1000, trace=TRUE)
+# fit2.grEBEN <- grEBEN(data[, !is.na(abundance)], resp, rep(1, n), unpenalized=NULL, intercept=TRUE,
+#                       partitions=partitions2.2, lambda1=NULL, lambda2=NULL,
+#                       monotone=list(monotone=FALSE, decreasing=FALSE),
+#                       psel=NULL, posterior=FALSE, ELBO=TRUE, eps=0.001, maxiter=500, trace=TRUE)
+# fit3.grEBEN <- grEBEN(data[, !is.na(conservation)], resp, rep(1, n), unpenalized=NULL, intercept=TRUE,
+#                       partitions=partitions2.3, lambda1=NULL, lambda2=NULL,
+#                       monotone=list(monotone=FALSE, decreasing=FALSE),
+#                       psel=NULL, posterior=FALSE, ELBO=TRUE, eps=0.001, maxiter=500, trace=TRUE)
+# fit4.grEBEN <- grEBEN(data[, !(is.na(abundance) | is.na(sds) | is.na(conservation))], resp, rep(1, n),
+#                       unpenalized=NULL, intercept=TRUE, partitions=partitions2.1, lambda1=NULL,
+#                       lambda2=NULL, monotone=list(monotone=c(FALSE, FALSE, FALSE), decreasing=c(FALSE, FALSE, FALSE)),
+#                       psel=NULL, posterior=FALSE, ELBO=TRUE, eps=0.001, maxiter=500, trace=TRUE)
+# fit5.grEBEN <- grEBEN(data[, !is.na(abundance)], resp, rep(1, n), unpenalized=NULL, intercept=TRUE,
+#                       partitions=partitions2.2, lambda1=NULL, lambda2=NULL,
+#                       monotone=list(monotone=FALSE, decreasing=FALSE),
+#                       psel=10, posterior=FALSE, ELBO=TRUE, eps=0.001, maxiter=500, trace=TRUE)
+# 
+# fit.enet <- glmnet(data, resp, family="binomial", intercept=TRUE, standardize=FALSE, lambda=0.00000001)
+# fit.lasso <- glmnet(data, resp, family="binomial", intercept=TRUE, standardize=FALSE, alpha=1, dfmax=10)
 
-
-### fit models
-fit1.GRridge <- grridge(t(data[, !(is.na(abundance) | is.na(sds) | is.na(conservation))]), resp, partitions1.1, 
-                        monotone=c(TRUE, TRUE, FALSE))
-fit2.GRridge <- grridge(t(data[, !is.na(abundance)]), resp, partitions1.2, monotone=TRUE)
-fit3.GRridge <- grridge(t(data[, !is.na(conservation)]), resp, partitions1.3, monotone=FALSE)
-fit4.GRridge <- grridge(t(data[, !(is.na(abundance) | is.na(sds) | is.na(conservation))]), resp, partitions1.1, 
-                        monotone=c(FALSE, FALSE, FALSE))
-
-fit1.grEBEN <- grEBEN(data[, !(is.na(abundance) | is.na(sds) | is.na(conservation))], resp, rep(1, n), 
-                      unpenalized=NULL, intercept=TRUE, partitions=partitions2.1, lambda1=NULL, 
-                      lambda2=NULL, monotone=list(monotone=c(TRUE, TRUE, FALSE), decreasing=c(FALSE, FALSE, FALSE)), 
-                      psel=NULL, posterior=FALSE, ELBO=TRUE, eps=0.001, maxiter=1000, trace=TRUE)
-fit2.grEBEN <- grEBEN(data[, !is.na(abundance)], resp, rep(1, n), unpenalized=NULL, intercept=TRUE, 
-                      partitions=partitions2.2, lambda1=NULL, lambda2=NULL, 
-                      monotone=list(monotone=TRUE, decreasing=FALSE), 
-                      psel=NULL, posterior=FALSE, ELBO=TRUE, eps=0.001, maxiter=500, trace=TRUE)
-fit3.grEBEN <- grEBEN(data[, !is.na(conservation)], resp, rep(1, n), unpenalized=NULL, intercept=TRUE, 
-                      partitions=partitions2.3, lambda1=NULL, lambda2=NULL, 
-                      monotone=list(monotone=FALSE, decreasing=FALSE), 
-                      psel=NULL, posterior=FALSE, ELBO=TRUE, eps=0.001, maxiter=500, trace=TRUE)
-fit4.grEBEN <- grEBEN(data[, !(is.na(abundance) | is.na(sds) | is.na(conservation))], resp, rep(1, n), 
-                      unpenalized=NULL, intercept=TRUE, partitions=partitions2.1, lambda1=NULL, 
-                      lambda2=NULL, monotone=list(monotone=c(FALSE, FALSE, FALSE), decreasing=c(FALSE, FALSE, FALSE)), 
-                      psel=NULL, posterior=FALSE, ELBO=TRUE, eps=0.001, maxiter=500, trace=TRUE)
-
-fit.enet <- glmnet(data, resp, family="binomial", intercept=TRUE, standardize=FALSE, lambda=0.00000001)
-
-# save the models
+# # save the models
 # save(fit1.GRridge, fit2.GRridge, fit3.GRridge, fit4.GRridge, fit1.grEBEN, fit2.grEBEN, fit3.grEBEN,
 #      fit4.grEBEN, fit.enet, file=paste(path.res, "grEBEN_mirna_putri_fitted1.Rdata", sep=""))
+
+
+# # cross-validate predictive performance for only conservation status
+# set.seed(1001)
+# data2 <- data[, !is.na(conservation)]
+# p <- ncol(data2)
+# n <- nrow(data2)
+# glob.pen1 <- cv.pen(data2, resp, unpenalized=NULL, intercept=TRUE, psel=NULL)
+# glob.pen2 <- cv.glmnet(data2, resp, family="binomial", alpha=0, standardize=FALSE, intercept=TRUE, 
+#                        nfolds=n, grouped=FALSE)
+# 
+# lambda1 <- glob.pen1$lambda1bayes[which.min(glob.pen1$cvll)]
+# lambda2 <- glob.pen1$lambda2bayes[which.min(glob.pen1$cvll)]
+# 
+# nfolds <- n
+# rest <- n %% nfolds
+# foldid <- sample(rep(1:nfolds, times=round(c(rep(n %/% nfolds + as.numeric(rest!=0), times=rest), 
+#                                              rep(n %/% nfolds, times=nfolds - rest)))))
+# 
+# pred <- matrix(NA, ncol=5, nrow=n)
+# colnames(pred) <- c("GRridge", "grEBEN", "grEBEN+VB","ridge", "enet")
+# for(k in 1:nfolds) {
+#   print(paste("Fold", k, sep=" "))
+#   xtrain <- data2[foldid!=k, ]
+#   xtest <- data2[foldid==k, ]
+#   ytrain <- resp[foldid!=k]
+#   ytest <- resp[foldid==k]
+#   ntrain <- length(ytrain)
+#   ntest <- length(ytest)
+# 
+#   fit.grEBEN <- grEBEN(xtrain, ytrain, rep(1, ntrain), partitions=partitions2.3, lambda1=lambda1, 
+#                        lambda2=lambda2, ELBO=FALSE, trace=FALSE)
+#   fit.GRridge <- grridge(t(xtrain), ytrain, partitions1.3, optl=glob.pen2$lambda.min*0.5*n, 
+#                          trace=FALSE)
+# 
+#   pred[foldid==k, 1] <- predict(fit.GRridge$predobj$GroupRegul, matrix(xtest, ncol=p))
+#   pred[foldid==k, 2] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="penalized")
+#   pred[foldid==k, 3] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="VB")
+#   pred[foldid==k, 4] <- predict(fit.GRridge$predobj$NoGroups, matrix(xtest, ncol=p))
+#   pred[foldid==k, 5] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="nogroups")
+# 
+# }
+# 
+# auc <- sapply(1:ncol(pred), function(method) {return(pROC::roc(resp, pred[, method])$auc)})
+# names(auc) <- colnames(pred)
+# setting1 <- list(pred=pred, auc=auc)
+# save(setting1, file=paste(path.res, "grEBEN_mirna_putri_setting1.Rdata", sep=""))
+
+
+
+# # cross-validate predictive performance for only abundance
+# set.seed(1001)
+# data2 <- data[, !is.na(abundance)]
+# p <- ncol(data2)
+# n <- nrow(data2)
+# glob.pen1 <- cv.pen(data2, resp, unpenalized=NULL, intercept=TRUE, psel=NULL)
+# glob.pen2 <- cv.glmnet(data2, resp, family="binomial", alpha=0, standardize=FALSE, intercept=TRUE,
+#                        nfolds=n, grouped=FALSE)
+# 
+# lambda1 <- glob.pen1$lambda1bayes[which.min(glob.pen1$cvll)]
+# lambda2 <- glob.pen1$lambda2bayes[which.min(glob.pen1$cvll)]
+# 
+# nfolds <- n
+# rest <- n %% nfolds
+# foldid <- sample(rep(1:nfolds, times=round(c(rep(n %/% nfolds + as.numeric(rest!=0), times=rest),
+#                                              rep(n %/% nfolds, times=nfolds - rest)))))
+# 
+# pred <- matrix(NA, ncol=5, nrow=n)
+# methods <- c("GRridge", "grEBEN", "grEBEN+VB","ridge", "enet")
+# pred <- matrix(NA, ncol=length(methods), nrow=n)
+# for(k in 1:nfolds) {
+# 
+#   print(paste("Fold", k, sep=" "))
+#   xtrain <- data2[foldid!=k, ]
+#   xtest <- data2[foldid==k, ]
+#   ytrain <- resp[foldid!=k]
+#   ytest <- resp[foldid==k]
+#   ntrain <- length(ytrain)
+#   ntest <- length(ytest)
+# 
+#   fit.grEBEN <- grEBEN(xtrain, ytrain, rep(1, ntrain), partitions=partitions2.2, lambda1=lambda1,
+#                        lambda2=lambda2, ELBO=FALSE, trace=FALSE)
+#   fit.GRridge <- grridge(t(xtrain), ytrain, partitions1.2, optl=glob.pen2$lambda.min*0.5*n,
+#                          trace=FALSE)
+# 
+#   pred[foldid==k, 1] <- predict(fit.GRridge$predobj$GroupRegul, matrix(xtest, ncol=p))
+#   pred[foldid==k, 2] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="penalized")
+#   pred[foldid==k, 3] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="VB")
+#   pred[foldid==k, 4] <- predict(fit.GRridge$predobj$NoGroups, matrix(xtest, ncol=p))
+#   pred[foldid==k, 5] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="nogroups")
+# 
+# }
+# auc <- sapply(1:length(methods), function(method) {return(pROC::roc(resp, pred[, method])$auc)})
+# names(auc) <- colnames(pred) <- methods
+# setting2 <- list(pred=pred, auc=auc)
+# save(setting2, file=paste(path.res, "grEBEN_mirna_putri_setting2.Rdata", sep=""))
+
+
+
+
+
+# # cross-validate predictive performance for only abundance with variable selection
+# set.seed(1001)
+# data2 <- data[, !is.na(abundance)]
+# p <- ncol(data2)
+# n <- nrow(data2)
+# 
+# pselseq <- c(5, 10, 15, 20, 30, 40, 50, 75, 100)
+# nfolds <- n
+# rest <- n %% nfolds
+# foldid <- sample(rep(1:nfolds, times=round(c(rep(n %/% nfolds + as.numeric(rest!=0), times=rest),
+#                                              rep(n %/% nfolds, times=nfolds - rest)))))
+# 
+# methods <- c("GRridge", "GRridge+sel", "grEBEN", "grEBEN+VB", "grEBEN+sel", "ridge", "enet")
+# pred <- matrix(NA, ncol=length(methods), nrow=n*length(pselseq))
+# selmat <- matrix(NA, ncol=length(methods), nrow=nfolds*length(pselseq))
+# auc <- cbind(pselseq, matrix(NA, ncol=length(methods), nrow=length(pselseq)))
+# colnames(auc)[-1] <- colnames(selmat) <- colnames(pred) <- methods
+# for(csel in 1:length(pselseq)) {
+#   psel <- pselseq[csel]
+# 
+#   glob.pen1 <- cv.pen(data2, resp, unpenalized=NULL, intercept=TRUE, psel=psel)
+#   glob.pen2 <- mygrridge(t(data2), resp, partitions1.2, trace=FALSE, selectionEN=TRUE, maxsel=psel)
+# 
+#   lambda1 <- glob.pen1$lambda1bayes[which.min(glob.pen1$cvll)]
+#   lambda2 <- glob.pen1$lambda2bayes[which.min(glob.pen1$cvll)]
+# 
+#   for(k in 1:nfolds) {
+# 
+#     print(paste("Psel ", psel, ", Fold ", k, sep=""))
+#     xtrain <- data2[foldid!=k, ]
+#     xtest <- data2[foldid==k, ]
+#     ytrain <- resp[foldid!=k]
+#     ytest <- resp[foldid==k]
+#     ntrain <- length(ytrain)
+#     ntest <- length(ytest)
+# 
+#     fit.grEBEN <- grEBEN(xtrain, ytrain, rep(1, ntrain), partitions=partitions2.2, lambda1=lambda1,
+#                          lambda2=lambda2, ELBO=FALSE, trace=FALSE, psel=psel)
+#     fit.GRridge <- mygrridge(t(xtrain), ytrain, partitions1.2, optl=glob.pen2$optl, trace=FALSE,
+#                              selectionEN=TRUE, maxsel=psel)
+# 
+#     pred[(csel - 1)*n + foldid==k, 1] <- predict.grridge(fit.GRridge, t(matrix(xtest, ncol=p)))[, 2]
+#     pred[(csel - 1)*n + foldid==k, 2] <- predict.grridge(fit.GRridge, t(matrix(xtest, ncol=p)))[, 3]
+#     pred[(csel - 1)*n + foldid==k, 3] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="penalized")
+#     pred[(csel - 1)*n + foldid==k, 4] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="VB")
+#     pred[(csel - 1)*n + foldid==k, 5] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="selection")
+#     pred[(csel - 1)*n + foldid==k, 6] <- predict.grridge(fit.GRridge, t(matrix(xtest, ncol=p)))[, 1]
+#     pred[(csel - 1)*n + foldid==k, 7] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="nogroups")
+# 
+#     selmat[(csel - 1)*nfolds + k, 1] <- p
+#     selmat[(csel - 1)*nfolds + k, 2] <- length(fit.GRridge$resEN$whichEN)
+#     selmat[(csel - 1)*nfolds + k, 3] <- sum(fit.grEBEN$beta[-1]!=0)
+#     selmat[(csel - 1)*nfolds + k, 4] <- p
+#     selmat[(csel - 1)*nfolds + k, 5] <- sum(fit.grEBEN$beta.sel[-1]!=0)
+#     selmat[(csel - 1)*nfolds + k, 6] <- p
+#     selmat[(csel - 1)*nfolds + k, 7] <- sum(fit.grEBEN$beta.nogroups[-1]!=0)
+# 
+# 
+#   }
+# 
+#   auc[csel, -1] <- apply(pred[c(((csel - 1)*n + 1):(csel*n)), ], 2, function(cpred) {
+#     pROC::roc(resp, cpred, na.rm=TRUE)$auc})
+#   setting3 <- list(pred=pred, auc=auc, psel=selmat)
+#   save(setting3, file=paste(path.res, "grEBEN_mirna_putri_setting3.Rdata", sep=""))
+# 
+# }
+
+
+
+
+
 load(paste(path.res, "grEBEN_mirna_putri_fitted1.Rdata", sep=""))
 
 # create partitions based on the regular elastic net and pvalues
@@ -148,7 +328,7 @@ plot(var.enest, fit3.grEBEN$lambdag$conservation[, fit3.grEBEN$nouteriter + 1],
 lambdag <- exp(-log(var.enest) + sum(rle(sort(conservation))$lengths*log(var.enest))/sum(!is.na(conservation)))
 plot(lambdag, fit3.grEBEN$lambdag$conservation[, fit3.grEBEN$nouteriter + 1])
 plot(lambdag, fit3.GRridge$lambdamults$conservation)
-plot(fit3.grEBEN$lambdag$conservation[, fit3.grEBEN$nouteriter + 1], 
+plot(fit3.grEBEN$lambdag$conservation[, fit3.grEBEN$nouteriter + 1],
      fit3.GRridge$lambdamults$conservation)
 
 # first model
@@ -203,27 +383,68 @@ barplot(rbind(fit1.GRridge$lambdamults$conservation,
 abline(h=1, lty=2)
 
 # second model
+load(paste(path.res, "grEBEN_mirna_putri_setting2.Rdata", sep=""))
 colvec <- heat.colors(5)
 plot(fit2.grEBEN$lambdag$abundance[1, ], type="l", ylim=range(fit2.grEBEN$lambdag$abundance), col=colvec[1], lwd=2)
 for(i in 2:nrow(fit2.grEBEN$lambdag$abundance)) {
   lines(fit2.grEBEN$lambdag$abundance[i, ], col=colvec[i], lwd=2)
 }
-legend("topright", legend=c("large", "small") ,lty=1, lwd=3, col=range(colvec), title="Abundance")
+legend("topleft", legend=c("large", "small") ,lty=1, lwd=3, col=range(colvec), title="Abundance")
+
+png(paste(path.graph, "grEBEN_mirna_putri_bar2.png", sep=""), units="in", width=6, height=5.33, res=200)
+barplot(rbind(fit2.GRridge$lambdamults$abundance,
+              fit2.grEBEN$lambdag$abundance[, fit2.grEBEN$nouteriter + 1]), beside=TRUE,
+        xlab="", axisnames=FALSE,
+        args.legend=list(x="topleft", fill=c(gray.colors(2), 0, 0), lty=c(NA, NA, 2, 2),
+                         border=c(rep(1, 2), 0, 0), merge=TRUE, seg.len=1),
+        ylab=expression(paste(lambda[g], "'")),
+        legend.text=paste(c("GRridge", "grEBEN", "ridge", "enet"), ", AUC=",
+                          round(setting2$auc[-3], 2), sep=""))
+title(xlab="Abundances in decreasing order", line=1)
+abline(h=1, lty=2)
+dev.off()
+
+brier <- apply(setting2$pred, 2, function(x) {mean((resp - x)^2)})
+par(mfrow=c(2, 3))
+plot(sort(setting2$pred[, 1]), col=resp[order(setting2$pred[, 1])] + 1, main="GRridge",
+     ylab="Predicted probability")
+legend("topleft", legend=paste("Brier score:", round(brier[1], 2)))
+
+plot(sort(setting2$pred[, 2]), col=resp[order(setting2$pred[, 2])] + 1, main="grEBEN",
+     ylab="Predicted probability")
+legend("topleft", legend=paste("Brier score:", round(brier[2], 2)))
+
+plot(sort(setting2$pred[, 3]), col=resp[order(setting2$pred[, 3])] + 1, main="grEBEN VB",
+     ylab="Predicted probability")
+legend("topleft", legend=paste("Brier score:", round(brier[3], 2)))
+
+plot(sort(setting2$pred[, 4]), col=resp[order(setting2$pred[, 4])] + 1, main="Ridge",
+     ylab="Predicted probability")
+legend("topleft", legend=paste("Brier score:", round(brier[4], 2)))
+
+plot(sort(setting2$pred[, 5]), col=resp[order(setting2$pred[, 5])] + 1, main="Elastic net",
+     ylab="Predicted probability")
+legend("topleft", legend=paste("Brier score:", round(brier[5], 2)))
+par(mfrow=c(1, 1))
 
 # third model
+load(paste(path.res, "grEBEN_mirna_putri_setting1.Rdata", sep=""))
 plot(fit3.grEBEN$lambdag$conservation[1, ], type="l", ylim=range(fit3.grEBEN$lambdag$conservation))
 lines(fit3.grEBEN$lambdag$conservation[2, ], col=2)
 lines(fit3.grEBEN$lambdag$conservation[3, ], col=3)
 legend("topright", legend=c("not conserved", "vertebrates", "conserved"), lty=1, col=1:3)
 
+png(paste(path.graph, "grEBEN_mirna_putri_bar3.png", sep=""), units="in", width=6, height=5.33, res=200)
 barplot(rbind(fit3.GRridge$lambdamults$conservation,
               fit3.grEBEN$lambdag$conservation[, fit3.grEBEN$nouteriter + 1]), beside=TRUE,
         xlab="", names.arg=c("not \n conserved", "conserved \n in mammals", "broadly \n conserved"),
+        ylab=expression(paste(lambda[g], "'")),
         args.legend=list(x="topright", fill=c(gray.colors(2), 0, 0), lty=c(NA, NA, 2, 2),
                          border=c(rep(1, 2), 0, 0), merge=TRUE, seg.len=1),
-        ylab=expression(paste(lambda[g], "'")),
-        legend.text=c("GRridge", "grEBEN", "ridge", "enet"))
+        legend.text=paste(c("GRridge", "grEBEN", "ridge", "enet"), ", AUC=",
+                          round(setting1$auc[-3], 2), sep=""))
 abline(h=1, lty=2)
+dev.off()
 
 # fourth model
 colvec <- heat.colors(5)

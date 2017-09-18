@@ -9,7 +9,7 @@
 ###############################  notes  ###############################
 #                                                                     #
 #######################################################################
-
+# SETTING 1 REP 15
 # paths
 path.code <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/code/" ,"~/EBEN/code/"))
 path.graph <- "/Users/magnusmunch/Documents/PhD/EBEN/graphs/"
@@ -49,6 +49,7 @@ rhob <- 0.7
 p <- 1000
 G <- 10
 f <- 1.3
+q <- 0.9
 beta.mean <- 0.1
 
 # simulation and estimation characteristics
@@ -58,25 +59,26 @@ pselmax <- 150
 pselstep <- 10
 
 # combining the simulation settings
-set <- expand.grid(n=n, m=m, ntest=ntest, p=p, G=G, f=f, beta.mean=beta.mean, rhow=rhow, rhob=rhob,
-                   sigma2=sigma2, pselmin=pselmin, pselmax=pselmax, pselstep=pselstep)
+set <- expand.grid(n=n, m=m, ntest=ntest, p=p, G=G, f=f, q=q, beta.mean=beta.mean, rhow=rhow, 
+                   rhob=rhob, sigma2=sigma2, pselmin=pselmin, pselmax=pselmax, pselstep=pselstep)
 
 # loop over the settings
 for(s in 1:nrow(set)) {
   
+  betag <- 0.5*set$beta.mean[s]*(set$f[s] - 1)^2*(set$G[s]^2 - set$G[s])*set$f[s]^c(0:(set$G[s] - 1))/
+    ((1 - set$q[s])*(set$G[s]*set$f[s]^(set$G[s] + 1) - set$f[s]^(set$G[s] + 1) - 
+                       set$G[s]*set$f[s]^set$G[s] + set$f[s]))
+  pactiveg <- 2*(1 - set$q[s])*c(0:(set$G[s] - 1))*set$p[s]/(set$G[s]^2 - set$G[s])
   beta <- as.numeric(sapply(1:set$G[s], function(g) {
-    rep(c(0, c(0, set$beta.mean[s]*set$p[s]*set$f[s]^c(0:(set$G[s] - 2))/
-                 sum(set$p[s]*set$f[s]^c(0:(set$G[s] - 2))*c(1:(set$G[s] - 1))/set$G[s]^2))[g]),
-        times=round(c(((1 - c(0:(set$G[s] - 1))/set$G[s])*set$p[s]/set$G[s])[g],
-                      (set$p[s]*c(0:(set$G[s] - 1))/set$G[s]^2)[g])))}))
+    rep(c(0, betag[g]), times=round(c(set$p[s]/set$G[s] - pactiveg[g], pactiveg[g])))}))
 
   Sigma.group <- matrix(c(rep(rep(c(set$sigma2[s], set$rhow[s]), times=c(1, set$p[s]/set$G[s])),
                               times=set$p[s]/set$G[s] - 1), set$sigma2[s]),
                         ncol=set$p[s]/set$G[s], nrow=set$p[s]/set$G[s])
   Sigma.block <- as.matrix(bdiag(Sigma.group, Sigma.group))
-  diag(Sigma.block[(set$p[s]/set$G[s] + 1):(1.5*set$p[s]/set$G[s]), 1:(set$p[s]/(2*set$G[s]))]) <-
-    diag(Sigma.block[1:(set$p[s]/(2*set$G[s])), (set$p[s]/set$G[s] + 1):(1.5*set$p[s]/set$G[s])]) <-
-    set$rhob[s]
+  diag(Sigma.block[(set$p[s]/set$G[s] + 1):(2*set$p[s]/set$G[s]), 1:(set$p[s]/set$G[s])]) <-
+    diag(Sigma.block[1:(set$p[s]/set$G[s]), (set$p[s]/set$G[s] + 1):(2*set$p[s]/set$G[s])]) <-
+    rep(c(set$rhob[s], 0), times=0.5*set$p[s]/set$G[s])
   partitions1 <- list(groups=rep(1:set$G[s], each=set$p[s]/set$G[s]))
   partitions2 <- list(groups=CreatePartition(as.factor(partitions1$groups)))
 
@@ -121,13 +123,14 @@ for(s in 1:nrow(set)) {
                         lambda=fit.enet1$lambda[which.min(fit.enet1$cvll)], standardize=FALSE, intercept=TRUE)
 
     ### number of cores to use in parallel operations
-    if(Sys.info()[1]=="Darwin") {
-      registerDoMC(2)
-    } else {
-      registerDoMC(length(pselseq))
-    }
-    # loop over the different estimations of the models
-    result <- foreach(csel=c(1:length(pselseq)), .combine=rbind) %dopar% {
+    # if(Sys.info()[1]=="Darwin") {
+    #   registerDoMC(2)
+    # } else {
+    #   registerDoMC(length(pselseq))
+    # }
+    # # loop over the different estimations of the models
+    # result <- foreach(csel=c(1:length(pselseq)), .combine=rbind) %dopar% {
+    for(csel in 1:length(pselseq)) {
       psel <- pselseq[csel]
 
       # variable selection methods
@@ -188,25 +191,35 @@ for(s in 1:nrow(set)) {
       f1.GRridge <- 2*prec.GRridge*rec.GRridge/(prec.GRridge + rec.GRridge)
       f1.GRridgesel <- 2*prec.GRridgesel*rec.GRridgesel/(prec.GRridgesel + rec.GRridgesel)
 
-      # return the vector of calculated metrics
-      return(c(auc.enet, auc.enetsel, auc.grEBENsel,
-               auc.ridge, auc.GRridge, auc.GRridgesel, psel.enet, psel.enetsel, psel.grEBENsel,
-               psel.ridge, psel.GRridge, psel.GRridgesel, kappa.enet, kappa.enetsel, kappa.grEBENsel,
-               kappa.ridge, kappa.GRridge, kappa.GRridgesel, mse.enet, mse.enetsel, mse.grEBENsel,
-               mse.ridge, mse.GRridge, mse.GRridgesel, prec.enet, prec.enetsel, prec.grEBENsel,
-               prec.ridge, prec.GRridge, prec.GRridgesel, rec.enet, rec.enetsel, rec.grEBENsel,
-               rec.ridge, rec.GRridge, rec.GRridgesel, f1.enet, f1.enetsel, f1.grEBENsel,
-               f1.ridge, f1.GRridge, f1.GRridgesel))
+      # # return the vector of calculated metrics
+      # return(c(auc.enet, auc.enetsel, auc.grEBENsel,
+      #          auc.ridge, auc.GRridge, auc.GRridgesel, psel.enet, psel.enetsel, psel.grEBENsel,
+      #          psel.ridge, psel.GRridge, psel.GRridgesel, kappa.enet, kappa.enetsel, kappa.grEBENsel,
+      #          kappa.ridge, kappa.GRridge, kappa.GRridgesel, mse.enet, mse.enetsel, mse.grEBENsel,
+      #          mse.ridge, mse.GRridge, mse.GRridgesel, prec.enet, prec.enetsel, prec.grEBENsel,
+      #          prec.ridge, prec.GRridge, prec.GRridgesel, rec.enet, rec.enetsel, rec.grEBENsel,
+      #          rec.ridge, rec.GRridge, rec.GRridgesel, f1.enet, f1.enetsel, f1.grEBENsel,
+      #          f1.ridge, f1.GRridge, f1.GRridgesel))
+      
+      # assigning to matrices in parallel case
+      aucmat[(crep - 1)*nreps + csel, ] <- c(crep, psel, auc.enet, auc.enetsel, auc.grEBENsel, auc.ridge, auc.GRridge, auc.GRridgesel)
+      pselmat[(crep - 1)*nreps + csel, ] <- c(crep, psel, psel.enet, psel.enetsel, psel.grEBENsel, psel.ridge, psel.GRridge, psel.GRridgesel)
+      kappamat[(crep - 1)*nreps + csel, ] <- c(crep, psel, kappa.enet, kappa.enetsel, kappa.grEBENsel, kappa.ridge, kappa.GRridge, kappa.GRridgesel)
+      msemat[(crep - 1)*nreps + csel, ] <- c(crep, psel, mse.enet, mse.enetsel, mse.grEBENsel, mse.ridge, mse.GRridge, mse.GRridgesel)
+      precmat[(crep - 1)*nreps + csel, ] <- c(crep, psel, prec.enet, prec.enetsel, prec.grEBENsel, prec.ridge, prec.GRridge, prec.GRridgesel)
+      recmat[(crep - 1)*nreps + csel, ] <- c(crep, psel, rec.enet, rec.enetsel, rec.grEBENsel, rec.ridge, rec.GRridge, rec.GRridgesel)
+      f1mat[(crep - 1)*nreps + csel, ] <- c(crep, psel, f1.enet, f1.enetsel, f1.grEBENsel, f1.ridge, f1.GRridge, f1.GRridgesel)
+      
     }
 
-    # assigning to matrices in parallel case
-    aucmat[((crep - 1)*length(pselseq) + 1):(crep*length(pselseq)), ] <- cbind(crep, pselseq, result[, c(1:length(methods))])
-    pselmat[((crep - 1)*length(pselseq) + 1):(crep*length(pselseq)), ] <- cbind(crep, pselseq, result[, c((length(methods) + 1):(2*length(methods)))])
-    kappamat[((crep - 1)*length(pselseq) + 1):(crep*length(pselseq)), ] <- cbind(crep, pselseq, result[, c((2*length(methods) + 1):(3*length(methods)))])
-    msemat[((crep - 1)*length(pselseq) + 1):(crep*length(pselseq)), ] <- cbind(crep, pselseq, result[, c((3*length(methods) + 1):(4*length(methods)))])
-    precmat[((crep - 1)*length(pselseq) + 1):(crep*length(pselseq)), ] <- cbind(crep, pselseq, result[, c((4*length(methods) + 1):(5*length(methods)))])
-    recmat[((crep - 1)*length(pselseq) + 1):(crep*length(pselseq)), ] <- cbind(crep, pselseq, result[, c((5*length(methods) + 1):(6*length(methods)))])
-    f1mat[((crep - 1)*length(pselseq) + 1):(crep*length(pselseq)), ] <- cbind(crep, pselseq, result[, c((6*length(methods) + 1):(7*length(methods)))])
+    # # assigning to matrices in parallel case
+    # aucmat[((crep - 1)*length(pselseq) + 1):(crep*length(pselseq)), ] <- cbind(crep, pselseq, result[, c(1:length(methods))])
+    # pselmat[((crep - 1)*length(pselseq) + 1):(crep*length(pselseq)), ] <- cbind(crep, pselseq, result[, c((length(methods) + 1):(2*length(methods)))])
+    # kappamat[((crep - 1)*length(pselseq) + 1):(crep*length(pselseq)), ] <- cbind(crep, pselseq, result[, c((2*length(methods) + 1):(3*length(methods)))])
+    # msemat[((crep - 1)*length(pselseq) + 1):(crep*length(pselseq)), ] <- cbind(crep, pselseq, result[, c((3*length(methods) + 1):(4*length(methods)))])
+    # precmat[((crep - 1)*length(pselseq) + 1):(crep*length(pselseq)), ] <- cbind(crep, pselseq, result[, c((4*length(methods) + 1):(5*length(methods)))])
+    # recmat[((crep - 1)*length(pselseq) + 1):(crep*length(pselseq)), ] <- cbind(crep, pselseq, result[, c((5*length(methods) + 1):(6*length(methods)))])
+    # f1mat[((crep - 1)*length(pselseq) + 1):(crep*length(pselseq)), ] <- cbind(crep, pselseq, result[, c((6*length(methods) + 1):(7*length(methods)))])
 
     # saving results at every repetition in case of errors
     assign(paste("res.setting", s, sep=""), list(auc=aucmat, psel=pselmat, kappa=kappamat, mse=msemat,
@@ -219,179 +232,177 @@ for(s in 1:nrow(set)) {
 
 }
 
-### creating graphs
-# loading libraries for graphs
-library(ggplot2)
-library(gridExtra)
-
-### setting1
-# loading the data and inspecting the variable selections
-load(paste(path.res, "grEBEN_sim_varsel2_setting1.Rdata", sep=""))
-pselseq <- sort(as.numeric(na.omit(unique(res.setting1$auc[, 2]))))
-methods <- colnames(res.setting1$auc)[-c(1:2)]
-unique(res.setting1$auc[, 1][!is.na(res.setting1$auc[, 1])])
-res.setting1$psel[!(res.setting1$psel[, 5] %in% pselseq) & !is.na(res.setting1$psel[, 5]), c(1, 2, 5)]
-rle(sort(res.setting1$psel[!(res.setting1$psel[, 5] %in% pselseq) & !is.na(res.setting1$psel[, 5]), 2]))
-res.setting1 <- lapply(res.setting1, function(met) {met[(res.setting1$psel[, 5] %in% pselseq) & !is.na(res.setting1$psel[, 5]), ]})
-
-# creating the plotting tables
-plot.auc <- data.frame(psel=pselseq, t(sapply(pselseq, function(psel) {
-  apply(res.setting1$auc[, -c(1:2)][ifelse(is.na(res.setting1$auc[, 2]==psel), FALSE, res.setting1$auc[, 2]==psel), ], 2, function(vars) {
-    c(median(vars, na.rm=TRUE), mean(vars, na.rm=TRUE), sd(vars, na.rm=TRUE))})})))
-colnames(plot.auc) <- c("psel", as.vector(t(outer(methods, c("median", "mean", "sd"), paste, sep="."))))
-plot.kappa <- data.frame(psel=pselseq, t(sapply(pselseq, function(psel) {
-  apply(res.setting1$kappa[, -c(1:2)][ifelse(is.na(res.setting1$kappa[, 2]==psel), FALSE, res.setting1$kappa[, 2]==psel), ], 2, function(vars) {
-    c(median(vars, na.rm=TRUE), mean(vars, na.rm=TRUE), sd(vars, na.rm=TRUE))})})))
-colnames(plot.kappa) <- c("psel", as.vector(t(outer(methods, c("median", "mean", "sd"), paste, sep="."))))
-plot.mse <- data.frame(psel=pselseq, t(sapply(pselseq, function(psel) {
-  apply(res.setting1$mse[, -c(1:2)][ifelse(is.na(res.setting1$mse[, 2]==psel), FALSE, res.setting1$mse[, 2]==psel), ], 2, function(vars) {
-    c(median(vars, na.rm=TRUE), mean(vars, na.rm=TRUE), sd(vars, na.rm=TRUE))})})))
-colnames(plot.mse) <- c("psel", as.vector(t(outer(methods, c("median", "mean", "sd"), paste, sep="."))))
-plot.prec <- data.frame(psel=pselseq, t(sapply(pselseq, function(psel) {
-  apply(res.setting1$prec[, -c(1:2)][ifelse(is.na(res.setting1$prec[, 2]==psel), FALSE, res.setting1$prec[, 2]==psel), ], 2, function(vars) {
-    c(median(vars, na.rm=TRUE), mean(vars, na.rm=TRUE), sd(vars, na.rm=TRUE))})})))
-colnames(plot.prec) <- c("psel", as.vector(t(outer(methods, c("median", "mean", "sd"), paste, sep="."))))
-plot.rec <- data.frame(psel=pselseq, t(sapply(pselseq, function(psel) {
-  apply(res.setting1$rec[, -c(1:2)][ifelse(is.na(res.setting1$rec[, 2]==psel), FALSE, res.setting1$rec[, 2]==psel), ], 2, function(vars) {
-    c(median(vars, na.rm=TRUE), mean(vars, na.rm=TRUE), sd(vars, na.rm=TRUE))})})))
-colnames(plot.rec) <- c("psel", as.vector(t(outer(methods, c("median", "mean", "sd"), paste, sep="."))))
-plot.f1 <- data.frame(psel=pselseq, t(sapply(pselseq, function(psel) {
-  apply(res.setting1$f1[, -c(1:2)][ifelse(is.na(res.setting1$f1[, 2]==psel), FALSE, res.setting1$f1[, 2]==psel), ], 2, function(vars) {
-    c(median(vars, na.rm=TRUE), mean(vars, na.rm=TRUE), sd(vars, na.rm=TRUE))})})))
-colnames(plot.f1) <- c("psel", as.vector(t(outer(methods, c("median", "mean", "sd"), paste, sep="."))))
-
-# plots of the medians over simulations
-png(paste(path.graph, "grEBEN_sim_varsel2_set1_median.png", sep=""), width=1200, height=720, res=90)
-par(mfrow=c(2, 3))
-plot(plot.auc[, 1], plot.auc[, 2], type="l", col=2, lty=1, ylim=range(plot.auc[, c(2, 5, 8, 11, 14, 17)]),
-     xlab="Number of selected variables", ylab="AUC", main="a)")
-lines(plot.auc[, 1], plot.auc[, 5], col=3, lty=1)
-lines(plot.auc[, 1], plot.auc[, 8], col=4, lty=1)
-lines(plot.auc[, 1], plot.auc[, 11], col=5, lty=1)
-lines(plot.auc[, 1], plot.auc[, 14], col=6, lty=1)
-lines(plot.auc[, 1], plot.auc[, 17], col=7, lty=1)
-abline(v=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), lty=3)
-legend("bottomright", legend=c(methods, "Active variables"), lty=c(rep(1, 6), 3), col=c(c(2:7), 1))
-
-plot(plot.kappa[, 1], plot.kappa[, 2], type="l", col=2, lty=1, ylim=range(plot.kappa[, c(2, 5, 8, 11, 14, 17)]),
-     xlab="Number of selected variables", ylab="kappa", main="b)")
-lines(plot.kappa[, 1], plot.kappa[, 5], col=3, lty=1)
-lines(plot.kappa[, 1], plot.kappa[, 8], col=4, lty=1)
-lines(plot.kappa[, 1], plot.kappa[, 11], col=5, lty=1)
-lines(plot.kappa[, 1], plot.kappa[, 14], col=6, lty=1)
-lines(plot.kappa[, 1], plot.kappa[, 17], col=7, lty=1)
-abline(v=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), lty=3)
-
-plot(plot.mse[, 1], plot.mse[, 2], type="l", col=2, lty=1, ylim=range(plot.mse[, c(2, 5, 8, 11, 14, 17)]),
-     xlab="Number of selected variables", ylab="mse", main="c)")
-lines(plot.mse[, 1], plot.mse[, 5], col=3, lty=1)
-lines(plot.mse[, 1], plot.mse[, 8], col=4, lty=1)
-lines(plot.mse[, 1], plot.mse[, 11], col=5, lty=1)
-lines(plot.mse[, 1], plot.mse[, 14], col=6, lty=1)
-lines(plot.mse[, 1], plot.mse[, 17], col=7, lty=1)
-abline(v=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), lty=3)
-
-plot(plot.prec[, 1], plot.prec[, 2], type="l", col=2, lty=1, ylim=range(plot.prec[, c(2, 5, 8, 11, 14, 17)]),
-     xlab="Number of selected variables", ylab="precision", main="d)")
-lines(plot.prec[, 1], plot.prec[, 5], col=3, lty=1)
-lines(plot.prec[, 1], plot.prec[, 8], col=4, lty=1)
-lines(plot.prec[, 1], plot.prec[, 11], col=5, lty=1)
-lines(plot.prec[, 1], plot.prec[, 14], col=6, lty=1)
-lines(plot.prec[, 1], plot.prec[, 17], col=7, lty=1)
-abline(v=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), lty=3)
-
-plot(plot.rec[, 1], plot.rec[, 2], type="l", col=2, lty=1, ylim=range(plot.rec[, c(2, 5, 8, 11, 14, 17)]),
-     xlab="Number of selected variables", ylab="recall", main="e)")
-lines(plot.rec[, 1], plot.rec[, 5], col=3, lty=1)
-lines(plot.rec[, 1], plot.rec[, 8], col=4, lty=1)
-lines(plot.rec[, 1], plot.rec[, 11], col=5, lty=1)
-lines(plot.rec[, 1], plot.rec[, 14], col=6, lty=1)
-lines(plot.rec[, 1], plot.rec[, 17], col=7, lty=1)
-abline(v=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), lty=3)
-
-plot(plot.f1[, 1], plot.f1[, 2], type="l", col=2, lty=1, ylim=range(plot.f1[, c(2, 5, 8, 11, 14, 17)]),
-     xlab="Number of selected variables", ylab="f1", main="f)")
-lines(plot.f1[, 1], plot.f1[, 5], col=3, lty=1)
-lines(plot.f1[, 1], plot.f1[, 8], col=4, lty=1)
-lines(plot.f1[, 1], plot.f1[, 11], col=5, lty=1)
-lines(plot.f1[, 1], plot.f1[, 14], col=6, lty=1)
-lines(plot.f1[, 1], plot.f1[, 17], col=7, lty=1)
-abline(v=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), lty=3)
-dev.off()
-
-# plots of the means plus error bars
-plot.auc2 <- reshape(plot.auc, varying=list(paste(methods, "median", sep="."), paste(methods, "mean", sep="."),
-                                            paste(methods, "sd", sep=".")), direction="long",
-                     times=methods, v.names=c("median", "mean", "sd"), idvar="psel")
-rownames(plot.auc2) <- NULL
-colnames(plot.auc2)[2] <- "method"
-plot.kappa2 <- reshape(plot.kappa, varying=list(paste(methods, "median", sep="."), paste(methods, "mean", sep="."),
-                                                paste(methods, "sd", sep=".")), direction="long",
-                       times=methods, v.names=c("median", "mean", "sd"), idvar="psel")
-rownames(plot.kappa2) <- NULL
-colnames(plot.kappa2)[2] <- "method"
-plot.mse2 <- reshape(plot.mse, varying=list(paste(methods, "median", sep="."), paste(methods, "mean", sep="."),
-                                            paste(methods, "sd", sep=".")), direction="long",
-                     times=methods, v.names=c("median", "mean", "sd"), idvar="psel")
-rownames(plot.mse2) <- NULL
-colnames(plot.mse2)[2] <- "method"
-plot.prec2 <- reshape(plot.prec, varying=list(paste(methods, "median", sep="."), paste(methods, "mean", sep="."),
-                                              paste(methods, "sd", sep=".")), direction="long",
-                      times=methods, v.names=c("median", "mean", "sd"), idvar="psel")
-rownames(plot.prec2) <- NULL
-colnames(plot.prec2)[2] <- "method"
-plot.rec2 <- reshape(plot.rec, varying=list(paste(methods, "median", sep="."), paste(methods, "mean", sep="."),
-                                            paste(methods, "sd", sep=".")), direction="long",
-                     times=methods, v.names=c("median", "mean", "sd"), idvar="psel")
-rownames(plot.rec2) <- NULL
-colnames(plot.rec2)[2] <- "method"
-plot.f12 <- reshape(plot.f1, varying=list(paste(methods, "median", sep="."), paste(methods, "mean", sep="."),
-                                          paste(methods, "sd", sep=".")), direction="long",
-                    times=methods, v.names=c("median", "mean", "sd"), idvar="psel")
-rownames(plot.f12) <- NULL
-colnames(plot.f12)[2] <- "method"
-
-mean.auc <- ggplot(plot.auc2, aes(x=psel, y=mean, colour=method)) +
-  geom_vline(xintercept=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), linetype="dotted", show.legend=TRUE) +
-  geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=1) + geom_line() + geom_point() +
-  xlab("Number of selected variables") + ylab("AUC") + ggtitle("a)") + theme_bw() +
-  theme(legend.position="none", plot.title=element_text(hjust=0.5))
-
-mean.kappa <- ggplot(plot.kappa2, aes(x=psel, y=mean, colour=method)) +
-  geom_vline(xintercept=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), linetype="dotted", show.legend=TRUE) +
-  geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=1) + geom_line() + geom_point() +
-  xlab("Number of selected variables") + ylab("Cohen's kappa") + ggtitle("b)") + theme_bw() +
-  theme(legend.position="none", plot.title=element_text(hjust=0.5))
-
-mean.mse <- ggplot(plot.mse2, aes(x=psel, y=mean, colour=method)) +
-  geom_vline(xintercept=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), linetype="dotted", show.legend=TRUE) +
-  geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=1) + geom_line() + geom_point() +
-  xlab("Number of selected variables") + ylab("MSE") + ggtitle("c)") + theme_bw() +
-  theme(legend.position="none", plot.title=element_text(hjust=0.5))
-
-mean.prec <- ggplot(plot.prec2, aes(x=psel, y=mean, colour=method)) +
-  geom_vline(xintercept=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), linetype="dotted", show.legend=TRUE) +
-  geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=1) + geom_line() + geom_point() +
-  xlab("Number of selected variables") + ylab("Precision") + ggtitle("d)") + theme_bw() +
-  theme(legend.position="none", plot.title=element_text(hjust=0.5))
-
-mean.rec <- ggplot(plot.rec2, aes(x=psel, y=mean, colour=method)) +
-  geom_vline(xintercept=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), linetype="dotted", show.legend=TRUE) +
-  geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=1) + geom_line() + geom_point() +
-  xlab("Number of selected variables") + ylab("Recall") + ggtitle("e)") + theme_bw() +
-  theme(legend.justification=c(0, 1), legend.position=c(0, 1), plot.title=element_text(hjust=0.5))
-
-mean.f1 <- ggplot(plot.f12, aes(x=psel, y=mean, colour=method)) +
-  geom_vline(xintercept=set$p[1] - choose(set$G[1], 2)*set$p[1]/set$G[1]^2, linetype="dotted", show.legend=TRUE) +
-  geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=1) + geom_line() + geom_point() +
-  xlab("Number of selected variables") + ylab("F1 score") + ggtitle("f)") + theme_bw() +
-  theme(legend.position="none", plot.title=element_text(hjust=0.5))
-
-png(paste(path.graph, "grEBEN_sim_varsel2_set1_mean.png", sep=""), width=1200, height=720, res=90)
-grid.arrange(mean.auc, mean.kappa, mean.mse, mean.prec, mean.rec, mean.f1, ncol=3)
-dev.off()
-
-beta
+# ### creating graphs
+# # loading libraries for graphs
+# library(ggplot2)
+# library(gridExtra)
+# 
+# ### setting1
+# # loading the data and inspecting the variable selections
+# load(paste(path.res, "grEBEN_sim_varsel2_setting1.Rdata", sep=""))
+# pselseq <- sort(as.numeric(na.omit(unique(res.setting1$auc[, 2]))))
+# methods <- colnames(res.setting1$auc)[-c(1:2)]
+# unique(res.setting1$auc[, 1][!is.na(res.setting1$auc[, 1])])
+# res.setting1$psel[!(res.setting1$psel[, 5] %in% pselseq) & !is.na(res.setting1$psel[, 5]), c(1, 2, 5)]
+# rle(sort(res.setting1$psel[!(res.setting1$psel[, 5] %in% pselseq) & !is.na(res.setting1$psel[, 5]), 2]))
+# res.setting1 <- lapply(res.setting1, function(met) {met[(res.setting1$psel[, 5] %in% pselseq) & !is.na(res.setting1$psel[, 5]), ]})
+# 
+# # creating the plotting tables
+# plot.auc <- data.frame(psel=pselseq, t(sapply(pselseq, function(psel) {
+#   apply(res.setting1$auc[, -c(1:2)][ifelse(is.na(res.setting1$auc[, 2]==psel), FALSE, res.setting1$auc[, 2]==psel), ], 2, function(vars) {
+#     c(median(vars, na.rm=TRUE), mean(vars, na.rm=TRUE), sd(vars, na.rm=TRUE))})})))
+# colnames(plot.auc) <- c("psel", as.vector(t(outer(methods, c("median", "mean", "sd"), paste, sep="."))))
+# plot.kappa <- data.frame(psel=pselseq, t(sapply(pselseq, function(psel) {
+#   apply(res.setting1$kappa[, -c(1:2)][ifelse(is.na(res.setting1$kappa[, 2]==psel), FALSE, res.setting1$kappa[, 2]==psel), ], 2, function(vars) {
+#     c(median(vars, na.rm=TRUE), mean(vars, na.rm=TRUE), sd(vars, na.rm=TRUE))})})))
+# colnames(plot.kappa) <- c("psel", as.vector(t(outer(methods, c("median", "mean", "sd"), paste, sep="."))))
+# plot.mse <- data.frame(psel=pselseq, t(sapply(pselseq, function(psel) {
+#   apply(res.setting1$mse[, -c(1:2)][ifelse(is.na(res.setting1$mse[, 2]==psel), FALSE, res.setting1$mse[, 2]==psel), ], 2, function(vars) {
+#     c(median(vars, na.rm=TRUE), mean(vars, na.rm=TRUE), sd(vars, na.rm=TRUE))})})))
+# colnames(plot.mse) <- c("psel", as.vector(t(outer(methods, c("median", "mean", "sd"), paste, sep="."))))
+# plot.prec <- data.frame(psel=pselseq, t(sapply(pselseq, function(psel) {
+#   apply(res.setting1$prec[, -c(1:2)][ifelse(is.na(res.setting1$prec[, 2]==psel), FALSE, res.setting1$prec[, 2]==psel), ], 2, function(vars) {
+#     c(median(vars, na.rm=TRUE), mean(vars, na.rm=TRUE), sd(vars, na.rm=TRUE))})})))
+# colnames(plot.prec) <- c("psel", as.vector(t(outer(methods, c("median", "mean", "sd"), paste, sep="."))))
+# plot.rec <- data.frame(psel=pselseq, t(sapply(pselseq, function(psel) {
+#   apply(res.setting1$rec[, -c(1:2)][ifelse(is.na(res.setting1$rec[, 2]==psel), FALSE, res.setting1$rec[, 2]==psel), ], 2, function(vars) {
+#     c(median(vars, na.rm=TRUE), mean(vars, na.rm=TRUE), sd(vars, na.rm=TRUE))})})))
+# colnames(plot.rec) <- c("psel", as.vector(t(outer(methods, c("median", "mean", "sd"), paste, sep="."))))
+# plot.f1 <- data.frame(psel=pselseq, t(sapply(pselseq, function(psel) {
+#   apply(res.setting1$f1[, -c(1:2)][ifelse(is.na(res.setting1$f1[, 2]==psel), FALSE, res.setting1$f1[, 2]==psel), ], 2, function(vars) {
+#     c(median(vars, na.rm=TRUE), mean(vars, na.rm=TRUE), sd(vars, na.rm=TRUE))})})))
+# colnames(plot.f1) <- c("psel", as.vector(t(outer(methods, c("median", "mean", "sd"), paste, sep="."))))
+# 
+# # plots of the medians over simulations
+# png(paste(path.graph, "grEBEN_sim_varsel2_set1_median.png", sep=""), width=1200, height=720, res=90)
+# par(mfrow=c(2, 3))
+# plot(plot.auc[, 1], plot.auc[, 2], type="l", col=2, lty=1, ylim=range(plot.auc[, c(2, 5, 8, 11, 14, 17)]),
+#      xlab="Number of selected variables", ylab="AUC", main="a)")
+# lines(plot.auc[, 1], plot.auc[, 5], col=3, lty=1)
+# lines(plot.auc[, 1], plot.auc[, 8], col=4, lty=1)
+# lines(plot.auc[, 1], plot.auc[, 11], col=5, lty=1)
+# lines(plot.auc[, 1], plot.auc[, 14], col=6, lty=1)
+# lines(plot.auc[, 1], plot.auc[, 17], col=7, lty=1)
+# abline(v=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), lty=3)
+# legend("bottomright", legend=c(methods, "Active variables"), lty=c(rep(1, 6), 3), col=c(c(2:7), 1))
+# 
+# plot(plot.kappa[, 1], plot.kappa[, 2], type="l", col=2, lty=1, ylim=range(plot.kappa[, c(2, 5, 8, 11, 14, 17)]),
+#      xlab="Number of selected variables", ylab="kappa", main="b)")
+# lines(plot.kappa[, 1], plot.kappa[, 5], col=3, lty=1)
+# lines(plot.kappa[, 1], plot.kappa[, 8], col=4, lty=1)
+# lines(plot.kappa[, 1], plot.kappa[, 11], col=5, lty=1)
+# lines(plot.kappa[, 1], plot.kappa[, 14], col=6, lty=1)
+# lines(plot.kappa[, 1], plot.kappa[, 17], col=7, lty=1)
+# abline(v=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), lty=3)
+# 
+# plot(plot.mse[, 1], plot.mse[, 2], type="l", col=2, lty=1, ylim=range(plot.mse[, c(2, 5, 8, 11, 14, 17)]),
+#      xlab="Number of selected variables", ylab="mse", main="c)")
+# lines(plot.mse[, 1], plot.mse[, 5], col=3, lty=1)
+# lines(plot.mse[, 1], plot.mse[, 8], col=4, lty=1)
+# lines(plot.mse[, 1], plot.mse[, 11], col=5, lty=1)
+# lines(plot.mse[, 1], plot.mse[, 14], col=6, lty=1)
+# lines(plot.mse[, 1], plot.mse[, 17], col=7, lty=1)
+# abline(v=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), lty=3)
+# 
+# plot(plot.prec[, 1], plot.prec[, 2], type="l", col=2, lty=1, ylim=range(plot.prec[, c(2, 5, 8, 11, 14, 17)]),
+#      xlab="Number of selected variables", ylab="precision", main="d)")
+# lines(plot.prec[, 1], plot.prec[, 5], col=3, lty=1)
+# lines(plot.prec[, 1], plot.prec[, 8], col=4, lty=1)
+# lines(plot.prec[, 1], plot.prec[, 11], col=5, lty=1)
+# lines(plot.prec[, 1], plot.prec[, 14], col=6, lty=1)
+# lines(plot.prec[, 1], plot.prec[, 17], col=7, lty=1)
+# abline(v=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), lty=3)
+# 
+# plot(plot.rec[, 1], plot.rec[, 2], type="l", col=2, lty=1, ylim=range(plot.rec[, c(2, 5, 8, 11, 14, 17)]),
+#      xlab="Number of selected variables", ylab="recall", main="e)")
+# lines(plot.rec[, 1], plot.rec[, 5], col=3, lty=1)
+# lines(plot.rec[, 1], plot.rec[, 8], col=4, lty=1)
+# lines(plot.rec[, 1], plot.rec[, 11], col=5, lty=1)
+# lines(plot.rec[, 1], plot.rec[, 14], col=6, lty=1)
+# lines(plot.rec[, 1], plot.rec[, 17], col=7, lty=1)
+# abline(v=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), lty=3)
+# 
+# plot(plot.f1[, 1], plot.f1[, 2], type="l", col=2, lty=1, ylim=range(plot.f1[, c(2, 5, 8, 11, 14, 17)]),
+#      xlab="Number of selected variables", ylab="f1", main="f)")
+# lines(plot.f1[, 1], plot.f1[, 5], col=3, lty=1)
+# lines(plot.f1[, 1], plot.f1[, 8], col=4, lty=1)
+# lines(plot.f1[, 1], plot.f1[, 11], col=5, lty=1)
+# lines(plot.f1[, 1], plot.f1[, 14], col=6, lty=1)
+# lines(plot.f1[, 1], plot.f1[, 17], col=7, lty=1)
+# abline(v=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), lty=3)
+# dev.off()
+# 
+# # plots of the means plus error bars
+# plot.auc2 <- reshape(plot.auc, varying=list(paste(methods, "median", sep="."), paste(methods, "mean", sep="."),
+#                                             paste(methods, "sd", sep=".")), direction="long",
+#                      times=methods, v.names=c("median", "mean", "sd"), idvar="psel")
+# rownames(plot.auc2) <- NULL
+# colnames(plot.auc2)[2] <- "method"
+# plot.kappa2 <- reshape(plot.kappa, varying=list(paste(methods, "median", sep="."), paste(methods, "mean", sep="."),
+#                                                 paste(methods, "sd", sep=".")), direction="long",
+#                        times=methods, v.names=c("median", "mean", "sd"), idvar="psel")
+# rownames(plot.kappa2) <- NULL
+# colnames(plot.kappa2)[2] <- "method"
+# plot.mse2 <- reshape(plot.mse, varying=list(paste(methods, "median", sep="."), paste(methods, "mean", sep="."),
+#                                             paste(methods, "sd", sep=".")), direction="long",
+#                      times=methods, v.names=c("median", "mean", "sd"), idvar="psel")
+# rownames(plot.mse2) <- NULL
+# colnames(plot.mse2)[2] <- "method"
+# plot.prec2 <- reshape(plot.prec, varying=list(paste(methods, "median", sep="."), paste(methods, "mean", sep="."),
+#                                               paste(methods, "sd", sep=".")), direction="long",
+#                       times=methods, v.names=c("median", "mean", "sd"), idvar="psel")
+# rownames(plot.prec2) <- NULL
+# colnames(plot.prec2)[2] <- "method"
+# plot.rec2 <- reshape(plot.rec, varying=list(paste(methods, "median", sep="."), paste(methods, "mean", sep="."),
+#                                             paste(methods, "sd", sep=".")), direction="long",
+#                      times=methods, v.names=c("median", "mean", "sd"), idvar="psel")
+# rownames(plot.rec2) <- NULL
+# colnames(plot.rec2)[2] <- "method"
+# plot.f12 <- reshape(plot.f1, varying=list(paste(methods, "median", sep="."), paste(methods, "mean", sep="."),
+#                                           paste(methods, "sd", sep=".")), direction="long",
+#                     times=methods, v.names=c("median", "mean", "sd"), idvar="psel")
+# rownames(plot.f12) <- NULL
+# colnames(plot.f12)[2] <- "method"
+# 
+# mean.auc <- ggplot(plot.auc2, aes(x=psel, y=mean, colour=method)) +
+#   geom_vline(xintercept=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), linetype="dotted", show.legend=TRUE) +
+#   geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=1) + geom_line() + geom_point() +
+#   xlab("Number of selected variables") + ylab("AUC") + ggtitle("a)") + theme_bw() +
+#   theme(legend.position="none", plot.title=element_text(hjust=0.5))
+# 
+# mean.kappa <- ggplot(plot.kappa2, aes(x=psel, y=mean, colour=method)) +
+#   geom_vline(xintercept=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), linetype="dotted", show.legend=TRUE) +
+#   geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=1) + geom_line() + geom_point() +
+#   xlab("Number of selected variables") + ylab("Cohen's kappa") + ggtitle("b)") + theme_bw() +
+#   theme(legend.position="none", plot.title=element_text(hjust=0.5))
+# 
+# mean.mse <- ggplot(plot.mse2, aes(x=psel, y=mean, colour=method)) +
+#   geom_vline(xintercept=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), linetype="dotted", show.legend=TRUE) +
+#   geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=1) + geom_line() + geom_point() +
+#   xlab("Number of selected variables") + ylab("MSE") + ggtitle("c)") + theme_bw() +
+#   theme(legend.position="none", plot.title=element_text(hjust=0.5))
+# 
+# mean.prec <- ggplot(plot.prec2, aes(x=psel, y=mean, colour=method)) +
+#   geom_vline(xintercept=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), linetype="dotted", show.legend=TRUE) +
+#   geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=1) + geom_line() + geom_point() +
+#   xlab("Number of selected variables") + ylab("Precision") + ggtitle("d)") + theme_bw() +
+#   theme(legend.position="none", plot.title=element_text(hjust=0.5))
+# 
+# mean.rec <- ggplot(plot.rec2, aes(x=psel, y=mean, colour=method)) +
+#   geom_vline(xintercept=sum(set$p[1]/set$G[1] - set$p[1]*c(0:(set$G[1] - 1))/set$G[1]^2), linetype="dotted", show.legend=TRUE) +
+#   geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=1) + geom_line() + geom_point() +
+#   xlab("Number of selected variables") + ylab("Recall") + ggtitle("e)") + theme_bw() +
+#   theme(legend.justification=c(0, 1), legend.position=c(0, 1), plot.title=element_text(hjust=0.5))
+# 
+# mean.f1 <- ggplot(plot.f12, aes(x=psel, y=mean, colour=method)) +
+#   geom_vline(xintercept=set$p[1] - choose(set$G[1], 2)*set$p[1]/set$G[1]^2, linetype="dotted", show.legend=TRUE) +
+#   geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=1) + geom_line() + geom_point() +
+#   xlab("Number of selected variables") + ylab("F1 score") + ggtitle("f)") + theme_bw() +
+#   theme(legend.position="none", plot.title=element_text(hjust=0.5))
+# 
+# png(paste(path.graph, "grEBEN_sim_varsel2_set1_mean.png", sep=""), width=1200, height=720, res=90)
+# grid.arrange(mean.auc, mean.kappa, mean.mse, mean.prec, mean.rec, mean.f1, ncol=3)
+# dev.off()
 
 
 
