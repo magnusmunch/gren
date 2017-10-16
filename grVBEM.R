@@ -79,7 +79,7 @@ grEBEN <- function(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=NULL, l
   if(is.null(lambda1) | is.null(lambda2)) {
     if(trace) {cat("\r", "Estimating global lambda1 and lambda2 by cross-validation", sep="")}
     srt <- proc.time()[3]
-    opt.glob <- cv.pen(x, y, unpenalized, intercept, psel=psel)
+    opt.glob <- cv.pen(x, y, unpenalized, intercept, psel=psel, nfolds=nrow(x))
     cv.time <- proc.time()[3] - srt
     lambda1 <- opt.glob$lambda1bayes[which.min(opt.glob$cvll)]
     lambda2 <- opt.glob$lambda2bayes[which.min(opt.glob$cvll)]
@@ -340,18 +340,23 @@ grEBEN <- function(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=NULL, l
 
 # function to cross-validate the penalty parameters
 cv.pen <- function(xr, y, unpenalized=NULL, intercept, psel=NULL, nfolds=NULL) {
-  nfolds <- ifelse(is.null(NULL), 10, nfolds)
+  p <- ncol(xr)
+  n <- nrow(xr)
+  nfolds <- ifelse(is.null(nfolds), 10, nfolds)
+  rest <- n %% nfolds
+  foldsize <- c(rep(n %/% nfolds + as.numeric(rest!=0), times=rest),
+                rep(n %/% nfolds, times=nfolds - rest))
+  foldid <- sample(rep(1:nfolds, times=foldsize))
   r <- ncol(xr)
   u <- ifelse(is.null(ncol(unpenalized)), 0, ncol(unpenalized))
   x <- cbind(unpenalized, xr)
-  p <- ncol(x)
-  n <- nrow(x)
   seq.alpha <- seq(0.01, 0.99, length.out=50)
   seq.lam <- seq.df <- seq.cvll <- numeric(length(seq.alpha))
   for(a in 1:length(seq.alpha)) {
     cv.fit <- cv.glmnet(x, y, family="binomial", alpha=seq.alpha[a], standardize=FALSE,
                         intercept=intercept, penalty.factor=c(rep(0, u), rep(1, r)),
-                        dfmax=ifelse(is.null(psel), p + 1, psel + u), nfolds=nfolds)
+                        dfmax=ifelse(is.null(psel), p + 1, psel + u), foldid=foldid,
+                        grouped=FALSE)
     ind <- which(cv.fit$lambda==cv.fit$lambda.min)
     seq.lam[a] <- cv.fit$lambda.min
     seq.df[a] <- cv.fit$nzero[ind]

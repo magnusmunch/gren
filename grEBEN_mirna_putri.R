@@ -273,13 +273,13 @@ partitions2.3 <- list(conservation=parCons2[!is.na(conservation)])
 #     fit.GRridge <- mygrridge(t(xtrain), ytrain, partitions1.2, optl=glob.pen2$optl, trace=FALSE,
 #                              selectionEN=TRUE, maxsel=psel)
 # 
-#     pred[(csel - 1)*n + foldid==k, 1] <- predict.grridge(fit.GRridge, t(matrix(xtest, ncol=p)))[, 2]
-#     pred[(csel - 1)*n + foldid==k, 2] <- predict.grridge(fit.GRridge, t(matrix(xtest, ncol=p)))[, 3]
-#     pred[(csel - 1)*n + foldid==k, 3] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="penalized")
-#     pred[(csel - 1)*n + foldid==k, 4] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="VB")
-#     pred[(csel - 1)*n + foldid==k, 5] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="selection")
-#     pred[(csel - 1)*n + foldid==k, 6] <- predict.grridge(fit.GRridge, t(matrix(xtest, ncol=p)))[, 1]
-#     pred[(csel - 1)*n + foldid==k, 7] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="nogroups")
+#     pred[(csel - 1)*n + which(foldid==k), 1] <- predict.grridge(fit.GRridge, t(matrix(xtest, ncol=p)))[, 2]
+#     pred[(csel - 1)*n + which(foldid==k), 2] <- predict.grridge(fit.GRridge, t(matrix(xtest, ncol=p)))[, 3]
+#     pred[(csel - 1)*n + which(foldid==k), 3] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="penalized")
+#     pred[(csel - 1)*n + which(foldid==k), 4] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="VB")
+#     pred[(csel - 1)*n + which(foldid==k), 5] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="selection")
+#     pred[(csel - 1)*n + which(foldid==k), 6] <- predict.grridge(fit.GRridge, t(matrix(xtest, ncol=p)))[, 1]
+#     pred[(csel - 1)*n + which(foldid==k), 7] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="nogroups")
 # 
 #     selmat[(csel - 1)*nfolds + k, 1] <- p
 #     selmat[(csel - 1)*nfolds + k, 2] <- length(fit.GRridge$resEN$whichEN)
@@ -382,7 +382,7 @@ barplot(rbind(fit1.GRridge$lambdamults$conservation,
         legend.text=c("GRridge", "grEBEN", "ridge", "enet"))
 abline(h=1, lty=2)
 
-# second model
+### Only abundance
 load(paste(path.res, "grEBEN_mirna_putri_setting2.Rdata", sep=""))
 colvec <- heat.colors(5)
 plot(fit2.grEBEN$lambdag$abundance[1, ], type="l", ylim=range(fit2.grEBEN$lambdag$abundance), col=colvec[1], lwd=2)
@@ -427,7 +427,33 @@ plot(sort(setting2$pred[, 5]), col=resp[order(setting2$pred[, 5])] + 1, main="El
 legend("topleft", legend=paste("Brier score:", round(brier[5], 2)))
 par(mfrow=c(1, 1))
 
-# third model
+# with selection
+load(paste(path.res, "grEBEN_mirna_putri_setting3.Rdata", sep=""))
+setting3$brier <- cbind(psel=setting3$auc[, 1], t(sapply(1:nrow(setting3$auc), function(csel) {
+  apply(setting3$pred[c(((csel - 1)*n + 1):(csel*n)), ], 2, function(x) {mean((resp - x)^2)})})))
+png(paste(path.graph, "grEBEN_mirna_putri_select2.png", sep=""), units="in", width=12, height=5.33, res=200)
+par(mfrow=c(1, 2))
+plot(setting3$auc[!is.na(setting3$auc[, 2]), 1], setting3$auc[!is.na(setting3$auc[, 2]), 2], col=2, 
+     ylim=range(setting3$auc[, -1], na.rm=TRUE), type="l", xlab="Number of selected variables",
+     ylab="AUC", main="a)")
+lines(setting3$auc[!is.na(setting3$auc[, 3]), 1], setting3$auc[!is.na(setting3$auc[, 3]), 3], col=3)
+lines(setting3$auc[!is.na(setting3$auc[, 4]), 1], setting3$auc[!is.na(setting3$auc[, 4]), 4], col=4)
+lines(setting3$auc[!is.na(setting3$auc[, 6]), 1], setting3$auc[!is.na(setting3$auc[, 6]), 6], col=5)
+lines(setting3$auc[!is.na(setting3$auc[, 7]), 1], setting3$auc[!is.na(setting3$auc[, 7]), 7], col=6)
+lines(setting3$auc[!is.na(setting3$auc[, 8]), 1], setting3$auc[!is.na(setting3$auc[, 8]), 8], col=7)
+legend("bottomright", legend=colnames(setting3$auc)[-c(1, 5)], lty=1, col=2:7)
+
+plot(setting3$mse[!is.na(setting3$mse[, 2]), 1], setting3$mse[!is.na(setting3$mse[, 2]), 2], col=2, 
+     ylim=range(setting3$mse[, -1], na.rm=TRUE), type="l", xlab="Number of selected variables",
+     ylab="Mean brier score", main="b)")
+lines(setting3$mse[!is.na(setting3$mse[, 3]), 1], setting3$mse[!is.na(setting3$mse[, 3]), 3], col=3)
+lines(setting3$mse[!is.na(setting3$mse[, 4]), 1], setting3$mse[!is.na(setting3$mse[, 4]), 4], col=4)
+lines(setting3$mse[!is.na(setting3$mse[, 6]), 1], setting3$mse[!is.na(setting3$mse[, 6]), 6], col=5)
+lines(setting3$mse[!is.na(setting3$mse[, 7]), 1], setting3$mse[!is.na(setting3$mse[, 7]), 7], col=6)
+lines(setting3$mse[!is.na(setting3$mse[, 8]), 1], setting3$mse[!is.na(setting3$mse[, 8]), 8], col=7)
+dev.off()
+
+### Only conservation status
 load(paste(path.res, "grEBEN_mirna_putri_setting1.Rdata", sep=""))
 plot(fit3.grEBEN$lambdag$conservation[1, ], type="l", ylim=range(fit3.grEBEN$lambdag$conservation))
 lines(fit3.grEBEN$lambdag$conservation[2, ], col=2)

@@ -9,7 +9,7 @@
 ###############################  notes  ###############################
 #                                                                     #
 #######################################################################
-# SETTING 1 REP 15
+
 # paths
 path.code <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/code/" ,"~/EBEN/code/"))
 path.graph <- "/Users/magnusmunch/Documents/PhD/EBEN/graphs/"
@@ -113,7 +113,6 @@ for(s in 1:nrow(set)) {
     }
     ytest <- rbinom(set$ntest[s], rep(set$m[s], set$ntest[s]), as.numeric(exp(xtest %*% beta)/(1 + exp(xtest %*% beta))))
 
-
     # fit the methods that do not select variables
     fit.GRridge1 <- grridge(t(x), y, partitions=partitions2, monotone=FALSE, trace=FALSE)
     fit.ridge <- penalized(y, x, unpenalized=~1, lambda1=0, lambda2=fit.GRridge1$optl,
@@ -201,7 +200,9 @@ for(s in 1:nrow(set)) {
       #          rec.ridge, rec.GRridge, rec.GRridgesel, f1.enet, f1.enetsel, f1.grEBENsel,
       #          f1.ridge, f1.GRridge, f1.GRridgesel))
       
-      # assigning to matrices in parallel case
+      warnings()
+      
+      # assigning to matrices in serial case
       aucmat[(crep - 1)*nreps + csel, ] <- c(crep, psel, auc.enet, auc.enetsel, auc.grEBENsel, auc.ridge, auc.GRridge, auc.GRridgesel)
       pselmat[(crep - 1)*nreps + csel, ] <- c(crep, psel, psel.enet, psel.enetsel, psel.grEBENsel, psel.ridge, psel.GRridge, psel.GRridgesel)
       kappamat[(crep - 1)*nreps + csel, ] <- c(crep, psel, kappa.enet, kappa.enetsel, kappa.grEBENsel, kappa.ridge, kappa.GRridge, kappa.GRridgesel)
