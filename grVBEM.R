@@ -3,7 +3,7 @@
 # version: 01                                                         #
 # author: Magnus M?nch                                                #
 # created: 14-03-2017                                                 #
-# last edited: 28-03-2017                                             #
+# last edited: 17-10-2017                                             #
 #######################################################################
 
 ###############################  notes  ###############################
@@ -14,9 +14,11 @@
 #######################################################################
 
 # paths
-path.code <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/code/" ,"~/EBEN/code/"))
-path.graph <- "/Users/magnusmunch/Documents/PhD/EBEN/graphs/"
-path.res <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/results/" ,"~/EBEN/results/"))
+path.code <- as.character(ifelse(Sys.info()[1]=="Darwin", "/Users/magnusmunch/Documents/OneDrive/PhD/EBEN/code/" ,
+                                 "~/EBEN/code/"))
+path.graph <- "/Users/magnusmunch/Documents/OneDrive/PhD/EBEN/graphs/"
+path.res <- as.character(ifelse(Sys.info()[1]=="Darwin", "/Users/magnusmunch/Documents/OneDrive/PhD/EBEN/results/" ,
+                                "~/EBEN/results/"))
 
 ### libraries
 library(Rcpp)
@@ -65,6 +67,8 @@ renbeta <- function(p, lambda1, lambda2) {
   return(beta)
   
 }
+
+
 
 # function for estimation
 grEBEN <- function(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=NULL, lambda1=NULL, lambda2=NULL, 
@@ -128,8 +132,8 @@ grEBEN <- function(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=NULL, l
   s <- 0
   
   # starting values for the model parameters
-  fit.start <- glmnet(x=x, y=ymat, family="binomial", alpha=0, lambda=(1 - alpha)*lambda + alpha*lambda, 
-                      standardize=FALSE, intercept=intercept, penalty.factor=c(rep(0, u), rep(1, r)))
+  fit.start <- glmnet(x=x, y=ymat, family="binomial", alpha=0, lambda=lambda, standardize=FALSE, 
+                      intercept=intercept, penalty.factor=c(rep(0, u), rep(1, r)))
   startparam <- est_param3(xr, xu, kappa, m, n, p, as.numeric(predict(fit.start, newx=x, type="response")), 
                            phi, rep(phi, r), lambda2, lambdamultvecold, lambdamultvecold, intercept, 
                            !is.null(unpenalized), FALSE, FALSE, TRUE)
@@ -156,6 +160,8 @@ grEBEN <- function(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=NULL, l
   niter2seq <- numeric(0)
   
   # outer loop of algorithm:
+  opt.conv <- logical(0)
+  vb.conv <- logical(0)
   conv1 <- FALSE
   iter1 <- 0
   if(trace) {cat("\n", "Estimating penalty multipliers by empirical Bayes", "\n", sep="")}
@@ -165,9 +171,10 @@ grEBEN <- function(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=NULL, l
     iter1 <- iter1 + 1
     
     # estimating new lambdag
-    opt <- optim(par=c(s, log(unlist(lambdag, use.names=FALSE))), fn=fopt_groups, lambda2=lambda2, 
-                 nparts=nparts, partsind=partsind, partsmat=partsmat, sizes=unlist(sizes), G=G, 
-                 sum1=sum1, method="Nelder-Mead", control=list(maxit=100000))
+    opt <- optim(par=c(s, log(unlist(lambdag, use.names=FALSE))), fn=fopt_groups, lambda2=lambda2,
+                 nparts=nparts, partsind=partsind, partsmat=partsmat, sizes=unlist(sizes), G=G,
+                 sum1=sum1, method="Nelder-Mead", control=list(maxit=10000))
+    opt.conv <- c(opt.conv, opt$convergence==0)
     lambdagnew <- split(exp(opt$par[-1]), factor(rep(partnames, unlist(G)), levels=partnames))
     lambdagnew <- sapply(1:nparts, function(part) {
         if(monotone$monotone[part]) {
@@ -212,13 +219,14 @@ grEBEN <- function(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=NULL, l
       chiold <- chi
       
     }
+    vb.conv <- c(vb.conv, conv2)
     
     niter2seq <- c(niter2seq, iter2)
     
     # sum is needed in optimisation routine
     sum1 <- sapply(1:length(uintsec), function(cursec) {
       ind <- which(intsec==uintsec[[cursec]]) + intercept;
-      sum((dsigmaold[ind + u] + muold[ind + u]^2)*(1 + sqrt(phi/chi[ind - intercept])))})
+      sum((dsigmaold[ind + u] + muold[ind + u]^2)*(1 + sqrt(phi/chiold[ind - intercept])))})
     
     # checking convergence of outer loop:
     conv1 <- max(abs((unlist(lambdagnew) - unlist(lambdag))/unlist(lambdag))) < eps
@@ -317,22 +325,23 @@ grEBEN <- function(x, y, m, unpenalized=NULL, intercept=TRUE, partitions=NULL, l
                                standardize=FALSE, penalty.factor=c(rep(0, u), rep(1, r)))
   beta.nogroups <- as.numeric(coef(fit.final.nogroups))
   
+  conv <- list(lambda.conv=conv1, opt.conv=opt.conv, vb.conv=vb.conv)
   if(ELBO & !is.null(psel)) {
     out <- list(mu=mu, sigma=dsigma, ci=ci, chi=chi, lambda1=lambda1, lambda2=lambda2, 
                 lambdag=lambdagseq, ELBO=ELBOseq, nouteriter=iter1, ninneriter=niter2seq, 
-                conv=conv1, beta=beta, beta.nogroups=beta.nogroups, beta.sel=beta.sel, args=args)
+                conv=conv, beta=beta, beta.nogroups=beta.nogroups, beta.sel=beta.sel, args=args)
   } else if(ELBO & is.null(psel)) {
     out <- list(mu=mu, sigma=dsigma, ci=ci, chi=chi, lambda1=lambda1, lambda2=lambda2, 
                 lambdag=lambdagseq, ELBO=ELBOseq, nouteriter=iter1, ninneriter=niter2seq, 
-                conv=conv1, beta=beta, beta.nogroups=beta.nogroups, args=args)
+                conv=conv, beta=beta, beta.nogroups=beta.nogroups, args=args)
   } else if(!ELBO & !is.null(psel)) {
     out <- list(mu=mu, sigma=dsigma, ci=ci, chi=chi, lambda1=lambda1, lambda2=lambda2, 
                 lambdag=lambdagseq, nouteriter=iter1, ninneriter=niter2seq, 
-                conv=conv1, beta=beta, beta.nogroups=beta.nogroups, beta.sel=beta.sel, args=args)
+                conv=conv, beta=beta, beta.nogroups=beta.nogroups, beta.sel=beta.sel, args=args)
   } else {
     out <- list(mu=mu, sigma=dsigma, ci=ci, chi=chi, lambda1=lambda1, lambda2=lambda2, 
                 lambdag=lambdagseq, nouteriter=iter1, ninneriter=niter2seq, 
-                conv=conv1, beta=beta, beta.nogroups=beta.nogroups, args=args)
+                conv=conv, beta=beta, beta.nogroups=beta.nogroups, args=args)
   }
   return(out)
   
@@ -381,14 +390,14 @@ fopt_groups <- function(par, lambda2, nparts, partsind, partsmat, sizes, G, sum1
   s <- par[1]
   loglambdag <- par[-1]
   
-  loglambdamult <- rowSums(sapply(1:nparts, function(part) {
+  loglambdasum <- rowSums(sapply(1:nparts, function(part) {
     loglambdag[partsind==part][partsmat[, part]]}))
   
   partsum <- sum((0.5*lambda2*unlist(sapply(1:nparts, function(part) {
-    tapply(exp(loglambdamult)*sum1, partsmat[, part], sum)})) + (s - 0.5)*sizes)^2)
-  constrsum <- sum(sapply(1:nparts, function(part) {
+    tapply(exp(loglambdasum)*sum1, partsmat[, part], sum)})) + (s - 0.5)*sizes)^2)
+  constr <- sum(sapply(1:nparts, function(part) {
     sum(loglambdag[partsind==part]*sizes[partsind==part])^2}))
-  magn <- partsum + constrsum
+  magn <- sqrt(partsum + constr)
   return(magn)
   
 }
@@ -478,8 +487,5 @@ predict.grEBEN <- function(object, newx, unpenalized=NULL,
   }
   return(as.numeric(ppred))
 }
-
-
-
 
 

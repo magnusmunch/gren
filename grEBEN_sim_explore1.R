@@ -1486,3 +1486,45 @@ save(results9, file=paste(path.res, "grEBEN_sim_explore1_res9.Rdata", sep=""))
 # legend("topleft", legend=leg.names, col=rainbow(nrow(results8$pencor)), pch=15)
 # par(opar)
 # dev.off()
+
+
+
+
+
+# setting 8
+load(paste(path.res, "grEBEN_sim_explore1_res9.Rdata", sep=""))
+opar <- par()
+leg.names <- c("enet", "enet with true penalties", "GRridge", "frequentist grEBEN",
+               "Bayesian grEBEN", "frequentist grEBEN with true penalties",
+               "Bayesian grEBEN with true penalties", expression(paste("frequentist grEBEN with ", alpha==0.05)),
+               expression(paste("Bayesian grEBEN with ", alpha==0.05)), "ridge", "lasso")
+png(paste(path.graph, "grEBEN_sim_explore1_boxplot9.1.png", sep=""), width=1200, height=720, res=120)
+layout(matrix(c(1, 2, 5, 3, 4, 5), 2, 3, byrow=TRUE))
+boxplot(t(results9$mse), las=2, main="a)", ylab="MSE", col=rainbow(nrow(results9$mse)), names=NA,
+        xaxt="n")
+boxplot(t(results9$cor), las=2, main="b)", ylab=expression(paste("cor(", beta, ",", hat(beta), ")")),
+        col=rainbow(nrow(results9$cor)), names=NA,
+        xaxt="n")
+boxplot(t(results9$auc), las=2, main="c)", ylab="AUC", col=rainbow(nrow(results9$auc)), names=NA,
+        xaxt="n")
+boxplot(t(results9$brier), las=2, main="d)", ylab="Brier score", col=rainbow(nrow(results9$brier)),
+        names=NA, xaxt="n")
+plot.new()
+legend("topleft", legend=leg.names, col=rainbow(nrow(results9$brier)), pch=15)
+par(opar)
+dev.off()
+
+leg.names <- c("GRridge", "grEBEN", "grEBEN with true penalties",
+               expression(paste("grEBEN with ", alpha==0.05)))
+png(paste(path.graph, "grEBEN_sim_explore1_boxplot9.2.png", sep=""), width=1200, height=720, res=120)
+layout(matrix(c(1, 2, 3, 4), 2, 2, byrow=TRUE))
+boxplot(t(results9$pencor), las=2, main="d)", ylab=expression(paste("cor(", lambda[g], ",", hat(lambda)[g], ")")),
+        col=rainbow(nrow(results9$pencor)), names=NA, xaxt="n")
+boxplot(t(results9$penrank), las=2, main="d)", ylab=expression(paste("Spearman cor(", lambda[g], ",", hat(lambda)[g], ")")),
+        col=rainbow(nrow(results9$penrank)), names=NA, xaxt="n")
+boxplot(t(results9$penmse), las=2, main="d)", ylab=expression(paste("MSE(", hat(lambda)[g], ")")),
+        col=rainbow(nrow(results9$penmse)), names=NA, xaxt="n")
+plot.new()
+legend("topleft", legend=leg.names, col=rainbow(nrow(results9$pencor)), pch=15)
+par(opar)
+dev.off()
