@@ -51,7 +51,7 @@ m <- rep(1, n)
 
 ### partitions
 annotation <- as.numeric(CpGann)
-partitions1 <- list(annotation=CreatePartition(as.factor(annotation)))
+partitions1 <- list(annotation=CreatePartition(CpGann))
 partitions2 <- list(annotation=annotation)
 partitions3 <- list(pvalues=CreatePartition(pvalFarkas, decreasing=FALSE, uniform=TRUE, ngroup=10))
 partitions4 <- list(pvalues=rep(1:length(partitions3$pvalues), 
@@ -76,8 +76,7 @@ fit.enet <- glmnet(norm.mirna, resp.cin3, family="binomial", standardize=FALSE,
                    lambda=enet.pen$lambda[which.min(enet.pen$cvll)])
 fit1.grridge <- grridge(t(norm.mirna), resp.cin3, partitions1)
 fit1.greben <- grEBEN(norm.mirna, resp.cin3, rep(1, length(resp.cin3)), partitions=partitions2,
-                     lambda1=enet.pen$lambda1bayes[which.min(enet.pen$cvll)],
-                     lambda2=enet.pen$lambda2bayes[which.min(enet.pen$cvll)])
+                      lambda=0.001)
 
 # using p-values
 fit2.grridge <- grridge(t(norm.mirna), resp.cin3, partitions3, monotone=FALSE)

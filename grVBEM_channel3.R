@@ -311,6 +311,7 @@ load(paste(path.res, "grVBEM_channel2_cons_fitted2.Rdata", sep=""))
 load(paste(path.res, "grVBEM_channel2_cons_res1.2.Rdata", sep=""))
 xlabels1 <- c("not \n conserved", "conserved \n in mammals", "broadly \n conserved")
 png(paste(path.graph, "grEBEN_channel_bar1.2.png", sep=""), units="in", width=4.5, height=4, res=200)
+par(bg=NA)
 barplot(rbind(fit1.grridge$lambdamults[[1]],
               fit1.grEBEN$lambdag[[1]][, fit1.grEBEN$nouteriter + 1]), beside=TRUE,
         names.arg=xlabels1, ylab=expression(paste(lambda[g], "'")),

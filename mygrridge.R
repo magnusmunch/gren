@@ -1,4 +1,4 @@
-mygrridge <- function (highdimdata, response, partitions, unpenal = ~1, offset = NULL, 
+grridge <- function (highdimdata, response, partitions, unpenal = ~1, offset = NULL, 
                        method = "exactstable", niter = 10, monotone = NULL, optl = NULL, 
                        innfold = NULL, fixedfoldsinn = TRUE, selectionForward = FALSE, 
                        maxsel = 100, selectionEN = FALSE, stepsel = 1, cvlmarg = 1, 
