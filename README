@@ -1,0 +1,5 @@
+Installation:
+# uncomment if devtools is not installed
+# install.packages("devtools")
+library(devtools)
+install_github("magnusmunch/gren")
