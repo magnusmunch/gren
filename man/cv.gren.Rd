@@ -1,29 +1,82 @@
 \name{gren}
 \alias{gren}
 \title{
-Group-regularized logistic elastic net regression
+Performance cross-validation of group-regularized logistic elastic net regression
 }
 \description{
-Function that estimates a group-regularized elastic net model.
+Function that cross-validations for performance estimation of \code{gren} models.
 }
 \usage{
-gren(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5, lambda=NULL, 
-     intercept=TRUE, monotone=NULL, psel=TRUE, posterior=FALSE, nfolds=nrow(x), 
-     foldid=NULL, trace=TRUE, 
-     control=list(epsilon=0.001, maxit=500, maxit.opt=1000, maxit.vb=100))
+cv.gren(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5, lambda=NULL, 
+        intercept=TRUE, monotone=NULL, psel=TRUE, posterior=FALSE, 
+        nfolds=nrow(x), foldid=NULL, trace=TRUE,
+        control=list(epsilon=0.001, maxit=500, maxit.opt=1000, maxit.vb=100),
+        keep.pred=TRUE, fix.lambda=FALSE, nfolds.out=nrow(x), foldid.out=NULL,
+        type.measure=c("auc", "deviance", "class.error"))
 }
 
 \arguments{
 \item{x}{
-data as either \code{matrix} or \code{data.frame}.}
+See \code{\link{gren}}.}
+\item{y}{
+See \code{\link{gren}}.}
+\item{m}{
+See \code{\link{gren}}.}
+\item{unpenalized}{
+See \code{\link{gren}}.}
+\item{partitions}{
+See \code{\link{gren}}.}
+\item{alpha}{
+See \code{\link{gren}}.}
+\item{lambda}{
+See \code{\link{gren}}.}
+\item{intercept}{
+See \code{\link{gren}}.}
+\item{monotone}{
+See \code{\link{gren}}.}
+\item{psel}{
+See \code{\link{gren}}.}
+\item{posterior}{
+See \code{\link{gren}}.}
+\item{nfolds}{
+See \code{\link{gren}}.}
+\item{foldid}{
+See \code{\link{gren}}.}
+\item{trace}{
+if \code{TRUE}, progress of the cross-validation is printed.}
+\item{control}{
+See \code{\link{gren}}.}
+\item{keep.pred}{
+\code{logical}. If \code{TRUE} the cross-validated predictions are saved.}
+\item{fix.lambda}{
+\code{logical}. If \code{TRUE} \code{lambda} is cross-validated only once and used in every fold.}
+\item{nfolds.out}{
+\code{numeric} that gives the number of folds to use in the performance cross-validation. Default is \code{nrow(x)}.}
+\item{foldid.out}{
+optional \code{numeric} vector of length \code{nrow(x)} with the performance cross-validation fold assignments of the observations.}
+\item{type.measure}{
+\code{numeric} that gives the performance measures to calculate. Currently possible are AUC, deviance, and misclassification error.
+}
 }
 
 \details{
-This is the main function of the package.
+\code{cv.gren} is a convenience function that gives cross-validated predictions. Performance measures are optionally calculated with these predictions. \code{cv.gren} is more efficient than simply looping over the folds, since it uses the final estimates of the previous fold as starting values for the next fold. This substantially reduces computation time. 
 }
 
 \value{
-Function returns a list of output.
+Function returns a \code{list} of output with the following components:
+\item{pred}{
+\code{numeric} with the cross-validated predictions of length \code{nrow(x)}.
+}
+\item{auc}{
+(optional) \code{numeric} with the cross-validated AUC.
+}
+\item{deviance}{
+(optional) \code{numeric} with the cross-validated deviance.
+}
+\item{class.error}{
+(optional) \code{numeric} with the cross-validated misclassification error rate.
+}
 }
 
 \references{
@@ -35,7 +88,7 @@ Magnus M. Münch <m.munch@vumc.nl>
 }
 
 \seealso{
-\code{\link{predict.gren}},\code{\link{coef.gren}},\code{\link{cv.gren}}
+\code{\link{gren}}, \code{\link{predict.gren}}, \code{\link{coef.gren}}
 }
 
 \examples{
@@ -49,6 +102,6 @@ m <- rep(1, n)
 y <- rbinom(n, m, as.numeric(1/(1 + exp(-x \%*\% as.matrix(beta)))))
 partitions <- list(groups=rep(c(1, 2), each=p/2))
 
-## estimate model
-fit.gren <- gren(x, y, m, partitions=partitions)
+## calculate cross-validated predictions and performance measures
+fit.cv.gren <- cv.gren(x, y, m, partitions=partitions, fix.lambda=TRUE)
 }
