@@ -1,0 +1,13 @@
+Package: gren
+Type: Package
+Title: Adaptive group-regularized logistic elastic net regression
+Version: 1.0
+Date: 2018-02-21
+Author: Magnus M. Münch
+Maintainer: Magnus M. Münch <m.munch@vumc.nl>
+Description: The package allows the user to incorporate multiple sources of co-data (e.g., 	previously obtained p-values, published gene lists, and annotation) in the 		estimation of a logistic regression model to enhance predictive performance.
+License: GPL (>= 2)
+Imports: Rcpp (>= 0.12.14), glmnet, Iso, pROC
+LinkingTo: Rcpp, RcppArmadillo
+NeedsCompilation: yes
+URL: https://github.com/magnusmunch/gren/

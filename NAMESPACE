@@ -1,0 +1,6 @@
+useDynLib(gren, .registration=TRUE)
+exportPattern("^[[:alpha:]]+")
+importFrom(Rcpp, evalCpp)
+importFrom(glmnet, glmnet, cv.glmnet, predict.glmnet)
+importFrom(Iso, pava)
+importFrom(pROC, auc)
