@@ -10,4 +10,6 @@ License: GPL (>= 2)
 Imports: Rcpp (>= 0.12.14), glmnet, Iso, pROC
 LinkingTo: Rcpp, RcppArmadillo
 NeedsCompilation: yes
+VignetteBuilder: knitr
 URL: https://github.com/magnusmunch/gren/
+Suggests: knitr, rmarkdown

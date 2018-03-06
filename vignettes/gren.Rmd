@@ -1,0 +1,54 @@
+---
+title: "gren: Group-regularized logistic elastic net regression"
+author: 
+  name: "Magnus Münch"
+  affiliation: 
+    1. Department of Epidemiology & Biostatistics, VU University Medical Center, Amsterdam, The Netherlands
+    2. Mathematical Institute, Leiden University, Leiden, The Netherlands
+  email: m.munch@vumc.nl
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+    number_sections: true
+vignette: >
+  %\VignetteIndexEntry{gren: Group-regularized logistic elastic net regressionß}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Overview
+
+The package enables the user to enhance classification performance and variable selection of the logistic elastic net through the inclusion of external information. The information comes in the form of a partitioning of the features into non-overlapping group. Example of such co-data are:
+
+1. Response-independent summaries in the primary data (e.g. standard deviation).
+2. Feature-specific summaries from an independent study (e.g. p-values). 
+2. Feature groupings from public data bases (e.g. pathways). 
+
+## Elements of the package
+
+Key elements of the <code>gren</code> package are:
+
+1. The main function of the package is conveniently named <code>gren</code>.
+2. A convience function that cross-validation predictions is included as <code>cv.gren</code>
+
+## Getting started
+
+The <code>gren</code> package is available online. Installation from Github is as follows:
+
+```{r, eval=FALSE}
+install.packages("devtools")
+library(devtools)
+install_github("magnusmunch/gren")
+```
+
+Note that if <code>devtools</code> is already installed, the first line may be skipped. The <code>gren</code> package depends on these following R packages: <code>glmnet</code>, <code>Rcpp</code>, and <code>pROC</code>.
+
+# Example 1: microRNA data
