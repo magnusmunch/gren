@@ -1,7 +1,8 @@
 # cross-validation performance of group-regularized elastic net
 cv.gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5, 
                     lambda=NULL, intercept=TRUE, monotone=NULL, psel=TRUE, 
-                    posterior=FALSE, nfolds=nrow(x), foldid=NULL, trace=TRUE,
+                    compare=TRUE, posterior=FALSE, nfolds=nrow(x), foldid=NULL, 
+                    trace=TRUE,
                     control=list(epsilon=0.001, maxit=500, maxit.opt=1000, 
                                  maxit.vb=100),
                     keep.pred=TRUE, fix.lambda=FALSE, nfolds.out=nrow(x), 
@@ -10,6 +11,7 @@ cv.gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5,
   
   # save argument list
   argum <- formals(gren)
+  fit.call <- match.call()
   
   # change some input for convenience
   if(is.data.frame(x)) {
@@ -18,19 +20,27 @@ cv.gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5,
   } else {
     names.xr <- NULL
   }
-  if(is.data.frame(unpenalized)) {
-    names.xu <- colnames(unpenalized)
-    if(intercept) {names.xu <- c("Intercept", names.xu)}
-    unpenalized <- as.matrix(unpenalized)
+  if(is.vector(partitions) & is.atomic(partitions)) {
+    partitions <- list(partition1=partitions)
+  }
+  
+  # save argument list and call
+  argum <- formals(gren)
+  fit.call <- match.call()
+  
+  # change some input for convenience
+  if(is.data.frame(x)) {
+    names.xr <- colnames(x)
+    x <- as.matrix(x)
   } else {
-    names.xu <- NULL
+    names.xr <- NULL
   }
   if(is.vector(partitions) & is.atomic(partitions)) {
     partitions <- list(partition1=partitions)
   }
   
   # check input
-  if(!is.numeric(x) | !is.numeric(y)) {
+  if(!is.numeric(x) | !(is.numeric(y) | is.factor(y))) {
     stop("only numerical input data is supported at the moment")
   } else if(!is.null(ncol(y))) {
     if(ncol(y)!=2) {
@@ -39,9 +49,9 @@ cv.gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5,
   } else if(ifelse(is.null(ncol(y)), length(y), nrow(y))!=length(m) | 
             nrow(x)!=length(m)) {
     stop("number of observations in y, m, and x not equal")
-  } else if(!is.null(unpenalized) & !is.numeric(unpenalized)) {
-    stop("only numerical unpenalized data or no unpenalized data is 
-         supported at the moment")
+  } else if(!is.null(unpenalized) & !is.numeric(unpenalized) & 
+            !is.data.frame(unpenalized)) {
+    stop("only unpenalized data in a matrix or data.frame is supported")
   } else if(ifelse(is.null(ncol(unpenalized)), length(unpenalized), 
                    nrow(unpenalized))!=nrow(x) & !is.null(unpenalized)) {
     stop("number of observations in unpenalized not equal to number of 
@@ -67,13 +77,15 @@ cv.gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5,
          as partitions or NULL")
   } else if(!is.null(psel) & !(is.vector(psel) & is.atomic(psel))) {
     stop("psel is either NULL or a vector of non-negative whole numbers")
+  } else if(!is.logical(compare)) {
+    stop("compare is either TRUE or FALSE")
   } else if(!is.logical(posterior)) {
     stop("posterior is either TRUE or FALSE")
   } else if(!is.numeric(nfolds) | length(nfolds)!=1) {
     stop("nfolds should be a whole number")
   } else if(!is.null(foldid) & !(is.numeric(foldid) & length(foldid==nrow(x)))) {
     stop("foldid is either NULL or a vector of length nrow(x)")
-  } else if(!is.null(foldid) & !all(foldid %in% c(1:n))) {
+  } else if(!is.null(foldid) & !all(foldid %in% c(1:nrow(x)))) {
     stop("foldid must be a vector of length n, containing only whole numbers
          from 1 to nrow(x)")
   } else if(!is.logical(trace)) {
@@ -97,7 +109,7 @@ cv.gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5,
   } else if(!is.null(foldid.out) & !(is.numeric(foldid.out) & 
                                      length(foldid.out==nrow(x)))) {
     stop("foldid.out is either NULL or a vector of length nrow(x)")
-  } else if(!is.null(foldid.out) & !all(foldid.out %in% c(1:n))) {
+  } else if(!is.null(foldid.out) & !all(foldid.out %in% c(1:nrow(x)))) {
     stop("foldid.out must be a vector of length n, containing only whole numbers
          from 1 to nrow(x)")
   } else if(!is.character(type.measure)) {
@@ -110,12 +122,22 @@ cv.gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5,
   }
   
   # extra check for data
+  if(is.factor(y)) {
+    y <- as.numeric(y) - 1
+  }
   if(is.null(ncol(y))) {
     ymat <- cbind(m - y, y)
   } else {
     ymat <- y
     y <- y[, 2]
   }
+  if(is.data.frame(unpenalized)) {
+    unpenalized <- model.matrix(as.formula(paste("~", paste(
+      colnames(unpenalized), collapse="+"))), data=unpenalized)[, -1]
+  }
+  u <- ifelse(is.null(unpenalized), 0, ncol(unpenalized))
+  n <- nrow(x)
+  r <- ncol(x)
   
   # determine the folds
   if(is.null(foldid.out)) {
@@ -131,54 +153,163 @@ cv.gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5,
     if(trace) {cat("\r", "Estimating fixed global lambda by cross-validation", 
                    sep="")}
     srt <- proc.time()[3]
-    r <- ncol(x)
-    u <- ifelse(is.null(unpenalized), 0, ncol(unpenalized))
-    cv.fit <- cv.glmnet(x, ymat, family="binomial", alpha=alpha, 
-                        standardize=FALSE, intercept=intercept, 
+    cv.fit <- cv.glmnet(cbind(unpenalized, x), ymat, family="binomial", 
+                        alpha=alpha, standardize=FALSE, intercept=intercept, 
                         foldid=foldid.out, grouped=FALSE,
                         penalty.factor=c(rep(0, u), rep(1, r)))
     lambda <- cv.fit$lambda.min
     cv.time <- proc.time()[3] - srt
     
-    if(trace) {cat("\n", "Global lambda estimated at ", round(lambda, 2), 
+    if(trace) {cat("\n", "Estimated fixed global lambda is ", round(lambda, 2), 
                    " in ", round(cv.time, 2), " seconds", sep="")
+    }
+  } else {
+    lambda <- NULL
+  }
+  
+  # set initial values to zero at beginning
+  init <- cinit <- list(lambdag=NULL, mu=NULL, sigma=NULL, chi=NULL, ci=NULL)
+  
+  # create the predictions object based on the number of selected features
+  if(!is.null(psel)) {
+    if(is.numeric(psel)) {
+      pred.groupreg <- matrix(NA, nrow=length(y), ncol=length(psel))
+      if(compare) {
+        pred.regular <- matrix(NA, nrow=length(y), ncol=length(psel))
+      } else {
+        pred.regular <- NULL
+      }
+    } else {
+      pred.groupreg <- numeric(length(y))
+      if(compare) {
+        pred.regular <- numeric(length(y))
+      } else {
+        pred.regular <- NULL
+      }
+    }
+  } else {
+    pred.groupreg <- numeric(length(y))
+    if(compare) {
+      pred.regular <- numeric(length(y))
+    } else {
+      pred.regular <- NULL
     }
   }
   
-  init <- NULL
-  pred <- numeric(length(y))
   if(trace) {cat("\n", "Estimating performance by cross-validation", "\n", 
                  sep="")}
   srt <- proc.time()[3]
+  cu <- u
+  cpart <- partitions
   for(k in 1:nfolds.out) {
     cat("\r", "Fold ", k, sep="")
     # split the data into training and test data
     ytrain <- ymat[foldid.out!=k, ]
     xtrain <- matrix(x[foldid.out!=k, ], ncol=r)
     xtest <- matrix(x[foldid.out==k, ], ncol=r)
+    
+    # checking if any features are constant
+    which.const1 <- apply(xtrain, 2, sd)==0
+    if(any(which.const1)) {
+      xtrain <- xtrain[, !which.const1]
+      xtest <- xtest[, !which.const1]
+      cpart <- lapply(partitions, function(l) {l[!which.const1]})
+    } else {
+      cpart <- partitions
+    }
     if(is.null(unpenalized)) {
       utrain <- NULL
       utest <- NULL
     } else {
       utrain <- matrix(unpenalized[foldid.out!=k, ], ncol=u)
       utest <- matrix(unpenalized[foldid.out==k, ], ncol=u)
+      which.const2 <- apply(utrain, 2, sd)==0
+      if(any(which.const2)) {
+        utrain <- utrain[, !which.const2]
+        utest <- utest[, !which.const2]
+      }
+      cu <- ncol(utrain)
     }
     mtrain <- m[foldid.out!=k]
     mtest <- m[foldid.out==k]
 
     # fit the model on the training data
-    fit.gren <- gren(xtrain, ytrain, mtrain, unpenalized, partitions, alpha, 
-                     lambda, intercept, monotone, psel, posterior, nfolds, 
-                     foldid, FALSE, init, control)
+    if(k!=1) {
+      if(intercept) {
+        cinit$mu <- init$mu[!c(FALSE, which.const2, which.const1)]
+        cinit$sigma <- init$sigma[!c(FALSE, which.const2, which.const1), 
+                                  !c(FALSE, which.const2, which.const1)]
+      } else {
+        cinit$mu <- init$mu[!c(which.const2, which.const1)]
+        cinit$sigma <- init$sigma[!c(which.const2, which.const1), 
+                                  !c(which.const2, which.const1)]
+      }
+      cinit$chi <- init$chi[!which.const1]
+      cinit$ci <- init$ci[foldid.out!=k]
+    }
+    fit.gren <- gren(xtrain, ytrain, mtrain, utrain, cpart, alpha, 
+                     lambda, intercept, monotone, psel, compare, posterior, 
+                     nfolds, foldid, FALSE, cinit, control)
     
     # predictions on the test data
-    pred[foldid.out==k] <- predict(fit.gren$freq.model, cbind(utest, xtest),
-                                   s=fit.gren$lambda, type="response")
+    # if we set psel, we predict with the desired number of features
+    if(!is.null(psel) & is.numeric(psel)) {
+      for(csel in 1:length(psel)) {
+        sel.lambda <- fit.gren$freq.model$groupreg$lambda[which.min(abs(
+          psel[csel] - fit.gren$freq.model$groupreg$df - cu))[1]]
+        pred.groupreg[foldid.out==k, ] <- predict(fit.gren$freq.model$groupreg,
+                                                  cbind(utest, xtest),
+                                                  s=sel.lambda, 
+                                                  type="response")
+          
+      }
+      if(compare) {
+        sel.lambda <- fit.gren$freq.model$regular$lambda[which.min(abs(
+          psel[csel] - fit.gren$freq.model$regular$df - cu))[1]]
+        pred.regular[foldid.out==k, ] <- predict(fit.gren$freq.model$regular, 
+                                                 cbind(utest, xtest),
+                                                 s=sel.lambda, 
+                                                 type="response")
+      }
+      pred.groupreg[foldid.out==k, ] <- predict(fit.gren$freq.model$groupreg, 
+                                                cbind(utest, xtest),
+                                                s=fit.gren$lambda, 
+                                                type="response")
+    } else {
+      pred.groupreg[foldid.out==k] <- predict(fit.gren$freq.model$groupreg, 
+                                              cbind(utest, xtest),
+                                              s=fit.gren$lambda, 
+                                              type="response")
+      if(compare) {
+        pred.regular[foldid.out==k] <- predict(fit.gren$freq.model$regular, 
+                                               cbind(utest, xtest),
+                                               s=fit.gren$lambda, 
+                                               type="response")
+      }
+    }
+    
     
     # update the initial values for the next iteration
-    init <- list(lambdag=fit.gren$lambdag, mu=fit.gren$vb.post$mu, 
-                 sigma=fit.gren$vb.post$sigma, chi=fit.gren$vb.post$chi, 
-                 ci=fit.gren$vb.post$ci)
+    if(k==1) {
+      init$mu <- rep(0, ncol(unpenalized) + ncol(x) + intercept)
+      init$sigma <- diag(ncol(unpenalized) + ncol(x) + intercept)
+      init$chi <- rep(1, ncol(x))
+      init$ci <- rep(1, nrow(x))
+    }
+    if(intercept) {
+      init$mu[!c(FALSE, which.const2, which.const1)] <- fit.gren$vb.post$mu
+      init$sigma[!c(FALSE, which.const2, which.const1), 
+                 !c(FALSE, which.const2, which.const1)] <- 
+        fit.gren$vb.post$sigma
+    } else {
+      init$mu[!c(which.const2, which.const1)] <- fit.gren$vb.post$mu
+      init$sigma[!c(which.const2, which.const1), 
+                 !c(which.const2, which.const1)] <- fit.gren$vb.post$sigma
+    }
+    init$chi[!which.const1] <- fit.gren$vb.post$chi
+    init$ci[foldid.out!=k] <- fit.gren$vb.post$ci
+    init$lambdag <- fit.gren$lambdag
+    
   }
   cv.time <- proc.time()[3] - srt
   if(trace) {cat("\n", "Cross-validated performance in ", round(cv.time, 2), 
@@ -186,15 +317,52 @@ cv.gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5,
   }
   
   # calculate requested performance measures
-  out <- list(pred=pred)
+  out <- list(groupreg=list(pred=pred.groupreg), 
+              regular=list(pred=pred.regular))
   if(any(type.measure=="auc")) {
-    out$auc <- pROC::roc(y, pred)$auc
+    if(!is.null(psel) & is.numeric(psel)) {
+      out$groupreg$auc <- apply(pred.groupreg, 2, function(pred) {
+        pROC::roc(y, pred)$auc})
+      if(compare) {
+        out$regular$auc <- apply(pred.regular, 2, function(pred) {
+          pROC::roc(y, pred)$auc})
+      } 
+    } else {
+      out$groupreg$auc <- pROC::roc(y, pred.groupreg)$auc
+      if(compare) {
+        out$regular$auc <- pROC::roc(y, pred.regular)$auc
+      }  
+    }
   }
   if(any(type.measure=="deviance")) {
-    out$deviance <- mean((y==1)*log(pred) + (y==0)*log(1 - pred))
+    if(!is.null(psel) & is.numeric(psel)) {
+      out$groupreg$deviance <- colMeans((y==1)*log(pred.groupreg) + 
+                                          (y==0)*log(1 - pred.groupreg))
+      if(compare) {
+        out$regular$deviance <- colMeans((y==1)*log(pred.regular) + 
+                                           (y==0)*log(1 - pred.regular))
+      }
+    } else {
+      out$groupreg$deviance <- mean((y==1)*log(pred.groupreg) + 
+                                      (y==0)*log(1 - pred.groupreg))
+      if(compare) {
+        out$regular$deviance <- mean((y==1)*log(pred.regular) + 
+                                       (y==0)*log(1 - pred.regular))
+      }
+    }
   }
   if(any(type.measure=="class.error")) {
-    out$class.error <- mean((pred >= 0.5)==y)
+    if(!is.null(psel) & is.numeric(psel)) {
+      out$groupreg$class.error <- colMeans((pred.groupreg >= 0.5)==y)
+      if(compare) {
+        out$regular$class.error <- colMeans((pred.regular >= 0.5)==y)
+      }
+    } else {
+      out$groupreg$class.error <- mean((pred.groupreg >= 0.5)==y)
+      if(compare) {
+        out$regular$class.error <- mean((pred.regular >= 0.5)==y)
+      }
+    }
   }
   
   return(out)

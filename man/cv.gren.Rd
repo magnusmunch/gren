@@ -1,5 +1,5 @@
-\name{gren}
-\alias{gren}
+\name{cv.gren}
+\alias{cv.gren}
 \title{
 Performance cross-validation of group-regularized logistic elastic net regression
 }
