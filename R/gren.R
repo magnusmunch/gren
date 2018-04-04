@@ -1,14 +1,16 @@
 # group-regularized elastic net function
 gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5, 
                  lambda=NULL, intercept=TRUE, monotone=NULL, psel=TRUE, 
-                 posterior=FALSE, nfolds=nrow(x), foldid=NULL, trace=TRUE,
+                 compare=TRUE, posterior=FALSE, nfolds=nrow(x), foldid=NULL, 
+                 trace=TRUE,
                  init=list(lambdag=NULL, mu=NULL, sigma=NULL, 
                            chi=NULL, ci=NULL),
                  control=list(epsilon=0.001, maxit=500, maxit.opt=1000, 
                               maxit.vb=100)) {
   
-  # save argument list
+  # save argument list and call
   argum <- formals(gren)
+  fit.call <- match.call()
   
   # change some input for convenience
   if(is.data.frame(x)) {
@@ -17,19 +19,12 @@ gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5,
   } else {
     names.xr <- NULL
   }
-  if(is.data.frame(unpenalized)) {
-    names.xu <- colnames(unpenalized)
-    if(intercept) {names.xu <- c("Intercept", names.xu)}
-    unpenalized <- as.matrix(unpenalized)
-  } else {
-    names.xu <- NULL
-  }
   if(is.vector(partitions) & is.atomic(partitions)) {
     partitions <- list(partition1=partitions)
   }
   
   # check input
-  if(!is.numeric(x) | !is.numeric(y)) {
+  if(!is.numeric(x) | !(is.numeric(y) | is.factor(y))) {
     stop("only numerical input data is supported at the moment")
   } else if(!is.null(ncol(y))) {
     if(ncol(y)!=2) {
@@ -38,9 +33,9 @@ gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5,
   } else if(ifelse(is.null(ncol(y)), length(y), nrow(y))!=length(m) | 
             nrow(x)!=length(m)) {
     stop("number of observations in y, m, and x not equal")
-  } else if(!is.null(unpenalized) & !is.numeric(unpenalized)) {
-    stop("only numerical unpenalized data or no unpenalized data is 
-         supported at the moment")
+  } else if(!is.null(unpenalized) & !is.numeric(unpenalized) & 
+            !is.data.frame(unpenalized)) {
+    stop("only unpenalized data in a matrix or data.frame is supported")
   } else if(ifelse(is.null(ncol(unpenalized)), length(unpenalized), 
                    nrow(unpenalized))!=nrow(x) & !is.null(unpenalized)) {
     stop("number of observations in unpenalized not equal to number of 
@@ -48,7 +43,7 @@ gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5,
   } else if(!is.list(partitions)) {
     stop("partitions should be either a list of partitions or one partition as 
          a numeric vector")
-  } else if(lapply(partitions, length)!=ncol(x)) {
+  } else if(any(lapply(partitions, length)!=ncol(x))) {
     stop("all partitions should be vectors of length ncol(x), containing the
          group identifiers of the features")
   } else if(!is.numeric(alpha) | length(alpha)!=1 | (alpha < 0) | (alpha > 1)) {
@@ -66,13 +61,15 @@ gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5,
          as partitions or NULL")
   } else if(!is.null(psel) & !(is.vector(psel) & is.atomic(psel))) {
     stop("psel is either NULL or a vector of non-negative whole numbers")
+  } else if(!is.logical(compare)) {
+    stop("compare is either TRUE or FALSE")
   } else if(!is.logical(posterior)) {
     stop("posterior is either TRUE or FALSE")
   } else if(!is.numeric(nfolds) | length(nfolds)!=1) {
     stop("nfolds should be a whole number")
   } else if(!is.null(foldid) & !(is.numeric(foldid) & length(foldid==nrow(x)))) {
     stop("foldid is either NULL or a vector of length nrow(x)")
-  } else if(!is.null(foldid) & !all(foldid %in% c(1:n))) {
+  } else if(!is.null(foldid) & !all(foldid %in% c(1:nrow(x)))) {
     stop("foldid must be a vector of length n, containing only whole numbers
          from 1 to nrow(x)")
   } else if(!is.logical(trace)) {
@@ -101,16 +98,34 @@ gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5,
   # set some auxiliary variables
   if(is.null(unpenalized)) {
     xu <- matrix(1, nrow=2)
-  } else if(intercept){
+  } else if(is.data.frame(unpenalized)) {
+    xu <- model.matrix(as.formula(paste("~", paste(colnames(unpenalized), 
+                                                   collapse="+"))), 
+                       data=unpenalized)
+    if(!intercept) {
+      xu <- xu[, -1]
+    } 
+  } else if(intercept) {
     xu <- as.matrix(cbind(1, unpenalized))
-  } 
+  }
   xr <- x
-  x <- cbind(unpenalized, xr)
+  xr <- scale(xr)
+  if(is.null(unpenalized)) {
+    x <- xr
+  } else {
+    x <- cbind(xu, xr)  
+    if(intercept) {
+      x <- x[, -1]
+    }
+  }
   n <- nrow(x)
   r <- ncol(xr)
   u <- ifelse(is.null(unpenalized), 0, ncol(xu) - intercept)
   p <- r + u
   unpenalized <- !is.null(unpenalized)
+  if(is.factor(y)) {
+    y <- as.numeric(y) - 1
+  }
   if(is.null(ncol(y))) {
     ymat <- cbind(m - y, y)
   } else {
@@ -136,7 +151,7 @@ gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5,
     lambda <- cv.fit$lambda.min
     cv.time <- proc.time()[3] - srt
     
-    if(trace) {cat("\n", "Global lambda estimated at ", round(lambda, 2), 
+    if(trace) {cat("\n", "Estimated global lambda is ", round(lambda, 2), 
                    " in ", round(cv.time, 2), " seconds", sep="")}
   }
   lambda1 <- lambda*alpha*n*2
@@ -156,6 +171,14 @@ gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5,
     monotone$decreasing <- rep(FALSE, nparts)
   }
   names(monotone) <- c("monotone", "decreasing")
+  numparts <- lapply(partitions, is.numeric)
+  groupnames <- lapply(partitions, function(part) {
+    if(is.factor(part)) {
+      levels(part)
+    } else {
+      as.character(sort(unique(part)))
+    }})
+  partitions <- lapply(partitions, as.numeric)
   sizes <- lapply(partitions, function(part) {rle(sort(part))$lengths})
   G <- lapply(partitions, function(part) {length(unique(part))})
   
@@ -307,9 +330,10 @@ gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5,
     
     # printing progress
     if(trace) {
-      cat("\r", "Penalty multipliers estimated at ", 
-          paste(partnames, lapply(lambdag, function(part) {
-            paste(round(part, 2), collapse=", ")}), sep=": ", collapse=" and "), 
+      cat("\r", "Estimated penalty multipliers for ", 
+          paste(partnames, sapply(c(1:nparts), function(part) {
+            paste(paste(round(lambdag[[part]], 2), " (", groupnames[[part]], ")", 
+                        sep=""), collapse=", ")}), sep=": ", collapse=" and "), 
           "      ", sep="")
     }
   }
@@ -334,59 +358,98 @@ gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5,
     chi <- as.numeric(newparam$chi)
   }
   
-  # variable selection and frequentist elastic net model estimation
-  # if no specific model size is requested, let glmnet decide lambdas,
-  # otherwise we try to find the closest model sizes
-  if(all(psel==TRUE)) {
-    fit.final <- glmnet(x, y=ymat, family="binomial", alpha=alpha, 
-                        standardize=FALSE, intercept=intercept, 
-                        penalty.factor=c(rep(0, u), lambdamultvec))
-  } else if(is.numeric(psel)) {
-    # initial fit to find maximum lambda
-    fit.lambda <- glmnet(x, y, family="binomial", alpha=alpha,
-                         standardize=FALSE, intercept=intercept,
-                         penalty.factor=c(rep(0, u), lambdamultvec))
-    lambdamax <- max(fit.lambda$lambda)
-    lambdamin <- 1e-10
-    
-    # objective function to minimise to find closest model size
-    fsel <- function(lambda, maxselec, alpha) {
+  # objective function to minimise to find closest model size
+  fsel <- function(lambda, maxselec, alpha, groupreg) {
+    if(groupreg) {
       fit.sel <- glmnet(x, y, family="binomial", alpha=alpha, lambda=lambda,
                         standardize=FALSE, intercept=intercept,
                         penalty.factor=c(rep(0, u), lambdamultvec))
-      return(fit.sel$df - u - maxselec)
+    } else {
+      fit.sel <- glmnet(x, y, family="binomial", alpha=alpha, lambda=lambda,
+                        standardize=FALSE, intercept=intercept,
+                        penalty.factor=c(rep(0, u), rep(1, r)))
     }
-    
-    # calculate lambda sequence for desired model sizes
-    sel.out <- sapply(psel, function(parsel) {
-      lambda.sel <- uniroot(fsel, interval=c(lambdamin1, lambdamax1), 
-                            maxiter=50, maxselec=parsel, alpha=alpha, 
-                            groupreg=TRUE)$root
-      return(lambda.sel)}, simplify=FALSE)
-    
-    # estimate final models using lambda sequence
+    return(fit.sel$df - u - maxselec)
+  }
+  
+  # variable selection and frequentist elastic net model estimation
+  # if no specific model size is requested, let glmnet decide lambdas,
+  # otherwise we try to find the closest model sizes
+  if(all(psel==TRUE) | is.numeric(psel)) {
     fit.final <- glmnet(x, y=ymat, family="binomial", alpha=alpha, 
-                        lambda=sel.out, standardize=FALSE, intercept=intercept, 
+                        standardize=FALSE, intercept=intercept, 
                         penalty.factor=c(rep(0, u), lambdamultvec))
+    if(is.numeric(psel)) {
+      lambdamax <- max(fit.final$lambda)
+      lambdamin <- 1e-10
+    
+      # calculate lambda sequence for desired model sizes
+      sel.out <- sapply(psel, function(parsel) {
+        lambda.sel <- uniroot(fsel, interval=c(lambdamin, lambdamax), 
+                              maxiter=50, maxselec=parsel, alpha=alpha, 
+                              groupreg=TRUE)$root
+        return(lambda.sel)}, simplify=TRUE)
+    
+      # estimate final models using lambda sequence
+      fit.final <- glmnet(x, y=ymat, family="binomial", alpha=alpha, 
+                          lambda=sel.out, standardize=FALSE, intercept=intercept, 
+                          penalty.factor=c(rep(0, u), lambdamultvec))
+    }
+  }
+  
+  # fit the regular elastic net model if compare is true
+  if(compare) {
+    fit.regul <- glmnet(x, y, family="binomial", alpha=alpha,
+                        standardize=FALSE, intercept=intercept,
+                        penalty.factor=c(rep(0, u), rep(1, r)))
+    
+    # if we want a specif number of features
+    if(is.numeric(psel)) {
+      lambdamax <- max(fit.regul$lambda)
+      lambdamin <- 1e-10
+      
+      # calculate lambda sequence for desired model sizes
+      sel.out <- sapply(psel, function(parsel) {
+        lambda.sel <- uniroot(fsel, interval=c(lambdamin, lambdamax), 
+                              maxiter=50, maxselec=parsel, alpha=alpha, 
+                              groupreg=FALSE)$root
+        return(lambda.sel)}, simplify=TRUE)
+      fit.regul <- glmnet(x, y=ymat, family="binomial", alpha=alpha, 
+                          lambda=sel.out, standardize=FALSE, 
+                          intercept=intercept, 
+                          penalty.factor=c(rep(0, u), rep(1, r)))
+    }
   }
   
   # if no frequentist models estimated, set to NULL
-  if(psel==FALSE) {
-    freq <- NULL
+  if(all(psel==FALSE)) {
+    groupreg <- NULL
   } else {
-    freq <- fit.final
+    groupreg <- fit.final
   }
+  # if no regular elastic net estimated, set to NULL
+  if(compare) {
+    regular <- fit.regul
+  } else {
+    regular <- NULL
+  }
+  freq <- list(groupreg=groupreg, regular=regular)
   iter <- list(lambda.iter=iter1, opt.iter=opt.iter, vb.iter=vb.iter)
   conv <- list(lambda.conv=conv, opt.conv=opt.conv, vb.conv=vb.conv)
   vb.post <- list(mu=mu, sigma=dsigma, ci=ci, chi=chi)
   lambdag.est <- sapply(lambdagseq, function(lg) {
     lg[, iter$lambda.iter + 1]}, simplify=FALSE)
   names(lambdag.est) <- partnames
+  for(l in 1:nparts) {
+    names(lambdag.est[[l]]) <- groupnames[[l]]
+    rownames(lambdagseq[[l]]) <- groupnames[[l]]
+  }
   
   # output list
-  out <- list(alpha=alpha, lambda=lambda, lambdag.seq=lambdagseq, 
+  out <- list(call=fit.call, alpha=alpha, lambda=lambda, lambdag.seq=lambdagseq, 
               lambdag=lambdag.est, vb.post=vb.post, freq.model=freq, iter=iter, 
               conv=conv, args=argum)
+  class(out) <- "gren"
   return(out)
   
 }
