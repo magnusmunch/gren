@@ -59,7 +59,7 @@ cv.gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5,
   } else if(!is.list(partitions)) {
     stop("partitions should be either a list of partitions or one partition as 
          a numeric vector")
-  } else if(lapply(partitions, length)!=ncol(x)) {
+  } else if(any(lapply(partitions, length)!=ncol(x))) {
     stop("all partitions should be vectors of length ncol(x), containing the
          group identifiers of the features")
   } else if(!is.numeric(alpha) | length(alpha)!=1 | (alpha < 0) | (alpha > 1)) {
@@ -220,6 +220,7 @@ cv.gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5,
     if(is.null(unpenalized)) {
       utrain <- NULL
       utest <- NULL
+      which.const2 <- NULL
     } else {
       utrain <- matrix(unpenalized[foldid.out!=k, ], ncol=u)
       utest <- matrix(unpenalized[foldid.out==k, ], ncol=u)
@@ -291,8 +292,8 @@ cv.gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5,
     
     # update the initial values for the next iteration
     if(k==1) {
-      init$mu <- rep(0, ncol(unpenalized) + ncol(x) + intercept)
-      init$sigma <- diag(ncol(unpenalized) + ncol(x) + intercept)
+      init$mu <- rep(0, u + ncol(x) + intercept)
+      init$sigma <- diag(u + ncol(x) + intercept)
       init$chi <- rep(1, ncol(x))
       init$ci <- rep(1, nrow(x))
     }
