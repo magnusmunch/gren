@@ -1,8 +1,8 @@
 # cross-validation performance of group-regularized elastic net
-cv.gren <- function(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5, 
-                    lambda=NULL, intercept=TRUE, monotone=NULL, psel=TRUE, 
-                    compare=TRUE, posterior=FALSE, nfolds=nrow(x), foldid=NULL, 
-                    trace=TRUE,
+cv.gren <- function(x, y, m=rep(1, nrow(x)), unpenalized=NULL, partitions=NULL, 
+                    alpha=0.5, lambda=NULL, intercept=TRUE, monotone=NULL, 
+                    psel=TRUE, compare=TRUE, posterior=FALSE, nfolds=nrow(x), 
+                    foldid=NULL, trace=TRUE,
                     control=list(epsilon=0.001, maxit=500, maxit.opt=1000, 
                                  maxit.vb=100),
                     keep.pred=TRUE, fix.lambda=FALSE, nfolds.out=nrow(x), 
