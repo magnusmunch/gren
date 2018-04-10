@@ -12,7 +12,7 @@ output:
     toc: true
     number_sections: true
 vignette: >
-  %\VignetteIndexEntry{gren: Group-regularized logistic elastic net regressionß}
+  %\VignetteIndexEntry{gren: Group-regularized logistic elastic net regression}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -46,7 +46,7 @@ The <code>gren</code> package is available online. Installation from Github is a
 ```{r, eval=FALSE}
 install.packages("devtools")
 library(devtools)
-install_github("magnusmunch/gren")
+install_github("magnusmunch/gren", force=TRUE)
 ```
 
 Note that if <code>devtools</code> is already installed, the first line may be skipped. The <code>gren</code> package depends on these following R packages: <code>glmnet</code>, <code>Rcpp</code>, and <code>pROC</code>.
