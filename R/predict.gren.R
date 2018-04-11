@@ -1,24 +1,26 @@
 # function to make predictions with the gren object
 predict.gren <- function(object, newx, unpenalized=NULL, s=NULL, 
-                         type="freq") {
-  if(is.null(object$freq) & type=="freq") {
-    stop("object should contain a frequentist model fit")
+                         type="groupreg") {
+  if(class(object)!="gren") {
+    stop("object should be a gren fit")
   } else if(!is.null(s) & !is.numeric(s)) {
     stop("s is either NULL or a numeric")
   } else if(is.null(s)) {
     s <- object$lambda
-  } else if(!any(type %in% c("VB", "freq"))) {
-    stop("type is either VB or freq")
+  } else if(!any(type %in% c("groupreg", "regular"))) {
+    stop("type is either groupreg or regular")
   }
   
+  if(is.data.frame(unpenalized)) {
+    unpenalized <- model.matrix(as.formula(paste("~", paste(colnames(
+      unpenalized), collapse="+"))), data=unpenalized)[, -1]
+  }
   x <- cbind(unpenalized, newx)
-  if(type=="VB") {
-    if(object$args$intercept) {
-      x <- cbind(1, x)
-    } 
-    prob <- as.numeric(1/(1 + exp(-x %*% as.matrix(object$vb.post$mu))))
+  if(type=="groupreg") {
+    prob <- predict(object$freq.model$groupreg, x, s=s, type="response")
   } else {
-    prob <- predict(object$freq, x, s=s, type="response")
+    prob <- predict(object$freq.model$regular, x, s=s, type="response")
   }
   return(prob)
 }
+
