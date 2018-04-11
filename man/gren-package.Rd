@@ -8,13 +8,17 @@ Adaptive group-regularized logistic elastic net regression
 The package allows the user to incorporate multiple sources of co-data (e.g., previously obtained p-values, published gene lists, and annotation) in the estimation of a logistic regression model to enhance predictive performance.
 }
 \details{
-The main function of the package is \code{\link{gren}}, which estimates a group-regularized elastic net regression model. The following functions are convenience functions: \\
-\code{\link{cv.gren}}: estimates performance measures by efficient cross-validation \\
-\code{\link{coef.gren}}: retrieve model parameters from a \code{gren} fit \\
-\code{\link{predict.gren}}: get predictions for new data from a \code{gren} fit \\
-\code{\link{denet}}: density function of the elastic net prior distribution \\
-\code{\link{renet}}: generate samples from the elastic net prior distribution \\
+The main function of the package is \code{\link{gren}}, which estimates a group-regularized elastic net regression model. The following functions are convenience functions:
+
+\describe{
+\item{\code{\link{cv.gren}}}{estimates performance measures by efficient cross-validation.}
+\item{\code{\link{coef.gren}}}{S3 method to retrieve model parameters from a \code{gren} fit.}
+\item{\code{\link{predict.gren}}}{S3 method to get predictions for new data from a \code{gren} fit.}
+\item{\code{\link{denet}}}{density function of the elastic net prior distribution.}
+\item{\code{\link{renet}}}{generate samples from the elastic net prior distribution.}
 }
+}
+
 \author{
 Magnus M. Münch
 Maintainer: Magnus M. Münch <m.munch@vumc.nl>
