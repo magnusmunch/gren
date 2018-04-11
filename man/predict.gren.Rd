@@ -11,9 +11,10 @@ Create predictions from new data using a fitted gren model/retrieve coefficients
 
 \usage{
 predict.gren(object, newx, unpenalized=NULL, s=NULL, 
-             type=c("groupreg", "regular"))}
+             type=c("groupreg", "regular"))
 
-coef.gren(object, s=NULL, type=c("groupreg", "regular"))}
+coef.gren(object, s=NULL, type=c("groupreg", "regular"))
+}
 
 \arguments{
 \item{object}{

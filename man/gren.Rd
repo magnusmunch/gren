@@ -89,10 +89,6 @@ The initial values for the \eqn{\Sigma_{ij}} in a \code{matrix} of \code{numeric
 }
 }
 
-call=fit.call, alpha=alpha, lambda=lambda, lambdag.seq=lambdagseq, 
-              lambdag=lambdag.est, vb.post=vb.post, freq.model=freq, iter=iter, 
-              conv=conv, args=argum
-
 \value{
 Function returns an S3 \code{list} object of class \code{gren} containing output with the following components:
 \item{\code{call}}{
