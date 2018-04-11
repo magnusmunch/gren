@@ -4,23 +4,35 @@
 \alias{coef.gren}
 
 \title{
-Predictions from gren model.}
+Predictions and coefficients from gren model.}
 
 \description{
-Create predictions from new data using a fitted gren model.}
+Create predictions from new data using a fitted gren model/retrieve coefficients from fitted model. Both are S3 methods.}
 
 \usage{
-predict.gren(object, newx, unpenalized=NULL, s=NULL, type=c("VB", "freq"))}
+predict.gren(object, newx, unpenalized=NULL, s=NULL, 
+             type=c("groupreg", "regular"))}
+
+coef.gren(object, s=NULL, type=c("groupreg", "regular"))}
 
 \arguments{
-  \item{object}{
-A fitted \code{gren} model.}}
+\item{object}{
+A fitted \code{gren} model.}
+\item{newx}{
+New data for which to do predictions.}
+\item{unpenalized}{
+New unpenalized data for which to do predictions.}
+\item{s}{
+Value of \code{lambda} for which to create predictions/coefficients, may be a \code{vector}.}
+\item{type}{
+Either \code{groupreg}, which creates predictions/coefficients of group-regularized model, or \code{regular}, for predictions/coefficients from regular model.}
+}
 
 \details{
-This is the predict function of the package.}
+This are the predict/coefficient functions of the \code{gren} package.}
 
 \value{
-Function returns a \code{numeric} with predicted probabilities.}
+\code{predict} returns a \code{numeric} \code{matrix} with predicted probabilities. \code{coef} returns a \code{matrix} with coefficients.}
 
 \references{
 TBA}
@@ -48,5 +60,6 @@ fit.gren <- gren(x, y, m, partitions=partitions)
 ## create new data
 xnew <- matrix(rnorm(n*p), ncol=p, nrow=n)
 
-## create predictions
-preds <- predict.gren(fit.gren, xnew, type="VB")}
+## create predictions/coefficients
+preds <- predict(fit.gren, xnew, type="groupreg")
+coefs <- coef(fit.gren, type="groupreg")}

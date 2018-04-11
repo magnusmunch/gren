@@ -7,11 +7,10 @@ Group-regularized logistic elastic net regression
 Function that estimates a group-regularized elastic net model.
 }
 \usage{
-gren(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5, lambda=NULL, 
-     intercept=TRUE, monotone=NULL, psel=TRUE, posterior=FALSE, nfolds=nrow(x), 
-     foldid=NULL, trace=TRUE, 
-     init=list(lambdag=NULL, mu=NULL, sigma=NULL, chi=NULL, 
-               ci=NULL),
+gren(x, y, m=rep(1, nrow(x)), unpenalized=NULL, partitions=NULL, alpha=0.5, 
+     lambda=NULL, intercept=TRUE, monotone=NULL, psel=TRUE, compare=TRUE, 
+     posterior=FALSE, nfolds=nrow(x), foldid=NULL, trace=TRUE,
+     init=list(lambdag=NULL, mu=NULL, sigma=NULL, chi=NULL, ci=NULL),
      control=list(epsilon=0.001, maxit=500, maxit.opt=1000, maxit.vb=100))
 }
 
@@ -36,6 +35,8 @@ global penalty parameter. The default \code{NULL} will result in estimation by c
 \code{list} of two \code{logical} vectors of length \code{length(partitions)}. The first one \code{monotone} indicates whether the corresponding partition's penalty parameters should be monotonically estimates, the second vector \code{decreasing} indicates whether the monotone penalty parameters are decreasing with group number.}
 \item{psel}{
 either a \code{numeric} vector that indicates the number of features to select or a \code{logical}. If \code{TRUE} feature selection is done by letting \code{\link{glmnet}} determine the penalty parameter sequence.}
+\item{compare}{
+\code{logical}, if \code{TRUE}, a regular non-groupregularized model is estimated.}
 \item{posterior}{
 if \code{TRUE}, the full variational Bayes posterior is returned.}
 \item{nfolds}{
@@ -45,7 +46,7 @@ optional \code{numeric} vector of length \code{nrow(x)} with the fold assignment
 \item{trace}{
 if \code{TRUE}, progress of the algorithm is printed.}
 \item{init}{
-optional \code{list} containing the starting values of the iterative algorithm. See Detail for more information.}
+optional \code{list} containing the starting values of the iterative algorithm. See Details for more information.}
 \item{control}{
 a \code{list} of algorithm control parameters. See Details for more information.}
 }
@@ -88,8 +89,15 @@ The initial values for the \eqn{\Sigma_{ij}} in a \code{matrix} of \code{numeric
 }
 }
 
+call=fit.call, alpha=alpha, lambda=lambda, lambdag.seq=lambdagseq, 
+              lambdag=lambdag.est, vb.post=vb.post, freq.model=freq, iter=iter, 
+              conv=conv, args=argum
+
 \value{
-Function returns a \code{list} of output with the following components:
+Function returns an S3 \code{list} object of class \code{gren} containing output with the following components:
+\item{\code{call}}{
+The function call that produced the output.
+}
 \item{\code{alpha}}{
 proportion of L1 penalty as a \code{numeric} of length 1.
 }

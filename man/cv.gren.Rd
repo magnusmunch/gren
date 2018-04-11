@@ -7,9 +7,9 @@ Performance cross-validation of group-regularized logistic elastic net regressio
 Function that cross-validations for performance estimation of \code{gren} models.
 }
 \usage{
-cv.gren(x, y, m, unpenalized=NULL, partitions=NULL, alpha=0.5, lambda=NULL, 
-        intercept=TRUE, monotone=NULL, psel=TRUE, posterior=FALSE, 
-        nfolds=nrow(x), foldid=NULL, trace=TRUE,
+cv.gren(x, y, m=rep(1, nrow(x)), unpenalized=NULL, partitions=NULL, alpha=0.5, 
+        lambda=NULL, intercept=TRUE, monotone=NULL, psel=TRUE, compare=TRUE, 
+        posterior=FALSE, nfolds=nrow(x), foldid=NULL, trace=TRUE,
         control=list(epsilon=0.001, maxit=500, maxit.opt=1000, maxit.vb=100),
         keep.pred=TRUE, fix.lambda=FALSE, nfolds.out=nrow(x), foldid.out=NULL,
         type.measure=c("auc", "deviance", "class.error"))
@@ -35,6 +35,8 @@ See \code{\link{gren}}.}
 \item{monotone}{
 See \code{\link{gren}}.}
 \item{psel}{
+See \code{\link{gren}}.}
+\item{compare}{
 See \code{\link{gren}}.}
 \item{posterior}{
 See \code{\link{gren}}.}
@@ -64,18 +66,12 @@ optional \code{numeric} vector of length \code{nrow(x)} with the performance cro
 }
 
 \value{
-Function returns a \code{list} of output with the following components:
-\item{pred}{
-\code{numeric} with the cross-validated predictions of length \code{nrow(x)}.
+Function returns a \code{list} of length two with the following components:
+\item{groupreg}{
+\code{list} with the cross-validated predictions of length \code{nrow(x)} and possibly performance metrics of the group-regularized model.
 }
-\item{auc}{
-(optional) \code{numeric} with the cross-validated AUC.
-}
-\item{deviance}{
-(optional) \code{numeric} with the cross-validated deviance.
-}
-\item{class.error}{
-(optional) \code{numeric} with the cross-validated misclassification error rate.
+\item{regular}{
+\code{list} with the cross-validated predictions of length \code{nrow(x)} and possibly performance metrics of the regular model.
 }
 }
 

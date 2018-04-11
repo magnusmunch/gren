@@ -1,17 +1,17 @@
 # retrieve coefficients from gren estimated model
-coef.gren <- function(object, s=NULL, type="freq") {
+coef.gren <- function(object, s=NULL, type="groupreg") {
   if(!is.null(s) & !is.numeric(s)) {
     stop("s is either NULL or a numeric")
   } else if(is.null(s)) {
     s <- object$lambda
-  } else if(!any(type %in% c("VB", "freq"))) {
-    stop("type is either VB or freq")
+  } else if(!any(type %in% c("groupreg", "regular"))) {
+    stop("type is groupreg or regular")
   }
   
-  if(type=="VB") {
-    coefs <- list(mu=object$vb.post$mu, sigma=object$vb.post$sigma)
+  if(type=="groupreg") {
+    coefs <- coef(object$freq.model$groupreg, s=s)
   } else {
-    coefs <- coef(object$freq, s=s)
-  }
-  return(coefs)
+    coefs <- coef(object$freq.model$regular, s=s)
+  } 
+  return(as.matrix(coefs))
 }
