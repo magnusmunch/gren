@@ -5,7 +5,7 @@ Version: 0.0.0.9000
 Date: 2018-02-21
 Author: Magnus M. Münch
 Maintainer: Magnus M. Münch <m.munch@vumc.nl>
-Description: The package allows the user to incorporate multiple sources of co-data (e.g., 	previously obtained p-values, published gene lists, and annotation) in the 		estimation of a logistic regression model to enhance predictive performance.
+Description: The package allows the user to incorporate multiple sources of co-data (e.g., 	previously obtained p-values, published gene lists, and annotation) in the 		estimation of a logistic regression model to enhance predictive performance and 	feature selection.
 License: GPL (>= 2)
 Imports: Rcpp (>= 0.12.14), glmnet, Iso, pROC
 LinkingTo: Rcpp, RcppArmadillo
