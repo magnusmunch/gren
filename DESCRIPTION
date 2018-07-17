@@ -1,7 +1,7 @@
 Package: gren
 Type: Package
 Title: Adaptive group-regularized logistic elastic net regression
-Version: 0.0.0.9000
+Version: 0.0.1
 Date: 2018-02-21
 Author: Magnus M. Münch
 Maintainer: Magnus M. Münch <m.munch@vumc.nl>
