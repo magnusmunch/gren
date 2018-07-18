@@ -2,11 +2,9 @@
 // Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 #include <RcppArmadillo.h>
-#include <math.h>
+#include <Rcpp.h>
 
 using namespace Rcpp;
-using namespace arma;
-
 
 // est_param
 List est_param(mat xr, mat xu, vec kappa, vec m, int n, int p, vec ciold, double phi, vec chiold, double lambda2, vec lambdag, vec lambdagold, bool intercept, bool unpen, bool posterior, bool elbo, bool start);
