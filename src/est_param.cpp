@@ -4,7 +4,6 @@
 #include <math.h>
 
 using namespace Rcpp;
-using namespace RcppArmadillo;
 using namespace arma;
 
 /* This function estimates new variational parameters*/
