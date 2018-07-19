@@ -5,26 +5,25 @@
 #include <Rcpp.h>
 
 using namespace Rcpp;
-using namespace arma;
 
 // est_param
-List est_param(mat xr, mat xu, vec kappa, vec m, int n, int p, vec ciold, double phi, vec chiold, double lambda2, vec lambdag, vec lambdagold, bool intercept, bool unpen, bool posterior, bool elbo, bool start);
+List est_param(arma::mat xr, arma::mat xu, arma::vec kappa, arma::vec m, int n, int p, arma::vec ciold, double phi, arma::vec chiold, double lambda2, arma::vec lambdag, arma::vec lambdagold, bool intercept, bool unpen, bool posterior, bool elbo, bool start);
 RcppExport SEXP _gren_est_param(SEXP xrSEXP, SEXP xuSEXP, SEXP kappaSEXP, SEXP mSEXP, SEXP nSEXP, SEXP pSEXP, SEXP cioldSEXP, SEXP phiSEXP, SEXP chioldSEXP, SEXP lambda2SEXP, SEXP lambdagSEXP, SEXP lambdagoldSEXP, SEXP interceptSEXP, SEXP unpenSEXP, SEXP posteriorSEXP, SEXP elboSEXP, SEXP startSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< mat >::type xr(xrSEXP);
-    Rcpp::traits::input_parameter< mat >::type xu(xuSEXP);
-    Rcpp::traits::input_parameter< vec >::type kappa(kappaSEXP);
-    Rcpp::traits::input_parameter< vec >::type m(mSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type xr(xrSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type xu(xuSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type kappa(kappaSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type m(mSEXP);
     Rcpp::traits::input_parameter< int >::type n(nSEXP);
     Rcpp::traits::input_parameter< int >::type p(pSEXP);
-    Rcpp::traits::input_parameter< vec >::type ciold(cioldSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type ciold(cioldSEXP);
     Rcpp::traits::input_parameter< double >::type phi(phiSEXP);
-    Rcpp::traits::input_parameter< vec >::type chiold(chioldSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type chiold(chioldSEXP);
     Rcpp::traits::input_parameter< double >::type lambda2(lambda2SEXP);
-    Rcpp::traits::input_parameter< vec >::type lambdag(lambdagSEXP);
-    Rcpp::traits::input_parameter< vec >::type lambdagold(lambdagoldSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type lambdag(lambdagSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type lambdagold(lambdagoldSEXP);
     Rcpp::traits::input_parameter< bool >::type intercept(interceptSEXP);
     Rcpp::traits::input_parameter< bool >::type unpen(unpenSEXP);
     Rcpp::traits::input_parameter< bool >::type posterior(posteriorSEXP);

@@ -8,7 +8,8 @@ The elastic net prior distribution
 Density function and random number generator for the elastic net prior distribution.
 }
 \usage{
-denet(x, lambda1=1, lambda2=1, log=FALSE) \\
+denet(x, lambda1=1, lambda2=1, log=FALSE)
+
 renet(n, lambda1=1, lambda2=1)
 }
 
@@ -25,6 +26,9 @@ lambda1 parameter value
 \item{lambda2}{
 lambda2 parameter value
 }
+\item{log}{
+should the logarithm of the density be returned
+}
 }
 
 \details{
@@ -37,14 +41,14 @@ The elastic net prior density has density:
 }
 
 \references{
-TBA
+Münch, M.M., Peeters, C.F.W., van der Vaart, A.W., and van de Wiel, M.A. (2018). Adaptive group-regularized logistic elastic net regression. arXiv:1805.00389v1 [stat.ME].
 }
 
 \author{
 Magnus M. Münch <m.munch@vumc.nl>
 }
 
-\examples{\
+\examples{
 ## Create data
 n <- 100
 x <- renet(n)

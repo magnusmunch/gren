@@ -1,6 +1,6 @@
 # function to make predictions with the gren object
 predict.gren <- function(object, newx, unpenalized=NULL, s=NULL, 
-                         type="groupreg") {
+                         type=c("groupreg", "regular"), ...) {
   if(class(object)!="gren") {
     stop("object should be a gren fit")
   } else if(!is.null(s) & !is.numeric(s)) {

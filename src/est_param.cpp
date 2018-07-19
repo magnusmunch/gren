@@ -1,27 +1,24 @@
-// [[Rcpp::depends(RcppArmadillo)]]
-
 #include <RcppArmadillo.h>
 #include <math.h>
 
 using namespace Rcpp;
-using namespace arma;
 
 /* This function estimates new variational parameters*/
 // [[Rcpp::export]]
-List est_param(mat xr, mat xu, vec kappa, vec m, int n, int p, vec ciold, 
-               double phi, vec chiold, double lambda2, vec lambdag, 
-               vec lambdagold, bool intercept, bool unpen, bool posterior, 
+List est_param(arma::mat xr, arma::mat xu, arma::vec kappa, arma::vec m, int n, int p, arma::vec ciold, 
+               double phi, arma::vec chiold, double lambda2, arma::vec lambdag, 
+               arma::vec lambdagold, bool intercept, bool unpen, bool posterior, 
                bool elbo, bool start) {
   
-  vec lambda2vec = lambda2*lambdag;
+  arma::vec lambda2vec = lambda2*lambdag;
   int u = 0;
   int r = xr.n_cols;
   int nvars = xr.n_cols;
-  mat x = xr;
+  arma::mat x = xr;
   if(intercept==true && unpen==false) {
     u = 1;
     nvars += 1;
-    vec evec(n,fill::ones);
+    arma::vec evec(n,arma::fill::ones);
     x = join_rows(evec, xr);
   } else if(unpen==true){
     u = xu.n_cols;
@@ -31,16 +28,16 @@ List est_param(mat xr, mat xu, vec kappa, vec m, int n, int p, vec ciold,
   
   // initialize c, chi, dsigma and mu
   double elboval;
-  vec ci(n);
-  vec chi(r);
-  vec dsigma(nvars);
-  mat sigma(nvars,nvars);
-  vec mu(nvars);
+  arma::vec ci(n);
+  arma::vec chi(r);
+  arma::vec dsigma(nvars);
+  arma::mat sigma(nvars,nvars);
+  arma::vec mu(nvars);
   
   // used in all situations
-  mat xrt = xr.t();
-  vec h(r);
-  vec om(n);
+  arma::mat xrt = xr.t();
+  arma::vec h(r);
+  arma::vec om(n);
   if(start) {
     // if we are calculating starting values we need the diagonal weight 
     // matrix with wi = pi/(1-pi) and h=2*lambda
@@ -50,17 +47,17 @@ List est_param(mat xr, mat xu, vec kappa, vec m, int n, int p, vec ciold,
     om = 0.5*m/ciold%tanh(ciold/2);
     h = lambda2vec + lambda2vec%sqrt(phi/chiold);
   }
-  vec hinv = 1/h; 
-  mat C = xr.each_row() % hinv.t();
-  mat Ct = C.t();
-  mat D = C*xrt;
-  mat E(n,n), F(r,n), N(nvars,n);
+  arma::vec hinv = 1/h; 
+  arma::mat C = xr.each_row() % hinv.t();
+  arma::mat Ct = C.t();
+  arma::mat D = C*xrt;
+  arma::mat E(n,n), F(r,n), N(nvars,n);
   
   double ldetsig;
   
   if(p <= n) {
     sigma = (x.each_col() % om).t()*x;
-    vec happend = h;
+    arma::vec happend = h;
     happend.insert_rows(0, nvars - r, true);
     sigma.diag() += happend;
     if(elbo) {
@@ -80,7 +77,7 @@ List est_param(mat xr, mat xu, vec kappa, vec m, int n, int p, vec ciold,
         sigma = diagmat(hinv) - F*C;
         dsigma = sigma.diag();
       } else if(start==true){
-        mat NW = N.each_row() % om.t();
+        arma::mat NW = N.each_row() % om.t();
         dsigma = sum(NW % N,1);
         N = NW*(N.t()*x.t());
       } else {
@@ -93,68 +90,68 @@ List est_param(mat xr, mat xu, vec kappa, vec m, int n, int p, vec ciold,
     } else if(intercept==true && unpen==false){ 
       double A = sum(om);
       double Ainv = 1/A;
-      mat Om = diagmat(om);
+      arma::mat Om = diagmat(om);
       Om = Om - Ainv*om*om.t();
       E = D*Om;
       E.diag() += 1;
       E = E.i();
       F = Ct*Om*E;
-      mat G = Ainv*om.t()*xr;
-      mat J = C*G.t();
-      mat K = G*F;
-      mat M = G.each_row() % hinv.t();
-      N.submat(0,0,0,n-1).fill(Ainv + conv_to<double>::from(M*G.t() - K*J));
+      arma::mat G = Ainv*om.t()*xr;
+      arma::mat J = C*G.t();
+      arma::mat K = G*F;
+      arma::mat M = G.each_row() % hinv.t();
+      N.submat(0,0,0,n-1).fill(Ainv + arma::conv_to<double>::from(M*G.t() - K*J));
       N.submat(0,0,0,n-1) += (G*F*D - G*Ct);
       N.submat(1,0,nvars-1,n-1).each_col() = F*J - M.t();
       N.submat(1,0,nvars-1,n-1) += Ct - F*D;
       if(posterior) {
-        sigma.submat(0,0,0,0) = Ainv + conv_to<double>::from(M*G.t() - K*J);
+        sigma.submat(0,0,0,0) = Ainv + arma::conv_to<double>::from(M*G.t() - K*J);
         sigma.submat(0,1,0,nvars-1) = K*C - M;
         sigma.submat(1,0,nvars-1,0) = F*J - M.t();
         sigma.submat(1,1,nvars-1,nvars-1) = diagmat(hinv) - F*C;
         dsigma = sigma.diag();
       } else if(start==true){
-        mat NW = N.each_row() % om.t();
+        arma::mat NW = N.each_row() % om.t();
         dsigma = sum(NW % N,1);
         N = NW*(N.t()*x.t());
       } else {
-        dsigma(0) = Ainv + conv_to<double>::from(M*G.t() - K*J);
+        dsigma(0) = Ainv + arma::conv_to<double>::from(M*G.t() - K*J);
         dsigma.subvec(1,nvars-1) = hinv - sum(F % Ct,1);
       }
       if(elbo) {
-        vec Dom = D*om;
-        mat OmD = diagmat(1/om) + D;
+        arma::vec Dom = D*om;
+        arma::mat OmD = diagmat(1/om) + D;
         ldetsig = -real(log_det(OmD)) - sum(log(om)) - sum(log(h)) -
-          log(A - conv_to<double>::from(om.t()*Dom + Dom.t()*OmD.i()*Dom));
+          log(A - arma::conv_to<double>::from(om.t()*Dom + Dom.t()*OmD.i()*Dom));
       }
     } else { // checked (compared with calculations in R)
-      mat xut = xu.t();
-      mat Om = diagmat(om);
-      mat xutom = (xut.each_row() % om.t());
-      mat A = xutom*xu;
-      mat Ainv = A.i();
+      arma::mat xut = xu.t();
+      arma::mat Om = diagmat(om);
+      arma::mat xutom = (xut.each_row() % om.t());
+      arma::mat A = xutom*xu;
+      arma::mat Ainv = A.i();
       Om = Om - xutom.t()*Ainv*xutom;
-      mat B = xutom*xr;
+      arma::mat B = xutom*xr;
       E = D*Om;
       E.diag() += 1;
       E = E.i();
       F = Ct*Om*E;
-      mat G = Ainv*B;
-      mat J = G.t()*xut;
-      mat K = G*F;
-      mat L = K*C;
-      mat M = G.each_row() % hinv.t(); // problem
+      arma::mat G = Ainv*B;
+      arma::mat J = G.t()*xut;
+      arma::mat K = G*F;
+      arma::mat L = K*C;
+      arma::mat M = G.each_row() % hinv.t(); // problem
       N.submat(0,0,u-1,n-1) = Ainv*xut + M*J - L*J - G*Ct + K*D;
       N.submat(u,0,nvars-1,n-1) = F*C*J - J.each_col() % hinv + Ct - F*D;
       if(posterior) {
-        mat O = F*C;
+        arma::mat O = F*C;
         sigma.submat(0,0,u-1,u-1) = Ainv + (M - L)*G.t();
         sigma.submat(0,u,u-1,nvars-1) = -M + K*C;
         sigma.submat(u,0,nvars-1,u-1) = -M.t() + O*G.t();
         sigma.submat(u,u,nvars-1,nvars-1) = diagmat(hinv) - O;
         dsigma = sigma.diag();
       } else if(start==true){
-        mat NW = N.each_row() % om.t();
+        arma::mat NW = N.each_row() % om.t();
         dsigma = sum(NW % N,1);
         N = NW*(N.t()*x.t());
       } else {
@@ -162,8 +159,8 @@ List est_param(mat xr, mat xu, vec kappa, vec m, int n, int p, vec ciold,
         dsigma.subvec(u,u+r-1) = hinv - sum(F % Ct, 1);
       }
       if(elbo) {
-        mat BCt = B*Ct;
-        mat OmD = diagmat(1/om) + D;
+        arma::mat BCt = B*Ct;
+        arma::mat OmD = diagmat(1/om) + D;
         ldetsig = -real(log_det(OmD)) - sum(log(om)) - sum(log(h)) -
           real(log_det(A - (B.each_row() % hinv.t())*B.t() + BCt*OmD.i()*
           BCt.t()));
@@ -177,7 +174,7 @@ List est_param(mat xr, mat xu, vec kappa, vec m, int n, int p, vec ciold,
     square(mu.subvec(nvars-r,nvars-1)));
   
   if(elbo) {
-    elboval = conv_to<double>::from(kappa.t()*x*mu + m.t()*(0.5*ci - 
+    elboval = arma::conv_to<double>::from(kappa.t()*x*mu + m.t()*(0.5*ci - 
       log(exp(ci) + 1))) + 0.5*sum(log(lambdag)) - 
       0.5*sqrt(phi)*sum(sqrt(chi)) -
       0.5*lambda2*sum(lambdag%(1 + sqrt(phi/chi))%
