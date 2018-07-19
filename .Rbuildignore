@@ -1,0 +1,9 @@
+gren.Rproj
+cran-comments.md
+.gitignore
+.Rhistory
+.git
+.Rproj.user
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.travis\.yml$
