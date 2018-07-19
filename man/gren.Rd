@@ -124,7 +124,7 @@ frequentist elastic net model as output of \code{glmnet} call. \code{NULL} if \c
 }
 
 \references{
-TBA
+Münch, M.M., Peeters, C.F.W., van der Vaart, A.W., and van de Wiel, M.A. (2018). Adaptive group-regularized logistic elastic net regression. arXiv:1805.00389v1 [stat.ME].
 }
 
 \author{
@@ -136,6 +136,7 @@ Magnus M. Münch <m.munch@vumc.nl>
 }
 
 \examples{
+\dontrun{
 ## Create data
 p <- 1000
 n <- 100
@@ -148,4 +149,5 @@ partitions <- list(groups=rep(c(1, 2), each=p/2))
 
 ## estimate model
 fit.gren <- gren(x, y, m, partitions=partitions)
+}
 }

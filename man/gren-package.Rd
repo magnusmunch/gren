@@ -24,11 +24,11 @@ Magnus M. Münch
 Maintainer: Magnus M. Münch <m.munch@vumc.nl>
 }
 \references{
-TBD
+Münch, M.M., Peeters, C.F.W., van der Vaart, A.W., and van de Wiel, M.A. (2018). Adaptive group-regularized logistic elastic net regression. arXiv:1805.00389v1 [stat.ME].
 }
 \keyword{ package }
 \seealso{
-\code{\link{GRridge}}
+\code{\link{cv.gren}}
 }
 \examples{
 \dontrun{
