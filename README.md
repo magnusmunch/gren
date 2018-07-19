@@ -1,3 +1,5 @@
+[![Travis-CI Build Status](https://travis-ci.org/magnusmunch/gren.svg)](https://travis-ci.org/magnusmunch/gren)
+
 # gren: Adaptive Group-Regularized Logistic Elastic Net Regression
 R package for better prediction by use of co-data
 
