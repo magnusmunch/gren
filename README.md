@@ -1,9 +1,9 @@
-# gren
-R package for better prediction by use of co-data: Adaptive Group-Regularized Logistic Elastic Net Regression
+# gren: Adaptive Group-Regularized Logistic Elastic Net Regression
+R package for better prediction by use of co-data
 
 Installation:
 
-<code>install.packages("gren")<\code>
+<code>install.packages("gren")</code>
 
 If you encounter any problems while using the package, or if you have any suggestions for additions/improvements, please don't hesitate to contact the author.
 
