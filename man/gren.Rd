@@ -24,7 +24,7 @@ response as either a \code{numeric} with binomial/binary successes of length \co
 \item{unpenalized}{
 Optional \code{numeric} \code{matrix} or \code{data.frame} of \code{numeric} unpenalized covariates of \code{nrow(x)} rows.}
 \item{partitions}{
-\code{list} that contains the (possibly multiple) partitions of the data. Every \code{list} object corresponds to one partition, where every partition is a \code{numeric} of length \code{ncol(x)} containg the group ids of the features.}
+\code{list} that contains the (possibly multiple) partitions of the data. Every \code{list} object corresponds to one partition, where every partition is a \code{numeric} of length \code{ncol(x)} containing the group ids of the features.}
 \item{alpha}{
 proportion of L1 penalty as a \code{numeric} of length 1.}
 \item{lambda}{
@@ -36,7 +36,7 @@ global penalty parameter. The default \code{NULL} will result in estimation by c
 \item{psel}{
 either a \code{numeric} vector that indicates the number of features to select or a \code{logical}. If \code{TRUE} feature selection is done by letting \code{\link{glmnet}} determine the penalty parameter sequence.}
 \item{compare}{
-\code{logical}, if \code{TRUE}, a regular non-groupregularized model is estimated.}
+\code{logical}, if \code{TRUE}, a regular non-group-regularized model is estimated.}
 \item{posterior}{
 if \code{TRUE}, the full variational Bayes posterior is returned.}
 \item{nfolds}{
