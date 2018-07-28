@@ -31,7 +31,7 @@ Münch, M.M., Peeters, C.F.W., van der Vaart, A.W., and van de Wiel, M.A. (2018)
 \code{\link{cv.gren}}
 }
 \examples{
-\dontrun{
+\donttest{
 ## Create data
 p <- 1000
 n <- 100
