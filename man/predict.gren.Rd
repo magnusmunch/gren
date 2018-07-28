@@ -48,7 +48,7 @@ Magnus M. Münch <m.munch@vumc.nl>}
 \code{\link{gren}},\code{\link{coef.gren}}}
 
 \examples{
-\dontrun{
+\donttest{
 ## Create data
 p <- 1000
 n <- 100

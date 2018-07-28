@@ -136,7 +136,7 @@ Magnus M. Münch <m.munch@vumc.nl>
 }
 
 \examples{
-\dontrun{
+\donttest{
 ## Create data
 p <- 1000
 n <- 100
