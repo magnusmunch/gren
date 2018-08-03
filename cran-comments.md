@@ -1,4 +1,9 @@
-First submission of package
+## Resubmission
+This is a resubmission. In this version I have:
+
+* Added reference in the descroption field of the DESCRIPTION title.
+
+* Replaced \dontrun{} by \donttest{} in the examples.
 
 ## Test environments
 * local macOS High sierra 10.13.5 install, R 3.4.4
