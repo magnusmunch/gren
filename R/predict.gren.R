@@ -5,8 +5,6 @@ predict.gren <- function(object, newx, unpenalized=NULL, s=NULL,
     stop("object should be a gren fit")
   } else if(!is.null(s) & !is.numeric(s)) {
     stop("s is either NULL or a numeric")
-  } else if(is.null(s)) {
-    s <- object$lambda
   } else if(!any(type %in% c("groupreg", "regular"))) {
     stop("type is either groupreg or regular")
   }
@@ -23,4 +21,3 @@ predict.gren <- function(object, newx, unpenalized=NULL, s=NULL,
   }
   return(prob)
 }
-
