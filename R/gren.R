@@ -23,6 +23,20 @@
     partitions <- list(partition1=partitions)
   }
   
+  # if only one control is set, replace the rest
+  if("epsilon"!=names(control)) {
+    control$epsilon <- 0.001
+  }
+  if("maxit"!=names(control)) {
+    control$maxit <- 500
+  }
+  if("maxit.opt"!=names(control)) {
+    control$maxit.opt <- 1000
+  }
+  if("maxit.vb"!=names(control)) {
+    control$maxit.vb <- 100
+  }
+  
   # check input
   if(!is.numeric(x) | !(is.numeric(y) | is.factor(y))) {
     stop("only numerical input data is supported at the moment")
@@ -330,11 +344,16 @@
     
     # printing progress
     if(trace) {
-      cat("\r", "Estimated penalty multipliers for ", 
-          paste(partnames, sapply(c(1:nparts), function(part) {
-            paste(paste(round(lambdag[[part]], 2), " (", groupnames[[part]], ")", 
-                        sep=""), collapse=", ")}), sep=": ", collapse=" and "), 
-          "      ", sep="")
+      printtext <- paste(partnames, sapply(c(1:nparts), function(part) {
+        paste(paste(round(lambdag[[part]], 2), " (", groupnames[[part]], ")", 
+                    sep=""), collapse=", ")}), sep=": ", collapse=" and ")
+      if(nchar(printtext) < 50) {
+        cat("\r", "Estimated penalty multipliers for ", printtext, 
+            "      ", sep="")
+      } else {
+        cat("\r", "Estimated penalty multipliers for ", 
+            substr(printtext, 1, 47), "...", "      ", sep="")
+      }
     }
   }
   
