@@ -1,0 +1,545 @@
+/bin/bash: warning: setlocale: LC_ALL: cannot change locale (UTF-8)
+
+R version 3.4.4 (2018-03-15) -- "Someone to Lean On"
+Copyright (C) 2018 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+6: Setting LC_PAPER failed, using "C" 
+7: Setting LC_MEASUREMENT failed, using "C" 
+> path.res <- ifelse(as.character(Sys.info()[1])!="Darwin", "~/EBEN/results/",
++                    "/Users/magnusmunch/Documents/OneDrive/PhD/EBEN/results/")
+> 
+> library(mvtnorm)
+> library(gren)
+> library(pROC)
+Type 'citation("pROC")' for a citation.
+
+Attaching package: 'pROC'
+
+The following objects are masked from 'package:stats':
+
+    cov, smooth, var
+
+> library(GRridge)
+Loading required package: penalized
+Loading required package: survival
+Welcome to penalized. For extended examples, see vignette("penalized").
+Loading required package: Iso
+Iso 0.0-17
+Loading required package: graph
+Loading required package: BiocGenerics
+Loading required package: parallel
+
+Attaching package: 'BiocGenerics'
+
+The following objects are masked from 'package:parallel':
+
+    clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
+    clusterExport, clusterMap, parApply, parCapply, parLapply,
+    parLapplyLB, parRapply, parSapply, parSapplyLB
+
+The following object is masked from 'package:penalized':
+
+    as.data.frame
+
+The following object is masked from 'package:pROC':
+
+    var
+
+The following objects are masked from 'package:stats':
+
+    IQR, mad, sd, var, xtabs
+
+The following objects are masked from 'package:base':
+
+    Filter, Find, Map, Position, Reduce, anyDuplicated, append,
+    as.data.frame, cbind, colMeans, colSums, colnames, do.call,
+    duplicated, eval, evalq, get, grep, grepl, intersect, is.unsorted,
+    lapply, lengths, mapply, match, mget, order, paste, pmax, pmax.int,
+    pmin, pmin.int, rank, rbind, rowMeans, rowSums, rownames, sapply,
+    setdiff, sort, table, tapply, union, unique, unsplit, which,
+    which.max, which.min
+
+Loading required package: glmnet
+Loading required package: Matrix
+Loading required package: foreach
+Loaded glmnet 2.0-16
+
+
+Attaching package: 'glmnet'
+
+The following object is masked from 'package:pROC':
+
+    auc
+
+
+Attaching package: 'GRridge'
+
+The following object is masked from 'package:glmnet':
+
+    auc
+
+The following objects are masked from 'package:pROC':
+
+    auc, roc
+
+> library(grpreg)
+> library(SGL)
+> library(irr)
+Loading required package: lpSolve
+> 
+> ##################### scenario 4
+> n <- 100
+> p <- 1000
+> ntest <- 1000
+> 
+> alpha <- 0.5
+> lambda <- 100
+> G <- 4
+> lambdag <- exp(seq(-2, 2, length.out=4))
+> q <- 0.5
+> pblock <- 25
+> rho <- 0.7
+> Sigma <- matrix(rho, ncol=pblock, nrow=pblock); diag(Sigma) <- 1
+> 
+> part1 <- rep(c(1:G), each=p/G)
+> csel <- c(seq(1, 10, 2), seq(15, 50, 5), seq(60, 140, 10), seq(160, 200, 20))
+> nreps <- 100
+> psel4 <- kappa4 <- list(grridge=matrix(NA, nrow=nreps, ncol=length(csel)),
++                         enet1=matrix(NA, nrow=nreps, ncol=100),
++                         enet2=matrix(NA, nrow=nreps, ncol=100),
++                         enet3=matrix(NA, nrow=nreps, ncol=100),
++                         gren1=matrix(NA, nrow=nreps, ncol=100),
++                         gren2=matrix(NA, nrow=nreps, ncol=100),
++                         gren3=matrix(NA, nrow=nreps, ncol=100),
++                         sglasso1=matrix(NA, nrow=nreps, ncol=100),
++                         sglasso2=matrix(NA, nrow=nreps, ncol=100),
++                         sglasso3=matrix(NA, nrow=nreps, ncol=100),
++                         cmcp1=matrix(NA, nrow=nreps, ncol=100),
++                         cmcp2=matrix(NA, nrow=nreps, ncol=100),
++                         cmcp3=matrix(NA, nrow=nreps, ncol=100),
++                         gelasso1=matrix(NA, nrow=nreps, ncol=100),
++                         gelasso2=matrix(NA, nrow=nreps, ncol=100),
++                         gelasso3=matrix(NA, nrow=nreps, ncol=100))
+> auc4 <- mse4 <- briers4 <- list(ridge=numeric(nreps),
++                                 grridge=matrix(NA, nrow=nreps, ncol=length(csel)),
++                                 enet1=matrix(NA, nrow=nreps, ncol=100),
++                                 enet2=matrix(NA, nrow=nreps, ncol=100),
++                                 enet3=matrix(NA, nrow=nreps, ncol=100),
++                                 gren1=matrix(NA, nrow=nreps, ncol=100),
++                                 gren2=matrix(NA, nrow=nreps, ncol=100),
++                                 gren3=matrix(NA, nrow=nreps, ncol=100),
++                                 sglasso1=matrix(NA, nrow=nreps, ncol=100),
++                                 sglasso2=matrix(NA, nrow=nreps, ncol=100),
++                                 sglasso3=matrix(NA, nrow=nreps, ncol=100),
++                                 cmcp1=matrix(NA, nrow=nreps, ncol=100),
++                                 cmcp2=matrix(NA, nrow=nreps, ncol=100),
++                                 cmcp3=matrix(NA, nrow=nreps, ncol=100),
++                                 gelasso1=matrix(NA, nrow=nreps, ncol=100),
++                                 gelasso2=matrix(NA, nrow=nreps, ncol=100),
++                                 gelasso3=matrix(NA, nrow=nreps, ncol=100))
+> lambdagest4 <- list(grridge=matrix(NA, nrow=nreps, ncol=G),
++                     gren1=matrix(NA, nrow=nreps, ncol=G),
++                     gren2=matrix(NA, nrow=nreps, ncol=G),
++                     gren3=matrix(NA, nrow=nreps, ncol=G))
+> for(r in 1:nreps) {
++   set.seed(2018 + r)
++   print(paste("rep", r))
++   beta <- as.numeric(sapply(1:G, function(g) {
++     b <- renet(p/G, lambda*lambdag[g]*alpha, 0.5*(1 - alpha)*lambda*lambdag[g]);
++     b[abs(b)<=quantile(abs(b), q)] <- 0
++     return(b)}))
++   
++   x <- do.call(cbind, replicate(p/pblock, rmvnorm(n, mean=rep(0, pblock),
++                                                   sigma=Sigma), simplify=FALSE))
++   y <- rbinom(n, 1, as.numeric(exp(x %*% beta)/(1 + exp(x %*% beta))))
++   
++   
++   xtest <- do.call(cbind, replicate(p/pblock, rmvnorm(
++     ntest, mean=rep(0, pblock), sigma=Sigma), simplify=FALSE))
++   ytest <- rbinom(ntest, 1, as.numeric(exp(xtest %*% beta)/
++                                          (1 + exp(xtest %*% beta))))
++   
++   fit4.ridge <- cv.glmnet(x, y, alpha=0, standardize=FALSE)
++   
++   fit4.grridge <- vector("list", length(csel))
++   invisible(capture.output(
++     fit4.grridge[[1]] <- grridge(t(x), y, partitions=list(
++       groups=CreatePartition(as.factor(part1))), selection=TRUE, maxsel=csel[1],
++       trace=FALSE, standardizeX=FALSE)))
++   for(s in 2:length(csel)) {
++     invisible(capture.output(
++       fit4.grridge[[s]] <- grridge(t(x), y, partitions=list(
++         groups=CreatePartition(as.factor(part1))), selection=TRUE,
++         maxsel=csel[s], optl=fit4.grridge[[1]]$optl, trace=FALSE,
++         standardizeX=FALSE)))
++   }
++   
++   fit4.gren1 <- gren(x, y, partitions=list(groups=part1), alpha=0.05,
++                      trace=FALSE)
++   fit4.gren2 <- gren(x, y, partitions=list(groups=part1), alpha=0.5,
++                      trace=FALSE)
++   fit4.gren3 <- gren(x, y, partitions=list(groups=part1), alpha=0.95,
++                      trace=FALSE)
++   
++   fit4.sglasso1 <- SGL(list(x=x, y=y), part1, type="logit", alpha=0.05,
++                        standardize=FALSE, nlam=100)
++   fit4.sglasso2 <- SGL(list(x=x, y=y), part1, type="logit", alpha=0.5,
++                        standardize=FALSE, nlam=100)
++   fit4.sglasso3 <- SGL(list(x=x, y=y), part1, type="logit", alpha=0.95,
++                        standardize=FALSE, nlam=100)
++   
++   fit4.cmcp1 <- grpreg(x, y, part1, penalty="cMCP", alpha=0.05)
++   fit4.cmcp2 <- grpreg(x, y, part1, penalty="cMCP", alpha=0.5)
++   fit4.cmcp3 <- grpreg(x, y, part1, penalty="cMCP", alpha=0.95)
++   
++   fit4.gelasso1 <- grpreg(x, y, part1, penalty="gel", alpha=0.05)
++   fit4.gelasso2 <- grpreg(x, y, part1, penalty="gel", alpha=0.5)
++   fit4.gelasso3 <- grpreg(x, y, part1, penalty="gel", alpha=0.95)
++   
++   pred4.ridge <- as.numeric(predict(fit4.ridge, xtest, "lambda.min"))
++   
++   pred4.grridge <- sapply(fit4.grridge, function(s) {
++     predict.grridge(s, t(xtest))[, 3]})
++   
++   pred4.gren1 <- predict(fit4.gren1, xtest, type="groupreg",
++                          s=fit4.gren1$freq.model$groupreg$lambda)
++   pred4.gren2 <- predict(fit4.gren2, xtest, type="groupreg",
++                          s=fit4.gren2$freq.model$groupreg$lambda)
++   pred4.gren3 <- predict(fit4.gren3, xtest, type="groupreg",
++                          s=fit4.gren3$freq.model$groupreg$lambda)
++   
++   pred4.enet1 <- predict(fit4.gren1, xtest, type="regular",
++                          s=fit4.gren1$freq.model$regular$lambda)
++   pred4.enet2 <- predict(fit4.gren2, xtest, type="regular",
++                          s=fit4.gren2$freq.model$regular$lambda)
++   pred4.enet3 <- predict(fit4.gren3, xtest, type="regular",
++                          s=fit4.gren3$freq.model$regular$lambda)
++   
++   pred4.sglasso1 <- predictSGL(fit4.sglasso1, xtest)
++   pred4.sglasso2 <- predictSGL(fit4.sglasso2, xtest)
++   pred4.sglasso3 <- predictSGL(fit4.sglasso3, xtest)
++   
++   pred4.cmcp1 <- predict(fit4.cmcp1, xtest)
++   pred4.cmcp2 <- predict(fit4.cmcp2, xtest)
++   pred4.cmcp3 <- predict(fit4.cmcp3, xtest)
++   
++   pred4.gelasso1 <- predict(fit4.gelasso1, xtest)
++   pred4.gelasso2 <- predict(fit4.gelasso2, xtest)
++   pred4.gelasso3 <- predict(fit4.gelasso3, xtest)
++   
++   auc4$ridge[r] <- pROC::auc(ytest, pred4.ridge)
++   
++   auc4$grridge[r, ] <- apply(pred4.grridge, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   
++   auc4$gren1[r, ] <- apply(pred4.gren1, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   auc4$gren2[r, ] <- apply(pred4.gren2, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   auc4$gren3[r, ] <- apply(pred4.gren3, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   
++   auc4$enet1[r, ] <- apply(pred4.enet1, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   auc4$enet2[r, ] <- apply(pred4.enet2, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   auc4$enet3[r, ] <- apply(pred4.enet3, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   
++   auc4$sglasso1[r, ] <- apply(pred4.sglasso1, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   auc4$sglasso2[r, ] <- apply(pred4.sglasso2, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   auc4$sglasso3[r, ] <- apply(pred4.sglasso3, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   
++   auc4$cmcp1[r, ] <- apply(pred4.cmcp1, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   auc4$cmcp2[r, ] <- apply(pred4.cmcp2, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   auc4$cmcp3[r, ] <- apply(pred4.cmcp3, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   
++   auc4$gelasso1[r, ] <- apply(pred4.gelasso1, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   auc4$gelasso2[r, ] <- apply(pred4.gelasso2, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   auc4$gelasso3[r, ] <- apply(pred4.gelasso3, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   
++   const <- sum((ytest - mean(ytest))^2)
++   briers4$ridge[r] <- 1 - sum((ytest - pred4.ridge)^2)/const
++   
++   briers4$grridge[r, ] <- apply(pred4.grridge, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   
++   briers4$gren1[r, ] <- apply(pred4.gren1, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   briers4$gren2[r, ] <- apply(pred4.gren2, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   briers4$gren3[r, ] <- apply(pred4.gren3, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   
++   briers4$enet1[r, ] <- apply(pred4.enet1, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   briers4$enet2[r, ] <- apply(pred4.enet2, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   briers4$enet3[r, ] <- apply(pred4.enet3, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   
++   briers4$sglasso1[r, ] <- apply(pred4.sglasso1, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   briers4$sglasso2[r, ] <- apply(pred4.sglasso2, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   briers4$sglasso3[r, ] <- apply(pred4.sglasso3, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   
++   briers4$cmcp1[r, ] <- apply(pred4.cmcp1, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   briers4$cmcp2[r, ] <- apply(pred4.cmcp2, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   briers4$cmcp3[r, ] <- apply(pred4.cmcp3, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   
++   briers4$gelasso1[r, ] <- apply(pred4.gelasso1, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   briers4$gelasso2[r, ] <- apply(pred4.gelasso2, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   briers4$gelasso3[r, ] <- apply(pred4.gelasso3, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   
++   mse4$ridge[r] <- mean((coef(fit4.ridge)[-1] - beta)^2)
++   
++   mse4$grridge[r, ] <- sapply(fit4.grridge, function(s) {
++     mean((replace(rep(0, p), s$resEN$whichEN, s$resEN$betasEN) - beta)^2)})
++   
++   mse4$gren1[r, ] <- apply(fit4.gren1$freq.model$groupreg$beta, 2, function(b) {
++     mean((b - beta)^2)})
++   mse4$gren2[r, ] <- apply(fit4.gren2$freq.model$groupreg$beta, 2, function(b) {
++     mean((b - beta)^2)})
++   mse4$gren3[r, ] <- apply(fit4.gren3$freq.model$groupreg$beta, 2, function(b) {
++     mean((b - beta)^2)})
++   
++   mse4$enet1[r, ] <- apply(fit4.gren1$freq.model$regular$beta, 2, function(b) {
++     mean((b - beta)^2)})
++   mse4$enet2[r, ] <- apply(fit4.gren2$freq.model$regular$beta, 2, function(b) {
++     mean((b - beta)^2)})
++   mse4$enet3[r, ] <- apply(fit4.gren3$freq.model$regular$beta, 2, function(b) {
++     mean((b - beta)^2)})
++   
++   mse4$sglasso1[r, ] <- apply(fit4.sglasso1$beta, 2, function(b) {
++     mean((b - beta)^2)})
++   mse4$sglasso2[r, ] <- apply(fit4.sglasso2$beta, 2, function(b) {
++     mean((b - beta)^2)})
++   mse4$sglasso3[r, ] <- apply(fit4.sglasso3$beta, 2, function(b) {
++     mean((b - beta)^2)})
++   
++   mse4$cmcp1[r, ] <- apply(fit4.cmcp1$beta[-1, ], 2, function(b) {
++     mean((b - beta)^2)})
++   mse4$cmcp2[r, ] <- apply(fit4.cmcp2$beta[-1, ], 2, function(b) {
++     mean((b - beta)^2)})
++   mse4$cmcp3[r, ] <- apply(fit4.cmcp3$beta[-1, ], 2, function(b) {
++     mean((b - beta)^2)})
++   
++   mse4$gelasso1[r, ] <- apply(fit4.gelasso1$beta[-1, ], 2, function(b) {
++     mean((b - beta)^2)})
++   mse4$gelasso2[r, ] <- apply(fit4.gelasso2$beta[-1, ], 2, function(b) {
++     mean((b - beta)^2)})
++   mse4$gelasso3[r, ] <- apply(fit4.gelasso3$beta[-1, ], 2, function(b) {
++     mean((b - beta)^2)})
++   
++   kappa4$grridge[r, ] <- sapply(fit4.grridge, function(s) {
++     kappa2(cbind(beta!=0, replace(rep(FALSE, p), s$resEN$whichEN,
++                                   TRUE)))$value})
++   
++   kappa4$gren1[r, ] <- apply(fit4.gren1$freq.model$groupreg$beta, 2,
++                              function(b) {kappa2(cbind(beta!=0, b!=0))$value})
++   kappa4$gren2[r, ] <- apply(fit4.gren2$freq.model$groupreg$beta, 2,
++                              function(b) {kappa2(cbind(beta!=0, b!=0))$value})
++   kappa4$gren3[r, ] <- apply(fit4.gren3$freq.model$groupreg$beta, 2,
++                              function(b) {kappa2(cbind(beta!=0, b!=0))$value})
++   
++   kappa4$enet1[r, ] <- apply(fit4.gren1$freq.model$regular$beta, 2,
++                              function(b) {kappa2(cbind(beta!=0, b!=0))$value})
++   kappa4$enet2[r, ] <- apply(fit4.gren2$freq.model$regular$beta, 2,
++                              function(b) {kappa2(cbind(beta!=0, b!=0))$value})
++   kappa4$enet3[r, ] <- apply(fit4.gren3$freq.model$regular$beta, 2,
++                              function(b) {kappa2(cbind(beta!=0, b!=0))$value})
++   
++   kappa4$sglasso1[r, ] <- apply(fit4.sglasso1$beta, 2, function(b) {
++     kappa2(cbind(beta!=0, b!=0))$value})
++   kappa4$sglasso2[r, ] <- apply(fit4.sglasso2$beta, 2, function(b) {
++     kappa2(cbind(beta!=0, b!=0))$value})
++   kappa4$sglasso3[r, ] <- apply(fit4.sglasso3$beta, 2, function(b) {
++     kappa2(cbind(beta!=0, b!=0))$value})
++   
++   kappa4$cmcp1[r, ] <- apply(fit4.cmcp1$beta[-1, ], 2, function(b) {
++     kappa2(cbind(beta!=0, b!=0))$value})
++   kappa4$cmcp2[r, ] <- apply(fit4.cmcp2$beta[-1, ], 2, function(b) {
++     kappa2(cbind(beta!=0, b!=0))$value})
++   kappa4$cmcp3[r, ] <- apply(fit4.cmcp3$beta[-1, ], 2, function(b) {
++     kappa2(cbind(beta!=0, b!=0))$value})
++   
++   kappa4$gelasso1[r, ] <- apply(fit4.gelasso1$beta[-1, ], 2, function(b) {
++     kappa2(cbind(beta!=0, b!=0))$value})
++   kappa4$gelasso2[r, ] <- apply(fit4.gelasso2$beta[-1, ], 2, function(b) {
++     kappa2(cbind(beta!=0, b!=0))$value})
++   kappa4$gelasso3[r, ] <- apply(fit4.gelasso3$beta[-1, ], 2, function(b) {
++     kappa2(cbind(beta!=0, b!=0))$value})
++   
++   psel4$grridge[r, ] <- sapply(fit4.grridge, function(s) {
++     length(s$resEN$whichEN)})
++   
++   psel4$gren1[r, ] <- fit4.gren1$freq.model$groupreg$df
++   psel4$gren2[r, ] <- fit4.gren2$freq.model$groupreg$df
++   psel4$gren3[r, ] <- fit4.gren3$freq.model$groupreg$df
++   
++   psel4$enet1[r, ] <- fit4.gren1$freq.model$regular$df
++   psel4$enet2[r, ] <- fit4.gren2$freq.model$regular$df
++   psel4$enet3[r, ] <- fit4.gren3$freq.model$regular$df
++   
++   psel4$sglasso1[r, ] <- apply(fit4.sglasso1$beta, 2, function(b) {sum(b!=0)})
++   psel4$sglasso2[r, ] <- apply(fit4.sglasso2$beta, 2, function(b) {sum(b!=0)})
++   psel4$sglasso3[r, ] <- apply(fit4.sglasso3$beta, 2, function(b) {sum(b!=0)})
++   
++   psel4$cmcp1[r, ] <- apply(fit4.cmcp1$beta, 2, function(b) {sum(b!=0)})
++   psel4$cmcp2[r, ] <- apply(fit4.cmcp2$beta, 2, function(b) {sum(b!=0)})
++   psel4$cmcp3[r, ] <- apply(fit4.cmcp3$beta, 2, function(b) {sum(b!=0)})
++   
++   psel4$gelasso1[r, ] <- apply(fit4.gelasso1$beta, 2, function(b) {sum(b!=0)})
++   psel4$gelasso2[r, ] <- apply(fit4.gelasso2$beta, 2, function(b) {sum(b!=0)})
++   psel4$gelasso3[r, ] <- apply(fit4.gelasso3$beta, 2, function(b) {sum(b!=0)})
++   
++   lambdagest4$grridge[r, ] <- fit4.grridge[[1]]$lambdamults$groups
++   lambdagest4$gren1[r, ] <- fit4.gren1$lambdag$groups
++   lambdagest4$gren2[r, ] <- fit4.gren2$lambdag$groups
++   lambdagest4$gren3[r, ] <- fit4.gren3$lambdag$groups
++   
++   results4 <- list(auc=auc4, briers=briers4, mse=mse4, kappa=kappa4, psel=psel4,
++                    lambdag=lambdagest4)
++   save(results4, file=paste(path.res, "gren_sim4_res1.Rdata", sep=""))
++   
++ }
+[1] "rep 1"
+[1] "rep 2"
+[1] "rep 3"
+[1] "rep 4"
+[1] "rep 5"
+[1] "rep 6"
+[1] "rep 7"
+[1] "rep 8"
+[1] "rep 9"
+[1] "rep 10"
+[1] "rep 11"
+[1] "rep 12"
+[1] "rep 13"
+[1] "rep 14"
+[1] "rep 15"
+[1] "rep 16"
+[1] "rep 17"
+[1] "rep 18"
+[1] "rep 19"
+[1] "rep 20"
+[1] "rep 21"
+[1] "rep 22"
+[1] "rep 23"
+[1] "rep 24"
+[1] "rep 25"
+[1] "rep 26"
+[1] "rep 27"
+[1] "rep 28"
+[1] "rep 29"
+[1] "rep 30"
+[1] "rep 31"
+[1] "rep 32"
+[1] "rep 33"
+[1] "rep 34"
+[1] "rep 35"
+[1] "rep 36"
+[1] "rep 37"
+[1] "rep 38"
+[1] "rep 39"
+[1] "rep 40"
+[1] "rep 41"
+[1] "rep 42"
+[1] "rep 43"
+[1] "rep 44"
+[1] "rep 45"
+[1] "rep 46"
+[1] "rep 47"
+[1] "rep 48"
+[1] "rep 49"
+[1] "rep 50"
+[1] "rep 51"
+[1] "rep 52"
+[1] "rep 53"
+[1] "rep 54"
+[1] "rep 55"
+[1] "rep 56"
+[1] "rep 57"
+[1] "rep 58"
+[1] "rep 59"
+[1] "rep 60"
+[1] "rep 61"
+[1] "rep 62"
+[1] "rep 63"
+[1] "rep 64"
+[1] "rep 65"
+[1] "rep 66"
+[1] "rep 67"
+[1] "rep 68"
+[1] "rep 69"
+[1] "rep 70"
+[1] "rep 71"
+[1] "rep 72"
+[1] "rep 73"
+[1] "rep 74"
+[1] "rep 75"
+[1] "rep 76"
+[1] "rep 77"
+[1] "rep 78"
+[1] "rep 79"
+[1] "rep 80"
+[1] "rep 81"
+[1] "rep 82"
+[1] "rep 83"
+[1] "rep 84"
+[1] "rep 85"
+[1] "rep 86"
+[1] "rep 87"
+[1] "rep 88"
+[1] "rep 89"
+[1] "rep 90"
+[1] "rep 91"
+[1] "rep 92"
+[1] "rep 93"
+[1] "rep 94"
+[1] "rep 95"
+[1] "rep 96"
+[1] "rep 97"
+[1] "rep 98"
+[1] "rep 99"
+[1] "rep 100"
+> 
+> proc.time()
+     user    system   elapsed 
+56516.828   541.476 60782.261 

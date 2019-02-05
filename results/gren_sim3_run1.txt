@@ -1,0 +1,926 @@
+/bin/bash: warning: setlocale: LC_ALL: cannot change locale (UTF-8)
+
+R version 3.4.4 (2018-03-15) -- "Someone to Lean On"
+Copyright (C) 2018 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+6: Setting LC_PAPER failed, using "C" 
+7: Setting LC_MEASUREMENT failed, using "C" 
+> path.res <- ifelse(as.character(Sys.info()[1])!="Darwin", "~/EBEN/results/",
++                    "/Users/magnusmunch/Documents/OneDrive/PhD/EBEN/results/")
+> path.graph <- "/Users/magnusmunch/Documents/OneDrive/PhD/EBEN/graphs/"
+> 
+> library(mvtnorm)
+> library(gren)
+> library(pROC)
+Type 'citation("pROC")' for a citation.
+
+Attaching package: 'pROC'
+
+The following objects are masked from 'package:stats':
+
+    cov, smooth, var
+
+> library(GRridge)
+Loading required package: penalized
+Loading required package: survival
+Welcome to penalized. For extended examples, see vignette("penalized").
+Loading required package: Iso
+Iso 0.0-17
+Loading required package: graph
+Loading required package: BiocGenerics
+Loading required package: parallel
+
+Attaching package: 'BiocGenerics'
+
+The following objects are masked from 'package:parallel':
+
+    clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
+    clusterExport, clusterMap, parApply, parCapply, parLapply,
+    parLapplyLB, parRapply, parSapply, parSapplyLB
+
+The following object is masked from 'package:penalized':
+
+    as.data.frame
+
+The following object is masked from 'package:pROC':
+
+    var
+
+The following objects are masked from 'package:stats':
+
+    IQR, mad, sd, var, xtabs
+
+The following objects are masked from 'package:base':
+
+    Filter, Find, Map, Position, Reduce, anyDuplicated, append,
+    as.data.frame, cbind, colMeans, colSums, colnames, do.call,
+    duplicated, eval, evalq, get, grep, grepl, intersect, is.unsorted,
+    lapply, lengths, mapply, match, mget, order, paste, pmax, pmax.int,
+    pmin, pmin.int, rank, rbind, rowMeans, rowSums, rownames, sapply,
+    setdiff, sort, table, tapply, union, unique, unsplit, which,
+    which.max, which.min
+
+Loading required package: glmnet
+Loading required package: Matrix
+Loading required package: foreach
+Loaded glmnet 2.0-16
+
+
+Attaching package: 'glmnet'
+
+The following object is masked from 'package:pROC':
+
+    auc
+
+
+Attaching package: 'GRridge'
+
+The following object is masked from 'package:glmnet':
+
+    auc
+
+The following objects are masked from 'package:pROC':
+
+    auc, roc
+
+> library(grpreg)
+> library(SGL)
+> library(irr)
+Loading required package: lpSolve
+> 
+> ############################# scenario 3
+> n <- 100
+> ntest <- 1000
+> p <- 1000
+> alpha <- 0.5
+> lambda <- 100
+> G <- 5
+> q <- 0.5
+> 
+> rho <- 0.7
+> Sigma <- matrix(rho, nrow=p/G, ncol=p/G)
+> diag(Sigma) <- 1
+> 
+> part1 <- rep(c(1:G), each=p/G)
+> csel <- c(seq(1, 10, 2), seq(15, 50, 5), seq(60, 140, 10), seq(160, 200, 20))
+> nreps <- 100
+> psel3 <- kappa3 <- list(grridge=vector("list", nreps),
++                         enet1=vector("list", nreps),
++                         enet2=vector("list", nreps),
++                         enet3=vector("list", nreps),
++                         gren1=vector("list", nreps),
++                         gren2=vector("list", nreps),
++                         gren3=vector("list", nreps),
++                         sglasso1=vector("list", nreps),
++                         sglasso2=vector("list", nreps),
++                         sglasso3=vector("list", nreps),
++                         cmcp1=vector("list", nreps),
++                         cmcp2=vector("list", nreps),
++                         cmcp3=vector("list", nreps),
++                         gelasso1=vector("list", nreps),
++                         gelasso2=vector("list", nreps),
++                         gelasso3=vector("list", nreps))
+> auc3 <- mse3 <- briers3 <- list(ridge=numeric(nreps),
++                                 grridge=vector("list", nreps),
++                                 enet1=vector("list", nreps),
++                                 enet2=vector("list", nreps),
++                                 enet3=vector("list", nreps),
++                                 gren1=vector("list", nreps),
++                                 gren2=vector("list", nreps),
++                                 gren3=vector("list", nreps),
++                                 sglasso1=vector("list", nreps),
++                                 sglasso2=vector("list", nreps),
++                                 sglasso3=vector("list", nreps),
++                                 cmcp1=vector("list", nreps),
++                                 cmcp2=vector("list", nreps),
++                                 cmcp3=vector("list", nreps),
++                                 gelasso1=vector("list", nreps),
++                                 gelasso2=vector("list", nreps),
++                                 gelasso3=vector("list", nreps))
+> lambdagest3 <- list(grridge=matrix(NA, nrow=nreps, ncol=G),
++                     gren1=matrix(NA, nrow=nreps, ncol=G),
++                     gren2=matrix(NA, nrow=nreps, ncol=G),
++                     gren3=matrix(NA, nrow=nreps, ncol=G))
+> for(r in 1:nreps) {
++   set.seed(2018 + r)
++   print(paste("rep", r))
++   beta <- as.numeric(sapply(1:G, function(g) {
++     b <- renet(p/G, lambda*alpha, 0.5*(1 - alpha)*lambda);
++     b[abs(b)<=quantile(abs(b), q)] <- 0
++     return(b)}))
++   x <- do.call(cbind, replicate(G, rmvnorm(n, mean=rep(0, p/G),
++                                            sigma=Sigma), simplify=FALSE))
++   y <- rbinom(n, 1, as.numeric(1/(1 + exp(-x %*% beta))))
++   
++   xtest <- do.call(cbind, replicate(G, rmvnorm(ntest, mean=rep(0, p/G),
++                                                sigma=Sigma), simplify=FALSE))
++   ytest <- rbinom(ntest, 1, as.numeric(1/(1 + exp(-xtest %*% beta))))
++   
++   fit3.ridge <- cv.glmnet(x, y, alpha=0, standardize=FALSE)
++   
++   fit3.grridge <- vector("list", length(csel))
++   invisible(capture.output(
++     fit3.grridge[[1]] <- grridge(t(x), y, partitions=list(
++       groups=CreatePartition(as.factor(part1))), selection=TRUE, maxsel=csel[1],
++       trace=FALSE, standardizeX=FALSE)))
++   for(s in 2:length(csel)) {
++     invisible(capture.output(
++       fit3.grridge[[s]] <- grridge(t(x), y, partitions=list(
++         groups=CreatePartition(as.factor(part1))), selection=TRUE,
++         maxsel=csel[s], optl=fit3.grridge[[1]]$optl, trace=FALSE,
++         standardizeX=FALSE)))
++   }
++   
++   fit3.gren1 <- gren(x, y, partitions=list(groups=part1), alpha=0.05,
++                      trace=FALSE)
++   fit3.gren2 <- gren(x, y, partitions=list(groups=part1), alpha=0.5,
++                      trace=FALSE)
++   fit3.gren3 <- gren(x, y, partitions=list(groups=part1), alpha=0.95,
++                      trace=FALSE)
++   
++   fit3.sglasso1 <- SGL(list(x=x, y=y), part1, type="logit", alpha=0.05,
++                        standardize=FALSE, nlam=100)
++   fit3.sglasso2 <- SGL(list(x=x, y=y), part1, type="logit", alpha=0.5,
++                        standardize=FALSE, nlam=100)
++   fit3.sglasso3 <- SGL(list(x=x, y=y), part1, type="logit", alpha=0.95,
++                        standardize=FALSE, nlam=100)
++   
++   fit3.cmcp1 <- grpreg(x, y, part1, penalty="cMCP", alpha=0.05)
++   fit3.cmcp2 <- grpreg(x, y, part1, penalty="cMCP", alpha=0.5)
++   fit3.cmcp3 <- grpreg(x, y, part1, penalty="cMCP", alpha=0.95)
++   
++   fit3.gelasso1 <- grpreg(x, y, part1, penalty="gel", alpha=0.05)
++   fit3.gelasso2 <- grpreg(x, y, part1, penalty="gel", alpha=0.5)
++   fit3.gelasso3 <- grpreg(x, y, part1, penalty="gel", alpha=0.95)
++   
++   pred3.ridge <- as.numeric(predict(fit3.ridge, xtest, "lambda.min"))
++   
++   pred3.grridge <- sapply(fit3.grridge, function(s) {
++     predict.grridge(s, t(xtest))[, 3]})
++   
++   pred3.gren1 <- predict(fit3.gren1, xtest, type="groupreg",
++                          s=fit3.gren1$freq.model$groupreg$lambda)
++   pred3.gren2 <- predict(fit3.gren2, xtest, type="groupreg",
++                          s=fit3.gren2$freq.model$groupreg$lambda)
++   pred3.gren3 <- predict(fit3.gren3, xtest, type="groupreg",
++                          s=fit3.gren3$freq.model$groupreg$lambda)
++   
++   pred3.enet1 <- predict(fit3.gren1, xtest, type="regular",
++                          s=fit3.gren1$freq.model$regular$lambda)
++   pred3.enet2 <- predict(fit3.gren2, xtest, type="regular",
++                          s=fit3.gren2$freq.model$regular$lambda)
++   pred3.enet3 <- predict(fit3.gren3, xtest, type="regular",
++                          s=fit3.gren3$freq.model$regular$lambda)
++   
++   pred3.sglasso1 <- predictSGL(fit3.sglasso1, xtest)
++   pred3.sglasso2 <- predictSGL(fit3.sglasso2, xtest)
++   pred3.sglasso3 <- predictSGL(fit3.sglasso3, xtest)
++   
++   pred3.cmcp1 <- predict(fit3.cmcp1, xtest)
++   pred3.cmcp2 <- predict(fit3.cmcp2, xtest)
++   pred3.cmcp3 <- predict(fit3.cmcp3, xtest)
++   
++   pred3.gelasso1 <- predict(fit3.gelasso1, xtest)
++   pred3.gelasso2 <- predict(fit3.gelasso2, xtest)
++   pred3.gelasso3 <- predict(fit3.gelasso3, xtest)
++   
++   auc3$ridge[r] <- pROC::auc(ytest, pred3.ridge)
++   
++   auc3$grridge[[r]] <- apply(pred3.grridge, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   
++   auc3$gren1[[r]] <- apply(pred3.gren1, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   auc3$gren2[[r]] <- apply(pred3.gren2, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   auc3$gren3[[r]] <- apply(pred3.gren3, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   
++   auc3$enet1[[r]] <- apply(pred3.enet1, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   auc3$enet2[[r]] <- apply(pred3.enet2, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   auc3$enet3[[r]] <- apply(pred3.enet3, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   
++   auc3$sglasso1[[r]] <- apply(pred3.sglasso1, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   auc3$sglasso2[[r]] <- apply(pred3.sglasso2, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   auc3$sglasso3[[r]] <- apply(pred3.sglasso3, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   
++   auc3$cmcp1[[r]] <- apply(pred3.cmcp1, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   auc3$cmcp2[[r]] <- apply(pred3.cmcp2, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   auc3$cmcp3[[r]] <- apply(pred3.cmcp3, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   
++   auc3$gelasso1[[r]] <- apply(pred3.gelasso1, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   auc3$gelasso2[[r]] <- apply(pred3.gelasso2, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   auc3$gelasso3[[r]] <- apply(pred3.gelasso3, 2, function(pred) {
++     pROC::auc(ytest, pred)})
++   
++   const <- sum((ytest - mean(ytest))^2)
++   briers3$ridge[r] <- 1 - sum((ytest - pred3.ridge)^2)/const
++   
++   briers3$grridge[[r]] <- apply(pred3.grridge, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   
++   briers3$gren1[[r]] <- apply(pred3.gren1, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   briers3$gren2[[r]] <- apply(pred3.gren2, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   briers3$gren3[[r]] <- apply(pred3.gren3, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   
++   briers3$enet1[[r]] <- apply(pred3.enet1, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   briers3$enet2[[r]] <- apply(pred3.enet2, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   briers3$enet3[[r]] <- apply(pred3.enet3, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   
++   briers3$sglasso1[[r]] <- apply(pred3.sglasso1, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   briers3$sglasso2[[r]] <- apply(pred3.sglasso2, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   briers3$sglasso3[[r]] <- apply(pred3.sglasso3, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   
++   briers3$cmcp1[[r]] <- apply(pred3.cmcp1, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   briers3$cmcp2[[r]] <- apply(pred3.cmcp2, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   briers3$cmcp3[[r]] <- apply(pred3.cmcp3, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   
++   briers3$gelasso1[[r]] <- apply(pred3.gelasso1, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   briers3$gelasso2[[r]] <- apply(pred3.gelasso2, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   briers3$gelasso3[[r]] <- apply(pred3.gelasso3, 2, function(pred) {
++     1 - sum((ytest - pred)^2)/const})
++   
++   mse3$ridge[r] <- mean((coef(fit3.ridge)[-1] - beta)^2)
++   
++   mse3$grridge[[r]] <- sapply(fit3.grridge, function(s) {
++     mean((replace(rep(0, p), s$resEN$whichEN, s$resEN$betasEN) - beta)^2)})
++   
++   mse3$gren1[[r]] <- apply(fit3.gren1$freq.model$groupreg$beta, 2, function(b) {
++     mean((b - beta)^2)})
++   mse3$gren2[[r]] <- apply(fit3.gren2$freq.model$groupreg$beta, 2, function(b) {
++     mean((b - beta)^2)})
++   mse3$gren3[[r]] <- apply(fit3.gren3$freq.model$groupreg$beta, 2, function(b) {
++     mean((b - beta)^2)})
++   
++   mse3$enet1[[r]] <- apply(fit3.gren1$freq.model$regular$beta, 2, function(b) {
++     mean((b - beta)^2)})
++   mse3$enet2[[r]] <- apply(fit3.gren2$freq.model$regular$beta, 2, function(b) {
++     mean((b - beta)^2)})
++   mse3$enet3[[r]] <- apply(fit3.gren3$freq.model$regular$beta, 2, function(b) {
++     mean((b - beta)^2)})
++   
++   mse3$sglasso1[[r]] <- apply(fit3.sglasso1$beta, 2, function(b) {
++     mean((b - beta)^2)})
++   mse3$sglasso2[[r]] <- apply(fit3.sglasso2$beta, 2, function(b) {
++     mean((b - beta)^2)})
++   mse3$sglasso3[[r]] <- apply(fit3.sglasso3$beta, 2, function(b) {
++     mean((b - beta)^2)})
++   
++   mse3$cmcp1[[r]] <- apply(fit3.cmcp1$beta[-1, ], 2, function(b) {
++     mean((b - beta)^2)})
++   mse3$cmcp2[[r]] <- apply(fit3.cmcp2$beta[-1, ], 2, function(b) {
++     mean((b - beta)^2)})
++   mse3$cmcp3[[r]] <- apply(fit3.cmcp3$beta[-1, ], 2, function(b) {
++     mean((b - beta)^2)})
++   
++   mse3$gelasso1[[r]] <- apply(fit3.gelasso1$beta[-1, ], 2, function(b) {
++     mean((b - beta)^2)})
++   mse3$gelasso2[[r]] <- apply(fit3.gelasso2$beta[-1, ], 2, function(b) {
++     mean((b - beta)^2)})
++   mse3$gelasso3[[r]] <- apply(fit3.gelasso3$beta[-1, ], 2, function(b) {
++     mean((b - beta)^2)})
++   
++   kappa3$grridge[[r]] <- sapply(fit3.grridge, function(s) {
++     kappa2(cbind(beta!=0, replace(rep(FALSE, p), s$resEN$whichEN,
++                                   TRUE)))$value})
++   
++   kappa3$gren1[[r]] <- apply(fit3.gren1$freq.model$groupreg$beta, 2,
++                              function(b) {kappa2(cbind(beta!=0, b!=0))$value})
++   kappa3$gren2[[r]] <- apply(fit3.gren2$freq.model$groupreg$beta, 2,
++                              function(b) {kappa2(cbind(beta!=0, b!=0))$value})
++   kappa3$gren3[[r]] <- apply(fit3.gren3$freq.model$groupreg$beta, 2,
++                              function(b) {kappa2(cbind(beta!=0, b!=0))$value})
++   
++   kappa3$enet1[[r]] <- apply(fit3.gren1$freq.model$regular$beta, 2,
++                              function(b) {kappa2(cbind(beta!=0, b!=0))$value})
++   kappa3$enet2[[r]] <- apply(fit3.gren2$freq.model$regular$beta, 2,
++                              function(b) {kappa2(cbind(beta!=0, b!=0))$value})
++   kappa3$enet3[[r]] <- apply(fit3.gren3$freq.model$regular$beta, 2,
++                              function(b) {kappa2(cbind(beta!=0, b!=0))$value})
++   
++   kappa3$sglasso1[[r]] <- apply(fit3.sglasso1$beta, 2, function(b) {
++     kappa2(cbind(beta!=0, b!=0))$value})
++   kappa3$sglasso2[[r]] <- apply(fit3.sglasso2$beta, 2, function(b) {
++     kappa2(cbind(beta!=0, b!=0))$value})
++   kappa3$sglasso3[[r]] <- apply(fit3.sglasso3$beta, 2, function(b) {
++     kappa2(cbind(beta!=0, b!=0))$value})
++   
++   kappa3$cmcp1[[r]] <- apply(fit3.cmcp1$beta[-1, ], 2, function(b) {
++     kappa2(cbind(beta!=0, b!=0))$value})
++   kappa3$cmcp2[[r]] <- apply(fit3.cmcp2$beta[-1, ], 2, function(b) {
++     kappa2(cbind(beta!=0, b!=0))$value})
++   kappa3$cmcp3[[r]] <- apply(fit3.cmcp3$beta[-1, ], 2, function(b) {
++     kappa2(cbind(beta!=0, b!=0))$value})
++   
++   kappa3$gelasso1[[r]] <- apply(fit3.gelasso1$beta[-1, ], 2, function(b) {
++     kappa2(cbind(beta!=0, b!=0))$value})
++   kappa3$gelasso2[[r]] <- apply(fit3.gelasso2$beta[-1, ], 2, function(b) {
++     kappa2(cbind(beta!=0, b!=0))$value})
++   kappa3$gelasso3[[r]] <- apply(fit3.gelasso3$beta[-1, ], 2, function(b) {
++     kappa2(cbind(beta!=0, b!=0))$value})
++   
++   psel3$grridge[[r]] <- sapply(fit3.grridge, function(s) {
++     length(s$resEN$whichEN)})
++   
++   psel3$gren1[[r]] <- fit3.gren1$freq.model$groupreg$df
++   psel3$gren2[[r]] <- fit3.gren2$freq.model$groupreg$df
++   psel3$gren3[[r]] <- fit3.gren3$freq.model$groupreg$df
++   
++   psel3$enet1[[r]] <- fit3.gren1$freq.model$regular$df
++   psel3$enet2[[r]] <- fit3.gren2$freq.model$regular$df
++   psel3$enet3[[r]] <- fit3.gren3$freq.model$regular$df
++   
++   psel3$sglasso1[[r]] <- apply(fit3.sglasso1$beta, 2, function(b) {sum(b!=0)})
++   psel3$sglasso2[[r]] <- apply(fit3.sglasso2$beta, 2, function(b) {sum(b!=0)})
++   psel3$sglasso3[[r]] <- apply(fit3.sglasso3$beta, 2, function(b) {sum(b!=0)})
++   
++   psel3$cmcp1[[r]] <- apply(fit3.cmcp1$beta, 2, function(b) {sum(b!=0)})
++   psel3$cmcp2[[r]] <- apply(fit3.cmcp2$beta, 2, function(b) {sum(b!=0)})
++   psel3$cmcp3[[r]] <- apply(fit3.cmcp3$beta, 2, function(b) {sum(b!=0)})
++   
++   psel3$gelasso1[[r]] <- apply(fit3.gelasso1$beta, 2, function(b) {sum(b!=0)})
++   psel3$gelasso2[[r]] <- apply(fit3.gelasso2$beta, 2, function(b) {sum(b!=0)})
++   psel3$gelasso3[[r]] <- apply(fit3.gelasso3$beta, 2, function(b) {sum(b!=0)})
++   
++   lambdagest3$grridge[r, ] <- fit3.grridge[[1]]$lambdamults$groups
++   lambdagest3$gren1[r, ] <- fit3.gren1$lambdag$groups
++   lambdagest3$gren2[r, ] <- fit3.gren2$lambdag$groups
++   lambdagest3$gren3[r, ] <- fit3.gren3$lambdag$groups
++   
++   results3 <- list(auc=auc3, briers=briers3, mse=mse3, kappa=kappa3, psel=psel3,
++                    lambdag=lambdagest3)
++   save(results3, file=paste(path.res, "gren_sim3_res1.Rdata", sep=""))
++ }
+[1] "rep 1"
+[1] "rep 2"
+[1] "rep 3"
+[1] "rep 4"
+[1] "rep 5"
+[1] "rep 6"
+[1] "rep 7"
+[1] "rep 8"
+[1] "rep 9"
+[1] "rep 10"
+[1] "rep 11"
+[1] "rep 12"
+[1] "rep 13"
+[1] "rep 14"
+[1] "rep 15"
+[1] "rep 16"
+[1] "rep 17"
+[1] "rep 18"
+[1] "rep 19"
+[1] "rep 20"
+[1] "rep 21"
+[1] "rep 22"
+[1] "rep 23"
+[1] "rep 24"
+[1] "rep 25"
+[1] "rep 26"
+[1] "rep 27"
+[1] "rep 28"
+[1] "rep 29"
+[1] "rep 30"
+[1] "rep 31"
+[1] "rep 32"
+[1] "rep 33"
+[1] "rep 34"
+[1] "rep 35"
+[1] "rep 36"
+[1] "rep 37"
+[1] "rep 38"
+[1] "rep 39"
+[1] "rep 40"
+[1] "rep 41"
+[1] "rep 42"
+[1] "rep 43"
+[1] "rep 44"
+[1] "rep 45"
+[1] "rep 46"
+[1] "rep 47"
+[1] "rep 48"
+[1] "rep 49"
+[1] "rep 50"
+[1] "rep 51"
+[1] "rep 52"
+[1] "rep 53"
+[1] "rep 54"
+[1] "rep 55"
+[1] "rep 56"
+[1] "rep 57"
+[1] "rep 58"
+[1] "rep 59"
+[1] "rep 60"
+[1] "rep 61"
+[1] "rep 62"
+[1] "rep 63"
+[1] "rep 64"
+[1] "rep 65"
+[1] "rep 66"
+[1] "rep 67"
+[1] "rep 68"
+[1] "rep 69"
+[1] "rep 70"
+[1] "rep 71"
+[1] "rep 72"
+[1] "rep 73"
+[1] "rep 74"
+[1] "rep 75"
+[1] "rep 76"
+[1] "rep 77"
+[1] "rep 78"
+[1] "rep 79"
+[1] "rep 80"
+[1] "rep 81"
+[1] "rep 82"
+[1] "rep 83"
+[1] "rep 84"
+[1] "rep 85"
+[1] "rep 86"
+[1] "rep 87"
+[1] "rep 88"
+[1] "rep 89"
+[1] "rep 90"
+[1] "rep 91"
+[1] "rep 92"
+[1] "rep 93"
+[1] "rep 94"
+[1] "rep 95"
+[1] "rep 96"
+[1] "rep 97"
+[1] "rep 98"
+[1] "rep 99"
+[1] "rep 100"
+> 
+> 
+> 
+> 
+> # path.res <- ifelse(as.character(Sys.info()[1])!="Darwin", "~/EBEN/results/",
+> #                    "/Users/magnusmunch/Documents/OneDrive/PhD/EBEN/results/")
+> # 
+> # path.graph <- "/Users/magnusmunch/Documents/OneDrive/PhD/EBEN/graphs/"
+> # load(paste(path.res, "gren_sim3_res1.Rdata", sep=""))
+> # library(sp)
+> # 
+> # pred.loess <- function(method, measure, data) {
+> #   ind <- unlist(data[["psel"]][[method]])
+> #   dep <- unlist(data[[measure]][[method]])
+> #   out <- tryCatch(list(x=sort(ind), y=predict(loess(dep[order(
+> #     ind)] ~ sort(ind)))), warning=function(w) {
+> #       list(x=unique(sort(ind)), y=sapply(unique(sort(ind)), function(psel) {
+> #         mean(dep[ind==psel], na.rm=TRUE)}))})
+> #   return(list(x=unique(out$x), y=sapply(unique(out$x), function(psel) {
+> #     mean(out$y[out$x==psel])})))
+> # }
+> # 
+> # 
+> # ### all performances
+> # colors <- bpy.colors(8)[-c(1, 8)]
+> # png(paste(path.graph, "gren_sim3_res1_performance1.png", sep=""),
+> #     units="in", width=14, height=10, res=120)
+> # par(mfrow=c(2, 2), mar=c(5.1, 5.1, 4.1, 2.1))
+> # 
+> # # kappa
+> # ylim <- range(sapply(names(results3$kappa)[-1], pred.loess, "kappa", results3)[
+> #   seq(2, 2*(length(results3$kappa) - 1), 2)])
+> # plot(pred.loess("gren1", "kappa", results3), ylim=ylim,
+> #      xlim=range(results3$psel), main="a)", xlab="Number of selected features",
+> #      ylab="Cohen's kappa", cex.axis=1.5, cex.lab=2, cex.main=2, lwd=1.5,
+> #      col=colors[1], type="l")
+> # lines(pred.loess("gren2", "kappa", results3), lwd=1.5, col=colors[1], lty=2)
+> # lines(pred.loess("gren3", "kappa", results3), lwd=1.5, col=colors[1], lty=3)
+> # 
+> # lines(pred.loess("enet1", "kappa", results3), lwd=1.5, col=colors[2], lty=1)
+> # lines(pred.loess("enet2", "kappa", results3), lwd=1.5, col=colors[2], lty=2)
+> # lines(pred.loess("enet3", "kappa", results3), lwd=1.5, col=colors[2], lty=3)
+> # 
+> # lines(pred.loess("sglasso1", "kappa", results3), lwd=1.5, col=colors[3], lty=1)
+> # lines(pred.loess("sglasso2", "kappa", results3), lwd=1.5, col=colors[3], lty=2)
+> # lines(pred.loess("sglasso3", "kappa", results3), lwd=1.5, col=colors[3], lty=3)
+> # 
+> # lines(pred.loess("cmcp1", "kappa", results3), lwd=1.5, col=colors[4], lty=1)
+> # lines(pred.loess("cmcp2", "kappa", results3), lwd=1.5, col=colors[4], lty=2)
+> # lines(pred.loess("cmcp3", "kappa", results3), lwd=1.5, col=colors[4], lty=3)
+> # 
+> # lines(pred.loess("gelasso1", "kappa", results3), lwd=1.5, col=colors[5], lty=1)
+> # lines(pred.loess("gelasso2", "kappa", results3), lwd=1.5, col=colors[5], lty=2)
+> # lines(pred.loess("gelasso3", "kappa", results3), lwd=1.5, col=colors[5], lty=3)
+> # 
+> # lines(pred.loess("grridge", "kappa", results3), lwd=1.5, col=colors[6], lty=1)
+> # 
+> # # mse
+> # ylim <- range(sapply(names(results3$mse)[-1], pred.loess, "mse", results3)[
+> #   seq(2, 2*(length(results3$mse) - 1), 2)], mean(results3$mse$ridge))
+> # plot(pred.loess("gren1", "mse", results3), ylim=ylim, xlim=range(results3$psel),
+> #      main="b)", xlab="Number of selected features", ylab="MSE", cex.axis=1.5,
+> #      cex.lab=2, cex.main=2, lwd=1.5, col=colors[1], type="l")
+> # lines(pred.loess("gren2", "mse", results3), lwd=1.5, col=colors[1], lty=2)
+> # lines(pred.loess("gren3", "mse", results3), lwd=1.5, col=colors[1], lty=3)
+> # 
+> # lines(pred.loess("enet1", "mse", results3), lwd=1.5, col=colors[2], lty=1)
+> # lines(pred.loess("enet2", "mse", results3), lwd=1.5, col=colors[2], lty=2)
+> # lines(pred.loess("enet3", "mse", results3), lwd=1.5, col=colors[2], lty=3)
+> # 
+> # lines(pred.loess("sglasso1", "mse", results3), lwd=1.5, col=colors[3], lty=1)
+> # lines(pred.loess("sglasso2", "mse", results3), lwd=1.5, col=colors[3], lty=2)
+> # lines(pred.loess("sglasso3", "mse", results3), lwd=1.5, col=colors[3], lty=3)
+> # 
+> # lines(pred.loess("cmcp1", "mse", results3), lwd=1.5, col=colors[4], lty=1)
+> # lines(pred.loess("cmcp2", "mse", results3), lwd=1.5, col=colors[4], lty=2)
+> # lines(pred.loess("cmcp3", "mse", results3), lwd=1.5, col=colors[4], lty=3)
+> # 
+> # lines(pred.loess("gelasso1", "mse", results3), lwd=1.5, col=colors[5], lty=1)
+> # lines(pred.loess("gelasso2", "mse", results3), lwd=1.5, col=colors[5], lty=2)
+> # lines(pred.loess("gelasso3", "mse", results3), lwd=1.5, col=colors[5], lty=3)
+> # 
+> # lines(pred.loess("grridge", "mse", results3), lwd=1.5, col=colors[6], lty=1)
+> # lines(range(results3$psel), rep(mean(results3$mse$ridge), 2), lwd=1.5,
+> #       col=colors[6], lty=2)
+> # 
+> # # auc
+> # ylim <- range(sapply(names(results3$auc)[-1], pred.loess, "auc", results3)[
+> #   seq(2, 2*(length(results3$auc) - 1), 2)], mean(results3$auc$ridge))
+> # plot(pred.loess("gren1", "auc", results3), ylim=ylim, xlim=range(results3$psel),
+> #      main="c)", xlab="Number of selected features", ylab="AUC", cex.axis=1.5,
+> #      cex.lab=2, cex.main=2, lwd=1.5, col=colors[1], type="l")
+> # lines(pred.loess("gren2", "auc", results3), lwd=1.5, col=colors[1], lty=2)
+> # lines(pred.loess("gren3", "auc", results3), lwd=1.5, col=colors[1], lty=3)
+> # 
+> # lines(pred.loess("enet1", "auc", results3), lwd=1.5, col=colors[2], lty=1)
+> # lines(pred.loess("enet2", "auc", results3), lwd=1.5, col=colors[2], lty=2)
+> # lines(pred.loess("enet3", "auc", results3), lwd=1.5, col=colors[2], lty=3)
+> # 
+> # lines(pred.loess("sglasso1", "auc", results3), lwd=1.5, col=colors[3], lty=1)
+> # lines(pred.loess("sglasso2", "auc", results3), lwd=1.5, col=colors[3], lty=2)
+> # lines(pred.loess("sglasso3", "auc", results3), lwd=1.5, col=colors[3], lty=3)
+> # 
+> # lines(pred.loess("cmcp1", "auc", results3), lwd=1.5, col=colors[4], lty=1)
+> # lines(pred.loess("cmcp2", "auc", results3), lwd=1.5, col=colors[4], lty=2)
+> # lines(pred.loess("cmcp3", "auc", results3), lwd=1.5, col=colors[4], lty=3)
+> # 
+> # lines(pred.loess("gelasso1", "auc", results3), lwd=1.5, col=colors[5], lty=1)
+> # lines(pred.loess("gelasso2", "auc", results3), lwd=1.5, col=colors[5], lty=2)
+> # lines(pred.loess("gelasso3", "auc", results3), lwd=1.5, col=colors[5], lty=3)
+> # 
+> # lines(pred.loess("grridge", "auc", results3), lwd=1.5, col=colors[6], lty=1)
+> # lines(range(results3$psel), rep(mean(results3$auc$ridge), 2), lwd=1.5,
+> #       col=colors[6], lty=2)
+> # 
+> # # briers
+> # ylim <- range(sapply(names(results3$briers)[-1], pred.loess, "briers", results3)[
+> #   seq(2, 2*(length(results3$briers) - 1), 2)], mean(results3$briers$ridge))
+> # plot(pred.loess("gren1", "briers", results3), ylim=ylim, xlim=range(results3$psel),
+> #      main="d)", xlab="Number of selected features", ylab="Brier skill score",
+> #      cex.axis=1.5, cex.lab=2, cex.main=2, lwd=1.5, col=colors[1], type="l")
+> # lines(pred.loess("gren2", "briers", results3), lwd=1.5, col=colors[1], lty=2)
+> # lines(pred.loess("gren3", "briers", results3), lwd=1.5, col=colors[1], lty=3)
+> # 
+> # lines(pred.loess("enet1", "briers", results3), lwd=1.5, col=colors[2], lty=1)
+> # lines(pred.loess("enet2", "briers", results3), lwd=1.5, col=colors[2], lty=2)
+> # lines(pred.loess("enet3", "briers", results3), lwd=1.5, col=colors[2], lty=3)
+> # 
+> # lines(pred.loess("sglasso1", "briers", results3), lwd=1.5, col=colors[3], lty=1)
+> # lines(pred.loess("sglasso2", "briers", results3), lwd=1.5, col=colors[3], lty=2)
+> # lines(pred.loess("sglasso3", "briers", results3), lwd=1.5, col=colors[3], lty=3)
+> # 
+> # lines(pred.loess("cmcp1", "briers", results3), lwd=1.5, col=colors[4], lty=1)
+> # lines(pred.loess("cmcp2", "briers", results3), lwd=1.5, col=colors[4], lty=2)
+> # lines(pred.loess("cmcp3", "briers", results3), lwd=1.5, col=colors[4], lty=3)
+> # 
+> # lines(pred.loess("gelasso1", "briers", results3), lwd=1.5, col=colors[5], lty=1)
+> # lines(pred.loess("gelasso2", "briers", results3), lwd=1.5, col=colors[5], lty=2)
+> # lines(pred.loess("gelasso3", "briers", results3), lwd=1.5, col=colors[5], lty=3)
+> # 
+> # lines(pred.loess("grridge", "briers", results3), lwd=1.5, col=colors[6], lty=1)
+> # lines(range(results3$psel), rep(mean(results3$briers$ridge), 2), lwd=1.5,
+> #       col=colors[6], lty=2)
+> # 
+> # # legend
+> # leglabels <- c("gren", "enet", "sglasso", "cMCP", "gelasso", "ridge",
+> #                expression(alpha==0.05), expression(alpha==0.5),
+> #                expression(alpha==0.95))
+> # legend("bottomright", merge=TRUE, seg.len=1, cex=1.3, fill=c(colors, 0, 0, 0),
+> #        lty=c(rep(NA, length(colors)), 1, 2, 3),
+> #        lwd=c(rep(NA, length(colors)), 1.5, 1.5),
+> #        border=c(rep(1, length(colors)), 0, 0, 0), legend=leglabels)
+> # dev.off()
+> # 
+> # 
+> # 
+> # 
+> # ### performance for alpha=0.05
+> # colors <- bpy.colors(7)[-c(1, 7)]
+> # png(paste(path.graph, "gren_sim3_res1_performance1_set1.png", sep=""),
+> #     units="in", width=14, height=10, res=120)
+> # par(mfrow=c(2, 2), mar=c(5.1, 5.1, 4.1, 2.1))
+> # 
+> # # kappa
+> # ylim <- range(sapply(names(results3$kappa)[c(1, 2, 5, 8, 11, 14)], pred.loess,
+> #                      "kappa", results3)[seq(2, 12, 2)])
+> # # xlim <- range(results3$psel)
+> # xlim <- c(0, 500)
+> # plot(pred.loess("gren1", "kappa", results3), ylim=ylim, xlim=xlim,
+> #      main="a)", xlab="Number of selected features", ylab="Cohen's kappa",
+> #      cex.axis=1.5, cex.lab=2, cex.main=2, lwd=1.5, col=colors[1], type="l")
+> # lines(pred.loess("enet1", "kappa", results3), lwd=1.5, col=colors[1], lty=2)
+> # lines(pred.loess("sglasso1", "kappa", results3), lwd=1.5, col=colors[2], lty=1)
+> # lines(pred.loess("cmcp1", "kappa", results3), lwd=1.5, col=colors[3], lty=1)
+> # lines(pred.loess("gelasso1", "kappa", results3), lwd=1.5, col=colors[4], lty=1)
+> # lines(pred.loess("grridge", "kappa", results3), lwd=1.5, col=colors[5], lty=1)
+> # 
+> # # mse
+> # ylim <- range(sapply(names(results3$mse)[c(2, 3, 6, 9, 12, 15)], pred.loess,
+> #                      "mse", results3)[seq(2, 12, 2)], mean(results3$mse$ridge))
+> # xlim <- c(0, 500)
+> # plot(pred.loess("gren1", "mse", results3), ylim=ylim, xlim=xlim,
+> #      main="b)", xlab="Number of selected features", ylab="MSE", cex.axis=1.5,
+> #      cex.lab=2, cex.main=2, lwd=1.5, col=colors[1], type="l")
+> # lines(pred.loess("enet1", "mse", results3), lwd=1.5, col=colors[1], lty=2)
+> # lines(pred.loess("sglasso1", "mse", results3), lwd=1.5, col=colors[2], lty=1)
+> # lines(pred.loess("cmcp1", "mse", results3), lwd=1.5, col=colors[3], lty=1)
+> # lines(pred.loess("gelasso1", "mse", results3), lwd=1.5, col=colors[4], lty=1)
+> # lines(pred.loess("grridge", "mse", results3), lwd=1.5, col=colors[5], lty=1)
+> # lines(xlim, rep(mean(results3$mse$ridge), 2), lwd=1.5,
+> #       col=colors[5], lty=2)
+> # 
+> # # auc
+> # ylim <- range(sapply(names(results3$auc)[c(2, 3, 6, 9, 12, 15)], pred.loess,
+> #                      "auc", results3)[seq(2, 12, 2)], mean(results3$auc$ridge))
+> # xlim <- c(0, 500)
+> # plot(pred.loess("gren1", "auc", results3), ylim=ylim, xlim=xlim,
+> #      main="c)", xlab="Number of selected features", ylab="AUC", cex.axis=1.5,
+> #      cex.lab=2, cex.main=2, lwd=1.5, col=colors[1], type="l")
+> # lines(pred.loess("enet1", "auc", results3), lwd=1.5, col=colors[1], lty=2)
+> # lines(pred.loess("sglasso1", "auc", results3), lwd=1.5, col=colors[2], lty=1)
+> # lines(pred.loess("cmcp1", "auc", results3), lwd=1.5, col=colors[3], lty=1)
+> # lines(pred.loess("gelasso1", "auc", results3), lwd=1.5, col=colors[4], lty=1)
+> # lines(pred.loess("grridge", "auc", results3), lwd=1.5, col=colors[5], lty=1)
+> # lines(xlim, rep(mean(results3$auc$ridge), 2), lwd=1.5,
+> #       col=colors[5], lty=2)
+> # 
+> # # legend
+> # leglabels <- c("enet", "sglasso", "cMCP", "gelasso", "ridge",
+> #                "group-regularized", "regular")
+> # legend("bottomright", merge=TRUE, seg.len=1, cex=1.3, fill=c(colors, 0, 0),
+> #        lty=c(rep(NA, length(colors)), 1, 2),
+> #        lwd=c(rep(NA, length(colors)), 1.5, 1.5),
+> #        border=c(rep(1, length(colors)), 0, 0), legend=leglabels)
+> # 
+> # # briers
+> # ylim <- range(sapply(names(results3$briers)[c(2, 3, 6, 9, 12, 15)], pred.loess,
+> #                      "briers", results3)[seq(2, 12, 2)],
+> #               mean(results3$briers$ridge))
+> # xlim <- c(0, 500)
+> # plot(pred.loess("gren1", "briers", results3), ylim=ylim, xlim=xlim,
+> #      main="d)", xlab="Number of selected features", ylab="Brier skill score",
+> #      cex.axis=1.5, cex.lab=2, cex.main=2, lwd=1.5, col=colors[1], type="l")
+> # lines(pred.loess("enet1", "briers", results3), lwd=1.5, col=colors[1], lty=2)
+> # lines(pred.loess("sglasso1", "briers", results3), lwd=1.5, col=colors[2], lty=1)
+> # lines(pred.loess("cmcp1", "briers", results3), lwd=1.5, col=colors[3], lty=1)
+> # lines(pred.loess("gelasso1", "briers", results3), lwd=1.5, col=colors[4], lty=1)
+> # lines(pred.loess("grridge", "briers", results3), lwd=1.5, col=colors[5], lty=1)
+> # lines(xlim, rep(mean(results3$briers$ridge), 2), lwd=1.5,
+> #       col=colors[5], lty=2)
+> # dev.off()
+> # 
+> # 
+> # 
+> # ### performance for alpha=0.5
+> # colors <- bpy.colors(7)[-c(1, 7)]
+> # png(paste(path.graph, "gren_sim3_res1_performance1_set2.png", sep=""),
+> #     units="in", width=14, height=10, res=120)
+> # par(mfrow=c(2, 2), mar=c(5.1, 5.1, 4.1, 2.1))
+> # 
+> # # kappa
+> # ylim <- range(sapply(names(results3$kappa)[c(1, 3, 6, 9, 12, 15)], pred.loess,
+> #                      "kappa", results3)[seq(2, 12, 2)])
+> # # xlim <- range(results3$psel)
+> # xlim <- c(0, 500)
+> # plot(pred.loess("gren2", "kappa", results3), ylim=ylim, xlim=xlim,
+> #      main="a)", xlab="Number of selected features", ylab="Cohen's kappa",
+> #      cex.axis=1.5, cex.lab=2, cex.main=2, lwd=1.5, col=colors[1], type="l")
+> # lines(pred.loess("enet2", "kappa", results3), lwd=1.5, col=colors[1], lty=2)
+> # lines(pred.loess("sglasso2", "kappa", results3), lwd=1.5, col=colors[2], lty=1)
+> # lines(pred.loess("cmcp2", "kappa", results3), lwd=1.5, col=colors[3], lty=1)
+> # lines(pred.loess("gelasso2", "kappa", results3), lwd=1.5, col=colors[4], lty=1)
+> # lines(pred.loess("grridge", "kappa", results3), lwd=1.5, col=colors[5], lty=1)
+> # 
+> # # mse
+> # ylim <- range(sapply(names(results3$mse)[c(2, 4, 7, 10, 13, 16)], pred.loess,
+> #                      "mse", results3)[seq(2, 12, 2)], mean(results3$mse$ridge))
+> # xlim <- c(0, 500)
+> # plot(pred.loess("gren2", "mse", results3), ylim=ylim, xlim=xlim,
+> #      main="b)", xlab="Number of selected features", ylab="MSE", cex.axis=1.5,
+> #      cex.lab=2, cex.main=2, lwd=1.5, col=colors[1], type="l")
+> # lines(pred.loess("enet2", "mse", results3), lwd=1.5, col=colors[1], lty=2)
+> # lines(pred.loess("sglasso2", "mse", results3), lwd=1.5, col=colors[2], lty=1)
+> # lines(pred.loess("cmcp2", "mse", results3), lwd=1.5, col=colors[3], lty=1)
+> # lines(pred.loess("gelasso2", "mse", results3), lwd=1.5, col=colors[4], lty=1)
+> # lines(pred.loess("grridge", "mse", results3), lwd=1.5, col=colors[5], lty=1)
+> # lines(xlim, rep(mean(results3$mse$ridge), 2), lwd=1.5,
+> #       col=colors[5], lty=2)
+> # 
+> # # auc
+> # ylim <- range(sapply(names(results3$auc)[c(2, 4, 7, 10, 13, 16)], pred.loess,
+> #                      "auc", results3)[seq(2, 12, 2)], mean(results3$auc$ridge))
+> # xlim <- c(0, 500)
+> # plot(pred.loess("gren2", "auc", results3), ylim=ylim, xlim=xlim,
+> #      main="c)", xlab="Number of selected features", ylab="AUC", cex.axis=1.5,
+> #      cex.lab=2, cex.main=2, lwd=1.5, col=colors[1], type="l")
+> # lines(pred.loess("enet2", "auc", results3), lwd=1.5, col=colors[1], lty=2)
+> # lines(pred.loess("sglasso2", "auc", results3), lwd=1.5, col=colors[2], lty=1)
+> # lines(pred.loess("cmcp2", "auc", results3), lwd=1.5, col=colors[3], lty=1)
+> # lines(pred.loess("gelasso2", "auc", results3), lwd=1.5, col=colors[4], lty=1)
+> # lines(pred.loess("grridge", "auc", results3), lwd=1.5, col=colors[5], lty=1)
+> # lines(xlim, rep(mean(results3$auc$ridge), 2), lwd=1.5,
+> #       col=colors[5], lty=2)
+> # 
+> # # legend
+> # leglabels <- c("enet", "sglasso", "cMCP", "gelasso", "ridge",
+> #                "group-regularized", "regular")
+> # legend("bottomright", merge=TRUE, seg.len=1, cex=1.3, fill=c(colors, 0, 0),
+> #        lty=c(rep(NA, length(colors)), 1, 2),
+> #        lwd=c(rep(NA, length(colors)), 1.5, 1.5),
+> #        border=c(rep(1, length(colors)), 0, 0), legend=leglabels)
+> # 
+> # # briers
+> # ylim <- range(sapply(names(results3$briers)[c(2, 4, 7, 10, 13, 16)], pred.loess,
+> #                      "briers", results3)[seq(2, 12, 2)],
+> #               mean(results3$briers$ridge))
+> # xlim <- c(0, 500)
+> # plot(pred.loess("gren2", "briers", results3), ylim=ylim, xlim=xlim,
+> #      main="d)", xlab="Number of selected features", ylab="Brier skill score",
+> #      cex.axis=1.5, cex.lab=2, cex.main=2, lwd=1.5, col=colors[1], type="l")
+> # lines(pred.loess("enet2", "briers", results3), lwd=1.5, col=colors[1], lty=2)
+> # lines(pred.loess("sglasso2", "briers", results3), lwd=1.5, col=colors[2], lty=1)
+> # lines(pred.loess("cmcp2", "briers", results3), lwd=1.5, col=colors[3], lty=1)
+> # lines(pred.loess("gelasso2", "briers", results3), lwd=1.5, col=colors[4], lty=1)
+> # lines(pred.loess("grridge", "briers", results3), lwd=1.5, col=colors[5], lty=1)
+> # lines(xlim, rep(mean(results3$briers$ridge), 2), lwd=1.5,
+> #       col=colors[5], lty=2)
+> # dev.off()
+> # 
+> # 
+> # 
+> # ### performance for alpha=0.95
+> # colors <- bpy.colors(7)[-c(1, 7)]
+> # png(paste(path.graph, "gren_sim3_res1_performance1_set3.png", sep=""),
+> #     units="in", width=14, height=10, res=120)
+> # par(mfrow=c(2, 2), mar=c(5.1, 5.1, 4.1, 2.1))
+> # 
+> # # kappa
+> # ylim <- range(sapply(names(results3$kappa)[c(1, 4, 7, 10, 13, 16)], pred.loess,
+> #                      "kappa", results3)[seq(2, 12, 2)])
+> # # xlim <- range(results3$psel)
+> # xlim <- c(0, 500)
+> # plot(pred.loess("gren3", "kappa", results3), ylim=ylim, xlim=xlim,
+> #      main="a)", xlab="Number of selected features", ylab="Cohen's kappa",
+> #      cex.axis=1.5, cex.lab=2, cex.main=2, lwd=1.5, col=colors[1], type="l")
+> # lines(pred.loess("enet3", "kappa", results3), lwd=1.5, col=colors[1], lty=2)
+> # lines(pred.loess("sglasso3", "kappa", results3), lwd=1.5, col=colors[2], lty=1)
+> # lines(pred.loess("cmcp3", "kappa", results3), lwd=1.5, col=colors[3], lty=1)
+> # lines(pred.loess("gelasso3", "kappa", results3), lwd=1.5, col=colors[4], lty=1)
+> # lines(pred.loess("grridge", "kappa", results3), lwd=1.5, col=colors[5], lty=1)
+> # 
+> # # mse
+> # ylim <- range(sapply(names(results3$mse)[c(2, 5, 8, 11, 14, 17)], pred.loess,
+> #                      "mse", results3)[seq(2, 12, 2)], mean(results3$mse$ridge))
+> # xlim <- c(0, 500)
+> # plot(pred.loess("gren3", "mse", results3), ylim=ylim, xlim=xlim,
+> #      main="b)", xlab="Number of selected features", ylab="MSE", cex.axis=1.5,
+> #      cex.lab=2, cex.main=2, lwd=1.5, col=colors[1], type="l")
+> # lines(pred.loess("enet3", "mse", results3), lwd=1.5, col=colors[1], lty=2)
+> # lines(pred.loess("sglasso3", "mse", results3), lwd=1.5, col=colors[2], lty=1)
+> # lines(pred.loess("cmcp3", "mse", results3), lwd=1.5, col=colors[3], lty=1)
+> # lines(pred.loess("gelasso3", "mse", results3), lwd=1.5, col=colors[4], lty=1)
+> # lines(pred.loess("grridge", "mse", results3), lwd=1.5, col=colors[5], lty=1)
+> # lines(xlim, rep(mean(results3$mse$ridge), 2), lwd=1.5,
+> #       col=colors[5], lty=2)
+> # 
+> # # auc
+> # ylim <- range(sapply(names(results3$auc)[c(2, 5, 8, 11, 14, 17)], pred.loess,
+> #                      "auc", results3)[seq(2, 12, 2)], mean(results3$auc$ridge))
+> # xlim <- c(0, 500)
+> # plot(pred.loess("gren3", "auc", results3), ylim=ylim, xlim=xlim,
+> #      main="c)", xlab="Number of selected features", ylab="AUC", cex.axis=1.5,
+> #      cex.lab=2, cex.main=2, lwd=1.5, col=colors[1], type="l")
+> # lines(pred.loess("enet3", "auc", results3), lwd=1.5, col=colors[1], lty=2)
+> # lines(pred.loess("sglasso3", "auc", results3), lwd=1.5, col=colors[2], lty=1)
+> # lines(pred.loess("cmcp3", "auc", results3), lwd=1.5, col=colors[3], lty=1)
+> # lines(pred.loess("gelasso3", "auc", results3), lwd=1.5, col=colors[4], lty=1)
+> # lines(pred.loess("grridge", "auc", results3), lwd=1.5, col=colors[5], lty=1)
+> # lines(xlim, rep(mean(results3$auc$ridge), 2), lwd=1.5,
+> #       col=colors[5], lty=2)
+> # 
+> # # legend
+> # leglabels <- c("enet", "sglasso", "cMCP", "gelasso", "ridge",
+> #                "group-regularized", "regular")
+> # legend("bottomright", merge=TRUE, seg.len=1, cex=1.3, fill=c(colors, 0, 0),
+> #        lty=c(rep(NA, length(colors)), 1, 2),
+> #        lwd=c(rep(NA, length(colors)), 1.5, 1.5),
+> #        border=c(rep(1, length(colors)), 0, 0), legend=leglabels)
+> # 
+> # # briers
+> # ylim <- range(sapply(names(results3$briers)[c(2, 5, 8, 11, 14, 17)], pred.loess,
+> #                      "briers", results3)[seq(2, 12, 2)],
+> #               mean(results3$briers$ridge))
+> # xlim <- c(0, 500)
+> # plot(pred.loess("gren3", "briers", results3), ylim=ylim, xlim=xlim,
+> #      main="d)", xlab="Number of selected features", ylab="Brier skill score",
+> #      cex.axis=1.5, cex.lab=2, cex.main=2, lwd=1.5, col=colors[1], type="l")
+> # lines(pred.loess("enet3", "briers", results3), lwd=1.5, col=colors[1], lty=2)
+> # lines(pred.loess("sglasso3", "briers", results3), lwd=1.5, col=colors[2], lty=1)
+> # lines(pred.loess("cmcp3", "briers", results3), lwd=1.5, col=colors[3], lty=1)
+> # lines(pred.loess("gelasso3", "briers", results3), lwd=1.5, col=colors[4], lty=1)
+> # lines(pred.loess("grridge", "briers", results3), lwd=1.5, col=colors[5], lty=1)
+> # lines(xlim, rep(mean(results3$briers$ridge), 2), lwd=1.5,
+> #       col=colors[5], lty=2)
+> # dev.off()
+> 
+> proc.time()
+     user    system   elapsed 
+36753.716    77.856 36835.311 

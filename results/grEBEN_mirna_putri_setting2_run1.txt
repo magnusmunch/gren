@@ -1,0 +1,4612 @@
+
+R version 3.2.5 (2016-04-14) -- "Very, Very Secure Dishes"
+Copyright (C) 2016 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ##############################  preamble  #############################
+> # Putri's miRNA data                                                  #
+> # version: 01                                                         #
+> # author: Magnus M?nch                                                #
+> # created: 06-09-2017                                                 #
+> # last edited: 06-09-2017                                             #
+> #######################################################################
+> 
+> ###############################  notes  ###############################
+> #                                                                     #
+> #######################################################################
+> 
+> # paths
+> path.code <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/code/" ,"~/EBEN/code/"))
+> path.graph <- "/Users/magnusmunch/Documents/PhD/EBEN/graphs/"
+> path.res <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/results/" ,"~/EBEN/results/"))
+> path.data <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/data/" ,"~/EBEN/data/"))
+> 
+> ### libraries
+> library(GRridge)
+Loading required package: penalized
+Loading required package: survival
+Welcome to penalized. For extended examples, see vignette("penalized").
+Loading required package: Iso
+Iso 0.0-17
+Loading required package: GSEABase
+Loading required package: BiocGenerics
+Loading required package: parallel
+
+Attaching package: ‘BiocGenerics’
+
+The following objects are masked from ‘package:parallel’:
+
+    clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
+    clusterExport, clusterMap, parApply, parCapply, parLapply,
+    parLapplyLB, parRapply, parSapply, parSapplyLB
+
+The following object is masked from ‘package:penalized’:
+
+    as.data.frame
+
+The following objects are masked from ‘package:stats’:
+
+    IQR, mad, xtabs
+
+The following objects are masked from ‘package:base’:
+
+    anyDuplicated, append, as.data.frame, as.vector, cbind, colnames,
+    do.call, duplicated, eval, evalq, Filter, Find, get, grep, grepl,
+    intersect, is.unsorted, lapply, lengths, Map, mapply, match, mget,
+    order, paste, pmax, pmax.int, pmin, pmin.int, Position, rank,
+    rbind, Reduce, rownames, sapply, setdiff, sort, table, tapply,
+    union, unique, unlist, unsplit
+
+Loading required package: Biobase
+Welcome to Bioconductor
+
+    Vignettes contain introductory material; view with
+    'browseVignettes()'. To cite Bioconductor, see
+    'citation("Biobase")', and for packages 'citation("pkgname")'.
+
+Loading required package: annotate
+Loading required package: AnnotationDbi
+Loading required package: stats4
+Loading required package: IRanges
+Loading required package: S4Vectors
+Loading required package: XML
+Loading required package: graph
+
+Attaching package: ‘graph’
+
+The following object is masked from ‘package:XML’:
+
+    addNode
+
+Warning messages:
+1: replacing previous import ‘stats::xtabs’ by ‘BiocGenerics::xtabs’ when loading ‘GRridge’ 
+2: replacing previous import ‘GSEABase::intersect’ by ‘BiocGenerics::intersect’ when loading ‘GRridge’ 
+3: replacing previous import ‘stats::mad’ by ‘BiocGenerics::mad’ when loading ‘GRridge’ 
+4: replacing previous import ‘GSEABase::setdiff’ by ‘BiocGenerics::setdiff’ when loading ‘GRridge’ 
+5: replacing previous import ‘penalized::as.data.frame’ by ‘BiocGenerics::as.data.frame’ when loading ‘GRridge’ 
+6: replacing previous import ‘stats::IQR’ by ‘BiocGenerics::IQR’ when loading ‘GRridge’ 
+> library(edgeR)
+Loading required package: limma
+
+Attaching package: ‘limma’
+
+The following object is masked from ‘package:BiocGenerics’:
+
+    plotMA
+
+> library(pROC)
+Type 'citation("pROC")' for a citation.
+
+Attaching package: ‘pROC’
+
+The following objects are masked from ‘package:GRridge’:
+
+    auc, roc
+
+The following objects are masked from ‘package:IRanges’:
+
+    cov, var
+
+The following objects are masked from ‘package:stats’:
+
+    cov, smooth, var
+
+> library(reshape)
+
+Attaching package: ‘reshape’
+
+The following object is masked from ‘package:IRanges’:
+
+    expand
+
+The following object is masked from ‘package:S4Vectors’:
+
+    rename
+
+> 
+> ### functions
+> # source function for variational Bayes
+> source(paste(path.code, "grVBEM.R", sep=""))
+Loading required package: Matrix
+
+Attaching package: ‘Matrix’
+
+The following object is masked from ‘package:reshape’:
+
+    expand
+
+The following object is masked from ‘package:IRanges’:
+
+    expand
+
+Loading required package: foreach
+Loaded glmnet 2.0-12
+
+
+Attaching package: ‘glmnet’
+
+The following object is masked from ‘package:pROC’:
+
+    auc
+
+The following object is masked from ‘package:GRridge’:
+
+    auc
+
+> 
+> # p-values calculation
+> logreguni <- function(dat, resp) {
++   #dat <- mirblst[1,];resp <- respblood
++   glm1 <- glm(resp ~ 1, family="binomial")
++   glm2 <- glm(resp ~ 1 + dat, family="binomial")
++   pval <- anova(glm1, glm2, test="Chisq")$Pr[2]
++   return(pval)  
++ }
+> 
+> ### setting seed for reproducibility
+> set.seed(1001)
+> 
+> ### loading data
+> load(paste(path.data, "normIsoProstate.Rdata", sep=""))
+> load(paste(path.data, "ann2.Rdata", sep=""))
+> mirsfamily <- read.table(paste(path.data, "miR_Family_Info_edit.txt", sep=""), header=TRUE, 
++                          fill=TRUE, as.is=c(1, 2, 4, 5, 7))
+> 
+> ### data manipulation
+> # response
+> resp <- c(rep(0, 25), rep(1, 36)) # 0 is normal, 1 is prostate cancer
+> n <- length(resp)
+> 
+> # mirsData (combine normalized-isomirs)
+> mirs <- as.character(ann2$Name)
+> datMirNorm <- aggregate(normIso$datCount, by=list(mirs), sum) # p=879, n=62
+> datMirTrans <- sqrt(datMirNorm[, -1] + 3/8) - sqrt(3/8)
+> datMirStd <- t(scale(t(datMirTrans), center=TRUE, scale=TRUE))
+> rownames(datMirTrans) <- rownames(datMirStd) <- datMirNorm[, 1]
+> data <- t(datMirStd)
+> 
+> # conservation status of miRNAs, 0: not conserved, 1: conserved accross vertebrates, 2: conserved
+> mirsfamily$Family.Conservation.2 <- (mirsfamily$Family.Conservation. > 0)*mirsfamily$Family.Conservation.
+> 
+> # partitions
+> abundance <- rowSums(datMirNorm[, -1])
+> sds <- apply(datMirTrans, 1, sd)
+> conservation <- mirsfamily$Family.Conservation.2[match(colnames(data), mirsfamily$MiRBase.ID)] + 1
+> 
+> parAbund1 <- CreatePartition(abundance, ngroup=5, uniform=TRUE, decreasing=TRUE)
+[1] "Group size set to: 175"
+[1] "Sorting vec in decreasing order, assuming small values are LESS relevant"
+[1] "Summary of group sizes:"
+group1 group2 group3 group4 group5 
+   175    175    175    175    179 
+> parSds1 <- CreatePartition(sds, decreasing=TRUE, uniform=TRUE, ngroup=5)
+[1] "Group size set to: 175"
+[1] "Sorting vec in decreasing order, assuming small values are LESS relevant"
+[1] "Summary of group sizes:"
+group1 group2 group3 group4 group5 
+   175    175    175    175    179 
+> parCons1 <- CreatePartition(as.factor(conservation))
+[1] "Summary of group sizes:"
+  1   2   3 
+586 119 158 
+> 
+> parAbund2 <- rep(1:length(parAbund1), times=unlist(lapply(parAbund1, length)))[order(unlist(parAbund1))]
+> parSds2 <- rep(1:length(parSds1), times=unlist(lapply(parSds1, length)))[order(unlist(parSds1))]
+> parCons2 <- conservation
+> 
+> partitions1.1 <- list(abundance=lapply(parAbund1, function(group) {
++   ifelse(group > (ncol(data) - sum(is.na(abundance) | is.na(sds) | is.na(conservation))), 
++          group - sum(is.na(abundance) | is.na(sds) | is.na(conservation)), group)}),
++   sds=lapply(parSds1, function(group) {
++     ifelse(group > (ncol(data) - sum(is.na(abundance) | is.na(sds) | is.na(conservation))), group - sum(is.na(abundance) | is.na(sds) | is.na(conservation)), group)}), 
++   conservation=lapply(parCons1, function(group) {
++     ifelse(group > (ncol(data) - sum(is.na(abundance) | is.na(sds) | is.na(conservation))), group - sum(is.na(abundance) | is.na(sds) | is.na(conservation)), group)}))
+> partitions1.2 <- list(abundance=lapply(parAbund1, function(group) {
++   ifelse(group > (ncol(data) - sum(is.na(abundance))), group - sum(is.na(abundance)), group)}))
+> partitions1.3 <- list(conservation=lapply(parCons1, function(group) {
++   ifelse(group > (ncol(data) - sum(is.na(conservation))), group - sum(is.na(conservation)), group)}))
+> 
+> partitions2.1 <- list(abundance=parAbund2[!(is.na(abundance) | is.na(sds) | is.na(conservation))],
++                       sds=parSds2[!(is.na(abundance) | is.na(sds) | is.na(conservation))],
++                       conservation=parCons2[!(is.na(abundance) | is.na(sds) | is.na(conservation))])
+> partitions2.2 <- list(abundance=parAbund2[!is.na(abundance)])
+> partitions2.3 <- list(conservation=parCons2[!is.na(conservation)])
+> 
+> # ### fit models
+> # fit1.GRridge <- grridge(t(data[, !(is.na(abundance) | is.na(sds) | is.na(conservation))]), resp, partitions1.1,
+> #                         monotone=c(TRUE, TRUE, FALSE))
+> # fit2.GRridge <- grridge(t(data[, !is.na(abundance)]), resp, partitions1.2, monotone=TRUE)
+> # fit3.GRridge <- grridge(t(data[, !is.na(conservation)]), resp, partitions1.3, monotone=FALSE)
+> # fit4.GRridge <- grridge(t(data[, !(is.na(abundance) | is.na(sds) | is.na(conservation))]), resp, partitions1.1,
+> #                         monotone=c(FALSE, FALSE, FALSE))
+> # 
+> # fit1.grEBEN <- grEBEN(data[, !(is.na(abundance) | is.na(sds) | is.na(conservation))], resp, rep(1, n),
+> #                       unpenalized=NULL, intercept=TRUE, partitions=partitions2.1, lambda1=NULL,
+> #                       lambda2=NULL, monotone=list(monotone=c(TRUE, TRUE, FALSE), decreasing=c(FALSE, FALSE, FALSE)),
+> #                       psel=NULL, posterior=FALSE, ELBO=TRUE, eps=0.001, maxiter=1000, trace=TRUE)
+> # fit2.grEBEN <- grEBEN(data[, !is.na(abundance)], resp, rep(1, n), unpenalized=NULL, intercept=TRUE,
+> #                       partitions=partitions2.2, lambda1=NULL, lambda2=NULL,
+> #                       monotone=list(monotone=FALSE, decreasing=FALSE),
+> #                       psel=NULL, posterior=FALSE, ELBO=TRUE, eps=0.001, maxiter=500, trace=TRUE)
+> # fit3.grEBEN <- grEBEN(data[, !is.na(conservation)], resp, rep(1, n), unpenalized=NULL, intercept=TRUE,
+> #                       partitions=partitions2.3, lambda1=NULL, lambda2=NULL,
+> #                       monotone=list(monotone=FALSE, decreasing=FALSE),
+> #                       psel=NULL, posterior=FALSE, ELBO=TRUE, eps=0.001, maxiter=500, trace=TRUE)
+> # fit4.grEBEN <- grEBEN(data[, !(is.na(abundance) | is.na(sds) | is.na(conservation))], resp, rep(1, n),
+> #                       unpenalized=NULL, intercept=TRUE, partitions=partitions2.1, lambda1=NULL,
+> #                       lambda2=NULL, monotone=list(monotone=c(FALSE, FALSE, FALSE), decreasing=c(FALSE, FALSE, FALSE)),
+> #                       psel=NULL, posterior=FALSE, ELBO=TRUE, eps=0.001, maxiter=500, trace=TRUE)
+> # fit.enet <- glmnet(data, resp, family="binomial", intercept=TRUE, standardize=FALSE, lambda=0.00000001)
+> # 
+> # # save the models
+> # save(fit1.GRridge, fit2.GRridge, fit3.GRridge, fit4.GRridge, fit1.grEBEN, fit2.grEBEN, fit3.grEBEN,
+> #      fit4.grEBEN, fit.enet, file=paste(path.res, "grEBEN_mirna_putri_fitted1.Rdata", sep=""))
+> 
+> 
+> # # cross-validate predictive performance for only conservation status
+> # set.seed(1001)
+> # data2 <- data[, !is.na(conservation)]
+> # p <- ncol(data2)
+> # n <- nrow(data2)
+> # glob.pen1 <- cv.pen(data2, resp, unpenalized=NULL, intercept=TRUE, psel=NULL)
+> # glob.pen2 <- cv.glmnet(data2, resp, family="binomial", alpha=0, standardize=FALSE, intercept=TRUE, 
+> #                        nfolds=n, grouped=FALSE)
+> # 
+> # lambda1 <- glob.pen1$lambda1bayes[which.min(glob.pen1$cvll)]
+> # lambda2 <- glob.pen1$lambda2bayes[which.min(glob.pen1$cvll)]
+> # 
+> # nfolds <- n
+> # rest <- n %% nfolds
+> # foldid <- sample(rep(1:nfolds, times=round(c(rep(n %/% nfolds + as.numeric(rest!=0), times=rest), 
+> #                                              rep(n %/% nfolds, times=nfolds - rest)))))
+> # 
+> # pred <- matrix(NA, ncol=5, nrow=n)
+> # colnames(pred) <- c("GRridge", "grEBEN", "grEBEN+VB","ridge", "enet")
+> # for(k in 1:nfolds) {
+> #   print(paste("Fold", k, sep=" "))
+> #   xtrain <- data2[foldid!=k, ]
+> #   xtest <- data2[foldid==k, ]
+> #   ytrain <- resp[foldid!=k]
+> #   ytest <- resp[foldid==k]
+> #   ntrain <- length(ytrain)
+> #   ntest <- length(ytest)
+> # 
+> #   fit.grEBEN <- grEBEN(xtrain, ytrain, rep(1, ntrain), partitions=partitions2.3, lambda1=lambda1, 
+> #                        lambda2=lambda2, ELBO=FALSE, trace=FALSE)
+> #   fit.GRridge <- grridge(t(xtrain), ytrain, partitions1.3, optl=glob.pen2$lambda.min*0.5*n, 
+> #                          trace=FALSE)
+> # 
+> #   pred[foldid==k, 1] <- predict(fit.GRridge$predobj$GroupRegul, matrix(xtest, ncol=p))
+> #   pred[foldid==k, 2] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="penalized")
+> #   pred[foldid==k, 3] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="VB")
+> #   pred[foldid==k, 4] <- predict(fit.GRridge$predobj$NoGroups, matrix(xtest, ncol=p))
+> #   pred[foldid==k, 5] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="nogroups")
+> # 
+> # }
+> # 
+> # auc <- sapply(1:ncol(pred), function(method) {return(pROC::roc(resp, pred[, method])$auc)})
+> # names(auc) <- colnames(pred)
+> # setting1 <- list(pred=pred, auc=auc)
+> # save(setting1, file=paste(path.res, "grEBEN_mirna_putri_setting1.Rdata", sep=""))
+> 
+> # cross-validate predictive performance for only abundance
+> set.seed(1001)
+> data2 <- data[, !is.na(abundance)]
+> p <- ncol(data2)
+> n <- nrow(data2)
+> glob.pen1 <- cv.pen(data2, resp, unpenalized=NULL, intercept=TRUE, psel=NULL)
+> glob.pen2 <- cv.glmnet(data2, resp, family="binomial", alpha=0, standardize=FALSE, intercept=TRUE,
++                        nfolds=n, grouped=FALSE)
+> 
+> lambda1 <- glob.pen1$lambda1bayes[which.min(glob.pen1$cvll)]
+> lambda2 <- glob.pen1$lambda2bayes[which.min(glob.pen1$cvll)]
+> 
+> nfolds <- n
+> rest <- n %% nfolds
+> foldid <- sample(rep(1:nfolds, times=round(c(rep(n %/% nfolds + as.numeric(rest!=0), times=rest),
++                                              rep(n %/% nfolds, times=nfolds - rest)))))
+> 
+> pred <- matrix(NA, ncol=5, nrow=n)
+> methods <- c("GRridge", "grEBEN", "grEBEN+VB","ridge", "enet")
+> pred <- matrix(NA, ncol=length(methods), nrow=n)
+> for(k in 1:nfolds) {
++ 
++   print(paste("Fold", k, sep=" "))
++   xtrain <- data2[foldid!=k, ]
++   xtest <- data2[foldid==k, ]
++   ytrain <- resp[foldid!=k]
++   ytest <- resp[foldid==k]
++   ntrain <- length(ytrain)
++   ntest <- length(ytest)
++ 
++   fit.grEBEN <- grEBEN(xtrain, ytrain, rep(1, ntrain), partitions=partitions2.2, lambda1=lambda1,
++                        lambda2=lambda2, ELBO=FALSE, trace=FALSE)
++   fit.GRridge <- grridge(t(xtrain), ytrain, partitions1.2, optl=glob.pen2$lambda.min*0.5*n,
++                          trace=FALSE)
++ 
++   pred[foldid==k, 1] <- predict(fit.GRridge$predobj$GroupRegul, matrix(xtest, ncol=p))
++   pred[foldid==k, 2] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="penalized")
++   pred[foldid==k, 3] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="VB")
++   pred[foldid==k, 4] <- predict(fit.GRridge$predobj$NoGroups, matrix(xtest, ncol=p))
++   pred[foldid==k, 5] <- predict.grEBEN(fit.grEBEN, matrix(xtest, ncol=p), type="nogroups")
++ 
++ }
+[1] "Fold 1"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.49208
+[1] -25.49208
+[1] "Relative error: 0.105811717243465"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5102233 0.8979934 1.1574568 1.5460330 2.3323236
+[1] -23.31525
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.111047233267466"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4921817 0.9520573 1.1985994 1.5212368 2.2777571
+[1] -21.19918
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.115515403245805"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4868593 1.0009876 1.2103194 1.4616059 2.2262392
+[1] -19.29127
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117495724677056"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4938498 1.0294218 1.2021395 1.3908340 2.1502713
+[1] -17.84751
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.120315943710116"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.505106 1.034697 1.195439 1.330060 2.094947
+[1] -16.9805
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.114694051950977"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5116932 1.0262554 1.2027279 1.2986329 2.0761895
+[1] -16.66793
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.136339994060291"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5101547 1.0160119 1.2231795 1.2872689 2.1131361
+[1] -16.83808
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.83099999999999"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01560545   0.93546400   2.90220674   8.25807490 110.61174735 
+
+[1] "CVLs -25.492075765614"  "CVLs -16.6679296012455"
+[1] "Total computation time: 6.83999999999997"
+[1] "Fold 2"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.41105
+[1] -25.41105
+[1] "Relative error: 0.102930078447394"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5222423 0.8879880 1.1443962 1.4885323 2.3445509
+[1] -23.35874
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.114437925592042"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5031885 0.9461243 1.1810671 1.4648328 2.2769471
+[1] -21.3638
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.115613217878751"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4948310 0.9957456 1.1995312 1.4217234 2.2204070
+[1] -19.49063
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117563685647564"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.497587 1.027293 1.198330 1.369385 2.153487
+[1] -18.00572
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.115203299603362"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.505987 1.036687 1.194702 1.319414 2.100452
+[1] -17.06772
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.12103769648797"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5119997 1.0303210 1.2019975 1.2908617 2.0767209
+[1] -16.68295
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.133077592127865"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5105525 1.0205934 1.2216951 1.2789646 2.1135357
+[1] -16.78801
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.82800000000003"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01676246   0.91794900   2.78998645   7.23016123 111.34692508 
+
+[1] "CVLs -25.4110516194785" "CVLs -16.6829544552148"
+[1] "Total computation time: 6.82900000000001"
+[1] "Fold 3"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+12345
+[1] -25.6627
+[1] -25.6627
+[1] "Relative error: 0.109260774428073"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5070131 0.8907586 1.1646643 1.5679196 2.3705870
+[1] -23.39917
+12345
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.110316056604203"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4897007 0.9519076 1.2022630 1.5304965 2.2979162
+[1] -21.25451
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.115270550488543"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4854441 1.0056985 1.2133684 1.4611553 2.2235453
+[1] -19.34033
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.11063298296743"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4929962 1.0351745 1.2045059 1.3865501 2.1443873
+[1] -17.90289
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.123320029684541"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5047492 1.0399724 1.1975062 1.3241251 2.0882008
+[1] -17.04799
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.120662015048026"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5114244 1.0312368 1.2040822 1.2923114 2.0726205
+[1] -16.74471
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.125680303450656"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.509724 1.019988 1.225076 1.280586 2.115795
+[1] -16.91881
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 8.09199999999998"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01533874   0.94670880   2.95077273   8.31925254 112.41682783 
+
+[1] "CVLs -25.6626951396924" "CVLs -16.7447099447335"
+[1] "Total computation time: 8.09299999999996"
+[1] "Fold 4"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.49123
+[1] -25.49123
+[1] "Relative error: 0.111506094720665"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5194372 0.8794018 1.1364822 1.5270392 2.4022582
+[1] -23.33901
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.114739254032055"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5003967 0.9354611 1.1786540 1.5032387 2.3152271
+[1] -21.31289
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.120175091351349"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4936165 0.9861358 1.1959224 1.4483166 2.2416220
+[1] -19.45405
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.112146013419756"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.498428 1.016231 1.195170 1.384395 2.160286
+[1] -17.99693
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.121643471577732"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5085035 1.0212069 1.1936987 1.3270933 2.1054672
+[1] -17.07902
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.12531478285341"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5151064 1.0114299 1.2029961 1.2969048 2.0853913
+[1] -16.69975
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.126827697169062"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5137493 0.9990758 1.2251231 1.2847528 2.1271716
+[1] -16.79819
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 7.07299999999998"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01675061   0.85151371   2.74941573   7.92156930 118.25592069 
+
+[1] "CVLs -25.4912286835283" "CVLs -16.6997486305735"
+[1] "Total computation time: 7.07400000000007"
+[1] "Fold 5"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -26.00311
+[1] -26.00311
+[1] "Relative error: 0.112782224196405"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5150930 0.8759285 1.1602765 1.5707581 2.3177457
+[1] -23.79691
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.111889418088916"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4998715 0.9353682 1.1939521 1.5212058 2.2317651
+[1] -21.75474
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.11658125861658"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4963118 0.9858457 1.2007810 1.4531975 2.1638235
+[1] -19.89791
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.109740322996153"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5028189 1.0145749 1.1940789 1.3822699 2.0980741
+[1] -18.40361
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.118160140156034"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.512208 1.022237 1.186686 1.324725 2.067538
+[1] -17.3974
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116523433688255"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5174986 1.0177102 1.1948482 1.2924256 2.0571457
+[1] -16.91416
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.138872057495411"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5148945 1.0099155 1.2148645 1.2787673 2.1072900
+[1] -16.92363
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.77199999999993"
+[1] "Final lambda multipliers (summary):"
+$abundance
+    group1     group2     group3     group4     group5 
+ 0.0170320  0.8525508  2.8163963  8.2176200 99.8793097 
+
+[1] "CVLs -26.0031130094914" "CVLs -16.9141603725267"
+[1] "Total computation time: 6.77199999999993"
+[1] "Fold 6"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.71731
+[1] -25.71731
+[1] "Relative error: 0.114397754960753"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5069488 0.8903109 1.1718937 1.5510794 2.3840816
+[1] -23.40244
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.12089529466043"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4892432 0.9542062 1.2096244 1.5097620 2.3150298
+[1] -21.22633
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.114899026560848"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4851009 1.0099702 1.2195665 1.4367791 2.2463725
+[1] -19.30037
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.12028615712515"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4932237 1.0416033 1.2093432 1.3592919 2.1636384
+[1] -17.86205
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.122945970856456"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5053129 1.0484392 1.2021697 1.2954542 2.1032285
+[1] -17.00476
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.127234591806855"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5126768 1.0398684 1.2085766 1.2628066 2.0817537
+[1] -16.69582
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.12476521346281"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5114377 1.0279789 1.2278875 1.2554694 2.1138637
+[1] -16.86088
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.91100000000006"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01537336   0.97435332   3.03762242   7.48176587 117.45187758 
+
+[1] "CVLs -25.7173056552803" "CVLs -16.6958209293749"
+[1] "Total computation time: 6.91200000000003"
+[1] "Fold 7"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -24.76395
+[1] -24.76395
+[1] "Relative error: 0.120020778664714"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5177386 0.8455188 1.1822895 1.5823432 2.3738583
+[1] -22.75966
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.109009842180897"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4983320 0.9034507 1.2299760 1.5437350 2.2806590
+[1] -20.87874
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.114905043336042"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4914114 0.9524685 1.2475330 1.4826776 2.2141623
+[1] -19.17307
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117912713655661"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4961703 0.9792976 1.2482026 1.4040090 2.1630292
+[1] -17.85624
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.114924214447924"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5046012 0.9862770 1.2447037 1.3434765 2.1334477
+[1] -17.0614
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.129100230901081"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5097506 0.9840476 1.2568897 1.3072426 2.1119507
+[1] -16.80194
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.123496304701113"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5067846 0.9769871 1.2862143 1.2969455 2.1418419
+[1] -17.02479
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.52499999999986"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01618122   0.69152517   3.54258868   8.93051075 116.82956318 
+
+[1] "CVLs -24.7639510084443" "CVLs -16.8019392673226"
+[1] "Total computation time: 6.52499999999986"
+[1] "Fold 8"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -24.97629
+[1] -24.97629
+[1] "Relative error: 0.113833730221209"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4803912 0.8737100 1.2127300 1.7726120 2.5073061
+[1] -22.14082
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.111864005108144"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4574878 0.9429177 1.2766221 1.7644250 2.3988509
+[1] -19.59698
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.121954201014193"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4480167 1.0053558 1.3169205 1.7024729 2.2760687
+[1] -17.61752
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.122722674946765"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4501842 1.0371337 1.3409415 1.6119699 2.1705436
+[1] -16.561
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.120026343708695"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4542797 1.0434396 1.3731450 1.5446968 2.0978672
+[1] -16.44935
+[1] "Partition abundance CONVERGED after 5 iterations"
+[1] "All partitions CONVERGED after 5 iterations"
+[1] "Computation time for adaptive weigthing: 4.80700000000002"
+[1] "Final lambda multipliers (summary):"
+$abundance
+     group1      group2      group3      group4      group5 
+ 0.04432604  0.85900492  2.73398346  8.58329445 29.71422981 
+
+[1] "CVLs -24.9762882889595" "CVLs -16.560999657788" 
+[1] "Total computation time: 4.80700000000002"
+[1] "Fold 9"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.27518
+[1] -25.27518
+[1] "Relative error: 0.101520940446146"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5065600 0.8715069 1.1870060 1.5790195 2.4035594
+[1] -22.99693
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.104788976158457"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4894393 0.9385866 1.2237760 1.5364108 2.2920630
+[1] -20.841
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117424825522702"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4853916 0.9955759 1.2350878 1.4663768 2.1921071
+[1] -18.91599
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.122657641694373"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4948706 1.0306360 1.2223129 1.3860444 2.0779077
+[1] -17.48351
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.118675201492481"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5086232 1.0357308 1.2111648 1.3195730 2.0143278
+[1] -16.63882
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.125269111605619"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5180051 1.0278671 1.2111620 1.2777787 2.0007992
+[1] -16.33433
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.125534108507686"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5176113 1.0179497 1.2281641 1.2589174 2.0457879
+[1] -16.48537
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.72000000000003"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01569075   0.89352917   3.21692211   8.31393497 101.13537533 
+
+[1] "CVLs -25.2751805039913" "CVLs -16.3343325807326"
+[1] "Total computation time: 6.721"
+[1] "Fold 10"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.58377
+[1] -25.58377
+[1] "Relative error: 0.112499953153859"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5086934 0.8950610 1.1576017 1.5540890 2.3651207
+[1] -23.35245
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.110249713436374"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4911990 0.9546616 1.1957759 1.5181634 2.3008144
+[1] -21.23547
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.1110284005406"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4865093 1.0072465 1.2088001 1.4520261 2.2302308
+[1] -19.36617
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.120521935751323"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4938601 1.0366757 1.2015036 1.3798924 2.1471191
+[1] -18.01023
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117162098631335"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5052899 1.0420689 1.1955512 1.3189693 2.0893239
+[1] -17.28533
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.125563388904304"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5120667 1.0331727 1.2039556 1.2857266 2.0717004
+[1] -17.16359
+[1] "Partition abundance CONVERGED after 6 iterations"
+[1] "All partitions CONVERGED after 6 iterations"
+[1] "Computation time for adaptive weigthing: 5.97700000000009"
+[1] "Final lambda multipliers (summary):"
+$abundance
+     group1      group2      group3      group4      group5 
+ 0.03033537  0.92977372  2.40356947  6.23517646 54.44357282 
+
+[1] "CVLs -25.5837707552927" "CVLs -17.2853337843508"
+[1] "Total computation time: 5.97700000000009"
+[1] "Fold 11"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -24.74878
+[1] -24.74878
+[1] "Relative error: 0.102557985681135"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5068298 0.8949872 1.1822552 1.5768773 2.2606170
+[1] -22.70489
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.10738105117393"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4926275 0.9592483 1.2103993 1.5325256 2.1682111
+[1] -20.63465
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117750693475547"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4904169 1.0148378 1.2122858 1.4613003 2.0909341
+[1] -18.69869
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.113128888278928"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5005066 1.0449520 1.1974049 1.3803047 2.0123786
+[1] -17.15242
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.12024008470242"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5137543 1.0514970 1.1822664 1.3119765 1.9771685
+[1] -16.10455
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117564673991835"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5216794 1.0508146 1.1756172 1.2713098 1.9779847
+[1] -15.53873
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.121257014300792"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5223871 1.0437410 1.1788134 1.2565010 2.0202421
+[1] -15.38995
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.95100000000002"
+[1] "Final lambda multipliers (summary):"
+$abundance
+     group1      group2      group3      group4      group5 
+ 0.01642537  1.00594668  2.88713582  8.13013039 80.65758242 
+
+[1] "CVLs -24.7487780983772" "CVLs -15.5387270228009"
+[1] "Total computation time: 6.95199999999977"
+[1] "Fold 12"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -24.98053
+[1] -24.98053
+[1] "Relative error: 0.110437089346909"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4973309 0.8819882 1.1908781 1.6052797 2.4608000
+[1] -22.53799
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.112672568672685"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4775008 0.9479933 1.2429414 1.5604225 2.3878170
+[1] -20.18624
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116456565968568"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4718111 1.0030992 1.2637730 1.4868322 2.3110083
+[1] -18.08134
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116378152807411"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4779051 1.0390834 1.2539041 1.4029142 2.2348072
+[1] -16.49879
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.126107828241031"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4846732 1.0516717 1.2537842 1.3431548 2.1919474
+[1] -15.53085
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.126618822728406"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4857565 1.0517076 1.2678655 1.3160490 2.2006371
+[1] -15.13432
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.13388792689067"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.476040 1.052426 1.304641 1.317262 2.291540
+[1] -15.21735
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.52500000000009"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01260657   0.96391238   3.72861345   9.23600396 146.38530538 
+
+[1] "CVLs -24.9805316448831" "CVLs -15.134322880525" 
+[1] "Total computation time: 6.52500000000009"
+[1] "Fold 13"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.70228
+[1] -25.70228
+[1] "Relative error: 0.108559813704614"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5084817 0.8840395 1.1622822 1.5779131 2.3736473
+[1] -23.43695
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.111662197158659"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4918898 0.9452273 1.1987253 1.5358001 2.2903772
+[1] -21.30742
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.114542497247414"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4879320 0.9966649 1.2105101 1.4654568 2.2160591
+[1] -19.40161
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.114065467862589"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4952207 1.0257885 1.2028945 1.3897025 2.1408137
+[1] -17.95452
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.115224950634971"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5062053 1.0329073 1.1958806 1.3278211 2.0878236
+[1] -17.07577
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.120760820250507"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5126233 1.0259364 1.2028371 1.2949690 2.0713976
+[1] -16.74438
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.12859404542828"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5106254 1.0160954 1.2235443 1.2831979 2.1145898
+[1] -16.89075
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.63000000000011"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01568289   0.90530872   2.91824560   8.48616680 111.54258035 
+
+[1] "CVLs -25.7022812702533" "CVLs -16.7443792691202"
+[1] "Total computation time: 6.63000000000011"
+[1] "Fold 14"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.78575
+[1] -25.78575
+[1] "Relative error: 0.102509795961255"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5202722 0.8696696 1.1549718 1.5597564 2.3038538
+[1] -23.57486
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.112877038860614"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5014649 0.9304783 1.1899781 1.5200034 2.2443941
+[1] -21.47963
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.111227225256376"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4941642 0.9854309 1.2046650 1.4559058 2.1879764
+[1] -19.5712
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.109576153733287"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4985858 1.0196811 1.1999821 1.3853960 2.1250881
+[1] -18.08416
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.122437629947539"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5081992 1.0300902 1.1938046 1.3237971 2.0820455
+[1] -17.14885
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.118348798609101"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5142778 1.0246839 1.2004905 1.2914940 2.0656178
+[1] -16.76073
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.131483745742566"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5124749 1.0161380 1.2198517 1.2783145 2.1073684
+[1] -16.85692
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.52999999999975"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01680019   0.85825480   2.84736683   8.17565062 103.39839657 
+
+[1] "CVLs -25.7857467859041" "CVLs -16.7607329431779"
+[1] "Total computation time: 6.53099999999995"
+[1] "Fold 15"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.063
+[1] -25.063
+[1] "Relative error: 0.108278674431214"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5138751 0.8783615 1.2068023 1.4354249 2.4761617
+[1] -22.96383
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.112517953503347"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4999704 0.9377166 1.2430220 1.3925088 2.3584476
+[1] -21.03664
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119361735436789"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4986742 0.9906020 1.2443192 1.3351296 2.2460163
+[1] -19.31173
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.124206001592873"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5082541 1.0211009 1.2247049 1.2740402 2.1553149
+[1] -17.97842
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117547761990826"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5208219 1.0253493 1.2089220 1.2306569 2.0969637
+[1] -17.13895
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.11714272047403"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5281805 1.0221634 1.2088599 1.2070428 2.0640797
+[1] -16.78788
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.131301926585123"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5274567 1.0160577 1.2212342 1.2010174 2.0819421
+[1] -16.87625
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.77700000000004"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01791312   0.87318229   3.34081523   5.05061915 122.36190414 
+
+[1] "CVLs -25.0630010398413" "CVLs -16.7878800629388"
+[1] "Total computation time: 6.77800000000025"
+[1] "Fold 16"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.81282
+[1] -25.81282
+[1] "Relative error: 0.0989486584223018"
+[1] "Shrink Factor coefficient matrix 0.995"
+[1] "exactstable"
+[1] 0.5236312 0.8782921 1.1416453 1.5362910 2.2847147
+[1] -23.63049
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.105763458244544"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5037506 0.9384139 1.1789133 1.4999652 2.2372261
+[1] -21.52954
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.120160650366639"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4958189 0.9915030 1.1948081 1.4428356 2.1884550
+[1] -19.58863
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.118959075048624"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4994502 1.0250281 1.1927483 1.3780170 2.1265569
+[1] -18.0409
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.115674101782451"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5080009 1.0339653 1.1896157 1.3226582 2.0851433
+[1] -17.01429
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117690782362141"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5143758 1.0258916 1.1963891 1.2916279 2.0708709
+[1] -16.5066
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.128467049122332"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5135218 1.0132901 1.2155445 1.2804559 2.1090374
+[1] -16.4514
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.48599999999988"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01706874   0.88852697   2.72985239   7.82728449 102.71772808 
+
+[1] "CVLs -25.8128234295802" "CVLs -16.5065995594447"
+[1] "Total computation time: 6.48700000000008"
+[1] "Fold 17"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.73811
+[1] -25.73811
+[1] "Relative error: 0.106850521466321"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5104803 0.8852782 1.1633494 1.5455229 2.3914615
+[1] -23.46993
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119820746814595"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4929640 0.9462779 1.1998420 1.5113281 2.3119234
+[1] -21.33273
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.115530782897668"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4880894 0.9996611 1.2110584 1.4493202 2.2332608
+[1] -19.41257
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119260553465477"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4949177 1.0298159 1.2033772 1.3792715 2.1522207
+[1] -17.95098
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.120286537870605"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5060424 1.0362359 1.1964479 1.3205207 2.0933493
+[1] -17.06105
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.114474270496313"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5122805 1.0286273 1.2033441 1.2912759 2.0739755
+[1] -16.72067
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.127982574892548"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5104285 1.0188207 1.2235111 1.2802713 2.1142694
+[1] -16.8607
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.76999999999998"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01575873   0.91923713   2.92876631   7.96182377 115.37411900 
+
+[1] "CVLs -25.7381146264544" "CVLs -16.720667968783" 
+[1] "Total computation time: 6.76999999999998"
+[1] "Fold 18"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -24.28383
+[1] -24.28383
+[1] "Relative error: 0.102242336040205"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4904303 0.8706962 1.1824611 1.7193429 2.5069180
+[1] -21.69801
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.114478765616824"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4723874 0.9306534 1.2308134 1.6856612 2.4026133
+[1] -19.31251
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.115253197335772"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4702723 0.9788989 1.2367012 1.6084618 2.3008375
+[1] -17.29219
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.118722826910553"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4802331 1.0033137 1.2185741 1.5177803 2.2027734
+[1] -15.89444
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.124103245435702"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4926827 1.0098392 1.2018081 1.4526509 2.1202610
+[1] -15.16229
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.122009081312044"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4991465 1.0109016 1.1924487 1.4247108 2.0886830
+[1] -15.00478
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.12743932291649"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4988823 1.0031231 1.2034882 1.4204850 2.1021063
+[1] -15.31453
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.9369999999999"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01286685   0.81243813   3.14319034  14.64334859 135.18909611 
+
+[1] "CVLs -24.2838262610981" "CVLs -15.0047834216735"
+[1] "Total computation time: 6.9380000000001"
+[1] "Fold 19"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.10059
+[1] -25.10059
+[1] "Relative error: 0.105747815682158"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5053213 0.8866995 1.1982256 1.5301612 2.3895893
+[1] -22.96802
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.11327099916992"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4895505 0.9514754 1.2400879 1.4789236 2.2902899
+[1] -20.90816
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119123116147314"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4860815 1.0021995 1.2630425 1.4117524 2.1869698
+[1] -19.04651
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.120116068772945"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4922509 1.0304582 1.2683039 1.3431919 2.0961001
+[1] -17.64261
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.12301304029826"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.501458 1.035681 1.269310 1.294232 2.034988
+[1] -16.83521
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.113752224481321"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5054785 1.0240045 1.2906965 1.2704311 2.0211952
+[1] -16.61873
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.127567419734012"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5011759 1.0056755 1.3228352 1.2790022 2.0647869
+[1] -16.92553
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 7.07099999999991"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01500369   0.92403091   3.89963799   7.05574429 103.19021930 
+
+[1] "CVLs -25.1005931867018" "CVLs -16.618727730778" 
+[1] "Total computation time: 7.07200000000012"
+[1] "Fold 20"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.16346
+[1] -25.16346
+[1] "Relative error: 0.102703123941462"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4952564 0.8903254 1.1935069 1.6075472 2.4319952
+[1] -22.79401
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119911090841196"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4803183 0.9532663 1.2342830 1.5558860 2.3301192
+[1] -20.59198
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117082180445835"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4787292 1.0102365 1.2393877 1.4694386 2.2394531
+[1] -18.72314
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.129038197564866"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4884677 1.0473134 1.2191096 1.3815405 2.1456393
+[1] -17.43063
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119481951219737"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4998022 1.0514993 1.2091735 1.3220350 2.0976435
+[1] -16.77072
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.136766229374066"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5047151 1.0398795 1.2186632 1.2933615 2.1040333
+[1] -16.67945
+[1] "Partition abundance CONVERGED after 6 iterations"
+[1] "All partitions CONVERGED after 6 iterations"
+[1] "Computation time for adaptive weigthing: 7.35800000000017"
+[1] "Final lambda multipliers (summary):"
+$abundance
+     group1      group2      group3      group4      group5 
+ 0.02780246  0.94421688  2.69139965  6.71273536 57.11776767 
+
+[1] "CVLs -25.1634586754152" "CVLs -16.7707203925786"
+[1] "Total computation time: 7.35899999999992"
+[1] "Fold 21"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.45758
+[1] -25.45758
+[1] "Relative error: 0.107807715613316"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5122649 0.8912800 1.1574631 1.5261987 2.3810687
+[1] -23.23181
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.106927818224366"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4945189 0.9501970 1.1963087 1.4949450 2.3065856
+[1] -21.08787
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.112637596449628"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4882778 1.0007995 1.2115600 1.4370022 2.2511730
+[1] -19.0756
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.110077282888805"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4933177 1.0265773 1.2097167 1.3751041 2.1865377
+[1] -17.40535
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.11819469255335"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5012003 1.0244640 1.2073227 1.3293924 2.1715590
+[1] -16.19082
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.122718518940381"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5030174 1.0107714 1.2166322 1.3066497 2.2320760
+[1] -15.44065
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.132183957450391"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4958570 0.9943207 1.2474813 1.3135901 2.3377062
+[1] -15.11714
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.143099295304762"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4769638 0.9931272 1.3132605 1.3446108 2.4696652
+[1] -15.17834
+[1] "Partition abundance CONVERGED after 8 iterations"
+[1] "All partitions CONVERGED after 8 iterations"
+[1] "Computation time for adaptive weigthing: 7.41600000000017"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+7.628198e-03 8.958651e-01 3.718739e+00 1.028730e+01 3.063218e+02 
+
+[1] "CVLs -25.4575818403061" "CVLs -15.1171383596828"
+[1] "Total computation time: 7.42099999999937"
+[1] "Fold 22"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -24.87274
+[1] -24.87274
+[1] "Relative error: 0.10525255844459"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5103349 0.8529951 1.1503200 1.5777596 2.6370019
+[1] -22.39688
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117507144648872"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4909380 0.9209687 1.1935372 1.5299082 2.5030331
+[1] -20.19614
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117322069045252"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4847640 0.9762968 1.2074395 1.4717850 2.3894461
+[1] -18.17601
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.121189257190951"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.489133 1.003840 1.202749 1.415874 2.300921
+[1] -16.47234
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.124825187341566"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4933075 1.0116216 1.1999438 1.3899152 2.2511479
+[1] -15.17421
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.130787545823849"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4922217 1.0083142 1.2081016 1.3853053 2.2735681
+[1] -14.31241
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.146965282963746"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4806664 1.0012535 1.2375702 1.4175742 2.3776384
+[1] -13.85999
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.161454788266997"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4536784 1.0006813 1.3052250 1.5265889 2.5691745
+[1] -13.77971
+[1] "Partition abundance CONVERGED after 8 iterations"
+[1] "All partitions CONVERGED after 8 iterations"
+[1] "Computation time for adaptive weigthing: 7.47900000000027"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+6.933643e-03 7.863135e-01 3.577085e+00 1.372950e+01 4.416049e+02 
+
+[1] "CVLs -24.8727438536974" "CVLs -13.8599850032221"
+[1] "Total computation time: 7.48000000000047"
+[1] "Fold 23"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.24106
+[1] -25.24106
+[1] "Relative error: 0.0997714092774692"
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5184769 0.9032458 1.1858501 1.4710671 2.2046378
+[1] -23.27412
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.115191462507112"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5003100 0.9589765 1.2159026 1.4523914 2.1746069
+[1] -21.23863
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.108108945889931"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4945808 1.0107367 1.2217187 1.4044798 2.1263488
+[1] -19.34732
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119482088028745"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5003376 1.0415950 1.2099433 1.3469065 2.0654867
+[1] -17.88388
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.125363884850977"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5112341 1.0490719 1.1967704 1.2948506 2.0226134
+[1] -16.98071
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.128503782025435"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5189502 1.0412910 1.1961757 1.2653569 2.0085350
+[1] -16.62185
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.128763591647769"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5170588 1.0300106 1.2073764 1.2622736 2.0559374
+[1] -16.73637
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.75"
+[1] "Final lambda multipliers (summary):"
+$abundance
+    group1     group2     group3     group4     group5 
+ 0.0170300  0.9961579  3.0511994  6.6221928 85.5395973 
+
+[1] "CVLs -25.2410588868121" "CVLs -16.6218453118057"
+[1] "Total computation time: 6.7510000000002"
+[1] "Fold 24"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.30941
+[1] -25.30941
+[1] "Relative error: 0.113557977991013"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5146212 0.8835576 1.1783721 1.5203915 2.3165754
+[1] -23.18251
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117771675046385"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4985206 0.9407953 1.2118652 1.4838591 2.2485373
+[1] -21.20498
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.114835401627046"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4956194 0.9938628 1.2177118 1.4180569 2.1643103
+[1] -19.48467
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.120111587649983"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5058389 1.0216661 1.2014074 1.3426438 2.0874914
+[1] -18.19969
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.113791409252726"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5192912 1.0296703 1.1848265 1.2836090 2.0338699
+[1] -17.39626
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.112831057039545"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5273449 1.0238717 1.1838816 1.2512928 2.0213475
+[1] -17.04675
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.131004132694477"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.527147 1.013103 1.195680 1.245978 2.046286
+[1] -17.10834
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 7.22199999999975"
+[1] "Final lambda multipliers (summary):"
+$abundance
+     group1      group2      group3      group4      group5 
+ 0.01761315  0.88983433  2.93045210  6.89912908 96.75087292 
+
+[1] "CVLs -25.3094052312141" "CVLs -17.0467485197115"
+[1] "Total computation time: 7.22800000000007"
+[1] "Fold 25"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -23.61815
+[1] -23.61815
+[1] "Relative error: 0.105299292160663"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5097856 0.8505884 1.1415928 1.6328963 2.5750795
+[1] -21.32546
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.111021540240719"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4943976 0.9107034 1.1673852 1.5861725 2.4642555
+[1] -19.34135
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.112650786523332"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4937886 0.9576831 1.1685242 1.5061153 2.3580522
+[1] -17.71593
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.114058099570937"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5063251 0.9815097 1.1557213 1.4096975 2.2511537
+[1] -16.65599
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.118847335636802"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5249885 0.9811732 1.1462714 1.3308856 2.1529651
+[1] -16.1933
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.123938433375841"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5406410 0.9681893 1.1476165 1.2753808 2.1094436
+[1] -16.21852
+[1] "Partition abundance CONVERGED after 6 iterations"
+[1] "All partitions CONVERGED after 6 iterations"
+[1] "Computation time for adaptive weigthing: 5.94400000000041"
+[1] "Final lambda multipliers (summary):"
+$abundance
+     group1      group2      group3      group4      group5 
+ 0.03308143  0.71442808  2.06302132  7.31869885 72.52236250 
+
+[1] "CVLs -23.6181486126698" "CVLs -16.1932996527468"
+[1] "Total computation time: 5.94500000000062"
+[1] "Fold 26"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.65163
+[1] -25.65163
+[1] "Relative error: 0.109551196654916"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5153754 0.8826618 1.1455595 1.5521397 2.3656467
+[1] -23.44173
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.108313582875635"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4963029 0.9439898 1.1870279 1.5165159 2.2894048
+[1] -21.33563
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116594110101737"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4896888 0.9974096 1.2035262 1.4546354 2.2245809
+[1] -19.41351
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116567678629494"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4948316 1.0290337 1.2005813 1.3856417 2.1508245
+[1] -17.93392
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.121415904066467"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5052478 1.0370451 1.1958478 1.3243179 2.0959341
+[1] -17.02684
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.124901635513788"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5117062 1.0299273 1.2030810 1.2922436 2.0763565
+[1] -16.6764
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.129703448503286"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5101557 1.0197506 1.2235306 1.2798338 2.1160472
+[1] -16.81201
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 7.23300000000017"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01602409   0.91341682   2.82680900   8.11931727 112.77301484 
+
+[1] "CVLs -25.6516284041115" "CVLs -16.6764045736678"
+[1] "Total computation time: 7.23400000000038"
+[1] "Fold 27"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -24.97959
+[1] -24.97959
+[1] "Relative error: 0.108713237086501"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5060359 0.8615982 1.1767859 1.6015214 2.4832631
+[1] -22.67517
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.109429498458562"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4903798 0.9271417 1.2112126 1.5457594 2.3650552
+[1] -20.59587
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.115794254249587"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4866072 0.9881364 1.2152190 1.4614432 2.2798383
+[1] -18.76355
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.106943706488208"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4954959 1.0218779 1.2043901 1.3735513 2.1867562
+[1] -17.40279
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.12604737029211"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5079502 1.0293894 1.1930678 1.3072500 2.1328604
+[1] -16.61304
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.130684966673443"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.516172 1.023224 1.192901 1.268624 2.123578
+[1] -16.36087
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.125575421623166"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5163981 1.0124273 1.2044430 1.2571877 2.1626898
+[1] -16.5666
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 8.36700000000019"
+[1] "Final lambda multipliers (summary):"
+$abundance
+     group1      group2      group3      group4      group5 
+  0.0156873   0.8496052   2.9689919   8.2412500 132.6169309 
+
+[1] "CVLs -24.9795868575561" "CVLs -16.3608651787475"
+[1] "Total computation time: 8.37199999999939"
+[1] "Fold 28"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.48109
+[1] -25.48109
+[1] "Relative error: 0.108417856677146"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5233248 0.8736293 1.1498929 1.4979428 2.3780770
+[1] -23.34317
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117118159380413"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5044043 0.9370570 1.1816328 1.4682410 2.2945544
+[1] -21.31612
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119256978563137"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4973143 0.9896702 1.1901311 1.4214420 2.2339751
+[1] -19.44659
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.112868184058944"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5023435 1.0195598 1.1833722 1.3645183 2.1603417
+[1] -17.97359
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.131542068519567"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5125217 1.0256224 1.1799851 1.3105580 2.1037775
+[1] -17.02994
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119480294898127"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5191786 1.0196292 1.1863474 1.2801843 2.0792828
+[1] -16.61724
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.123607598654034"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5185985 1.0096366 1.2042245 1.2699214 2.1034860
+[1] -16.68056
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 8.28200000000015"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01754732   0.86382583   2.67882567   7.15698075 115.19626709 
+
+[1] "CVLs -25.4810879128912" "CVLs -16.6172448274253"
+[1] "Total computation time: 8.28900000000067"
+[1] "Fold 29"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -23.9758
+[1] -23.9758
+[1] "Relative error: 0.114541269363598"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5020732 0.8647273 1.1632218 1.6622460 2.4742267
+[1] -21.50411
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.11235478811323"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4802615 0.9287794 1.2032401 1.6421232 2.4128575
+[1] -19.11811
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.122953098412548"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4721008 0.9798709 1.2201013 1.5848038 2.3593912
+[1] -16.95397
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.120526300706139"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4779104 1.0053657 1.2113806 1.5136076 2.2751678
+[1] -15.29542
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.121738129128153"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4885654 1.0094416 1.2001490 1.4615800 2.1856827
+[1] -14.21485
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.124155696236966"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4946740 0.9982804 1.2032973 1.4404464 2.1564601
+[1] -13.63051
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.137676461255905"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4931307 0.9812981 1.2172969 1.4497926 2.2011461
+[1] -13.44132
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.146776088330139"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4825631 0.9686724 1.2258109 1.5292431 2.2803958
+[1] -13.57455
+[1] "Partition abundance CONVERGED after 8 iterations"
+[1] "All partitions CONVERGED after 8 iterations"
+[1] "Computation time for adaptive weigthing: 7.60400000000027"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+6.483806e-03 7.823831e-01 3.636604e+00 1.998552e+01 3.324773e+02 
+
+[1] "CVLs -23.9757991221287" "CVLs -13.4413159920314"
+[1] "Total computation time: 7.60400000000027"
+[1] "Fold 30"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.64714
+[1] -25.64714
+[1] "Relative error: 0.111547645278209"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5117241 0.8772952 1.1665774 1.5789680 2.3338060
+[1] -23.39953
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.109826376256015"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4946729 0.9406275 1.2021980 1.5319995 2.2547385
+[1] -21.2919
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.113243685961429"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4909690 0.9926827 1.2103152 1.4583900 2.1913111
+[1] -19.41042
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.113479672488847"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4975986 1.0255141 1.2023757 1.3813143 2.1201334
+[1] -17.96341
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.11822629751203"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5074817 1.0349458 1.1963627 1.3190170 2.0785504
+[1] -17.06051
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.123224454198678"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5121456 1.0299781 1.2058692 1.2890208 2.0691668
+[1] -16.69944
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.128670922463198"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5090972 1.0218045 1.2273961 1.2791611 2.1157902
+[1] -16.8255
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.8809999999994"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01607315   0.89549073   2.94436269   8.28530421 105.14393585 
+
+[1] "CVLs -25.6471391020418" "CVLs -16.6994447524546"
+[1] "Total computation time: 6.88199999999961"
+[1] "Fold 31"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.63674
+[1] -25.63674
+[1] "Relative error: 0.102819165814951"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5121047 0.8806168 1.1486483 1.5652018 2.4062691
+[1] -23.37126
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.111472873404328"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4952472 0.9442196 1.1790257 1.5270534 2.3163890
+[1] -21.28416
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117112281749477"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4911470 0.9953826 1.1861924 1.4669133 2.2360907
+[1] -19.42271
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.115979947645402"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4982687 1.0244333 1.1789707 1.3930477 2.1592459
+[1] -17.99734
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.1150213623094"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5091731 1.0307642 1.1757984 1.3303876 2.1021022
+[1] -17.11825
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.1226939780333"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5161931 1.0230849 1.1844443 1.2941233 2.0825336
+[1] -16.77459
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.124644919494084"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5147656 1.0136843 1.2026722 1.2822413 2.1205323
+[1] -16.90233
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.74099999999999"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01631299   0.89413822   2.63764308   8.40908703 117.81295614 
+
+[1] "CVLs -25.6367409760031" "CVLs -16.7745852230523"
+[1] "Total computation time: 6.74200000000019"
+[1] "Fold 32"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.31472
+[1] -25.31472
+[1] "Relative error: 0.108826852029362"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5069868 0.8828490 1.1728034 1.5698912 2.3894179
+[1] -23.0768
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.10427329952441"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4920004 0.9473280 1.2104704 1.5196640 2.2701276
+[1] -21.00502
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.115407926836766"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4891245 1.0055150 1.2153565 1.4463493 2.1778074
+[1] -19.15918
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119440032698"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4981751 1.0372130 1.2047115 1.3679130 2.0862122
+[1] -17.76341
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117333576717881"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5098767 1.0448066 1.1977079 1.3068975 2.0279315
+[1] -16.92839
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116030390324276"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5167666 1.0377263 1.2034283 1.2749110 2.0104326
+[1] -16.63762
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.135673391127373"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5161433 1.0258508 1.2226624 1.2616592 2.0452409
+[1] -16.81758
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.72800000000007"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01601486   0.94571878   2.99596842   7.86448295 100.47618418 
+
+[1] "CVLs -25.3147191507168" "CVLs -16.6376240592515"
+[1] "Total computation time: 6.72899999999936"
+[1] "Fold 33"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.6049
+[1] -25.6049
+[1] "Relative error: 0.10685428430754"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5125202 0.8882815 1.1482731 1.5424133 2.3969226
+[1] -23.3677
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.107627126783056"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4949248 0.9500936 1.1865474 1.5072237 2.3059788
+[1] -21.27347
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.113653915164156"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4893897 1.0044130 1.2013307 1.4440844 2.2284529
+[1] -19.38404
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.126677857880906"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4957532 1.0353163 1.1961611 1.3744651 2.1476308
+[1] -17.94085
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.121869390377979"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5065203 1.0419312 1.1917918 1.3149640 2.0904652
+[1] -17.06254
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.123887073326985"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5131413 1.0335671 1.1990389 1.2844816 2.0704455
+[1] -16.73232
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.132081789693743"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.511433 1.022629 1.220200 1.273256 2.109984
+[1] -16.88118
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.78600000000006"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01599574   0.94510519   2.79779700   7.79375114 114.49305985 
+
+[1] "CVLs -25.6048954862806" "CVLs -16.7323240437082"
+[1] "Total computation time: 6.78700000000026"
+[1] "Fold 34"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.42234
+[1] -25.42234
+[1] "Relative error: 0.109063465572355"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5077260 0.8939496 1.1569726 1.6080880 2.2807286
+[1] -23.13017
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116427544708755"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4912916 0.9516981 1.1902125 1.5761155 2.2139998
+[1] -20.90497
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.111246631419216"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4857941 1.0049388 1.1959522 1.5206046 2.1511220
+[1] -18.86068
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.122975320522876"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4902891 1.0349527 1.1904966 1.4482169 2.1023666
+[1] -17.25259
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.127278180245419"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4975087 1.0408711 1.1913681 1.3947424 2.0632151
+[1] -16.21376
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.121608332876887"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5025599 1.0339008 1.2031848 1.3569048 2.0550241
+[1] -15.73584
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.139823117325494"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5003607 1.0226724 1.2273836 1.3518851 2.0788943
+[1] -15.73533
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.91699999999946"
+[1] "Final lambda multipliers (summary):"
+$abundance
+     group1      group2      group3      group4      group5 
+ 0.01485462  0.95224379  2.81039831 10.56309372 96.82468946 
+
+[1] "CVLs -25.4223436315556" "CVLs -15.7358417805254"
+[1] "Total computation time: 6.91799999999967"
+[1] "Fold 35"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -24.78321
+[1] -24.78321
+[1] "Relative error: 0.10965391651201"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5268976 0.8810381 1.0838391 1.5570181 2.4065462
+[1] -22.74156
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.111934881971907"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5082592 0.9368434 1.1210379 1.5312317 2.3097498
+[1] -20.85857
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116111348634445"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5002486 0.9879264 1.1397603 1.4811405 2.2279748
+[1] -19.12557
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.114961295124163"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5044665 1.0173404 1.1377684 1.4202567 2.1552064
+[1] -17.74091
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.122975447058921"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5134106 1.0306087 1.1340282 1.3628835 2.0906746
+[1] -16.84851
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.12676480123168"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5184628 1.0309575 1.1388592 1.3329147 2.0630474
+[1] -16.48771
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.126067625374156"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5169363 1.0229097 1.1580202 1.3319449 2.0603231
+[1] -16.63198
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.67000000000007"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01798922   0.88142853   2.03491565   9.11084760 115.12083482 
+
+[1] "CVLs -24.7832090596808" "CVLs -16.4877133265436"
+[1] "Total computation time: 6.67100000000028"
+[1] "Fold 36"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.5052
+[1] -25.5052
+[1] "Relative error: 0.111897912339163"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5136872 0.8952479 1.1432724 1.5443474 2.3409910
+[1] -23.33627
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.111132386518224"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4952410 0.9537307 1.1859094 1.5110975 2.2724147
+[1] -21.24083
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.112697412651816"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4894081 1.0059348 1.2028480 1.4485112 2.2056303
+[1] -19.33537
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.123998606814993"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4956126 1.0353580 1.1987290 1.3789242 2.1314735
+[1] -17.87655
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.122647234332037"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5064223 1.0410313 1.1935369 1.3187775 2.0810479
+[1] -16.98641
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.123227243329278"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5127655 1.0324676 1.2002732 1.2887906 2.0662548
+[1] -16.64818
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.13674672832272"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5110642 1.0215293 1.2201777 1.2771908 2.1102446
+[1] -16.79263
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 7.01000000000022"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01602361   0.95580591   2.80058616   7.92234305 107.53898567 
+
+[1] "CVLs -25.5051989924571" "CVLs -16.6481808494728"
+[1] "Total computation time: 7.01000000000022"
+[1] "Fold 37"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.74265
+[1] -25.74265
+[1] "Relative error: 0.114228104439602"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5096623 0.8955512 1.1482432 1.5587196 2.3693981
+[1] -23.44662
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.112721952094083"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4924364 0.9548995 1.1874863 1.5226110 2.2932691
+[1] -21.28367
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119705519374081"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4877427 1.0060966 1.2010861 1.4560596 2.2270359
+[1] -19.35116
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.123803526482819"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4946849 1.0336997 1.1968456 1.3836515 2.1501495
+[1] -17.89039
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.120689007477952"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5057517 1.0389981 1.1921838 1.3220656 2.0962436
+[1] -17.00689
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.132530412646439"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5121512 1.0306962 1.2011821 1.2904848 2.0761295
+[1] -16.67555
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.131531529543163"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.510292 1.020207 1.222957 1.278863 2.116110
+[1] -16.82546
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 7.90800000000036"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01568511   0.95241801   2.80689921   8.15771891 113.23615838 
+
+[1] "CVLs -25.7426513190178" "CVLs -16.6755482704638"
+[1] "Total computation time: 7.91400000000067"
+[1] "Fold 38"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.70507
+[1] -25.70507
+[1] "Relative error: 0.104959782068902"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5126260 0.8932174 1.1607595 1.5436058 2.3077334
+[1] -23.45744
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.111362116422702"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4946885 0.9509899 1.2006409 1.5083439 2.2530900
+[1] -21.33289
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.118479004563914"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4897575 1.0028050 1.2104923 1.4463947 2.1933568
+[1] -19.45667
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.118598676227243"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4968067 1.0325074 1.2034539 1.3727013 2.1218745
+[1] -18.06873
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117341846611699"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.508956 1.037895 1.196154 1.308250 2.069849
+[1] -17.26211
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.128144992721999"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5170373 1.0286699 1.2025902 1.2735126 2.0462743
+[1] -16.99798
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.131332046229678"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5160052 1.0178608 1.2210207 1.2664549 2.0712032
+[1] -17.20136
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.57099999999991"
+[1] "Final lambda multipliers (summary):"
+$abundance
+     group1      group2      group3      group4      group5 
+  0.0162369   0.9390146   2.9204618   7.7018278 102.4933677 
+
+[1] "CVLs -25.7050673626628" "CVLs -16.9979812976854"
+[1] "Total computation time: 6.57099999999991"
+[1] "Fold 39"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.31676
+[1] -25.31676
+[1] "Relative error: 0.109327804379729"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5045841 0.8860055 1.1833996 1.5594248 2.4006184
+[1] -23.14624
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.110643346674335"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4875852 0.9579372 1.2188533 1.5093137 2.2984129
+[1] -21.14565
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119413759503005"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4844526 1.0168084 1.2242340 1.4364739 2.2129432
+[1] -19.41188
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.112374387194681"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4942876 1.0496202 1.2071615 1.3582646 2.1203740
+[1] -18.13755
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.110288597015746"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5070345 1.0520208 1.1954530 1.2969732 2.0767641
+[1] -17.38779
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.122126830538029"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5139578 1.0428456 1.1961744 1.2674456 2.0736243
+[1] -17.14205
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.120511882445681"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5121746 1.0288278 1.2144993 1.2600328 2.1247404
+[1] -17.34511
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.92900000000009"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01535253   0.99377736   3.04817327   7.54894750 111.49391345 
+
+[1] "CVLs -25.3167595139322" "CVLs -17.1420478020769"
+[1] "Total computation time: 6.93000000000029"
+[1] "Fold 40"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.30824
+[1] -25.30824
+[1] "Relative error: 0.109000070568337"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5151812 0.8971303 1.1466856 1.4797315 2.4397285
+[1] -23.09349
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.114351930070817"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4992888 0.9554153 1.1840894 1.4415554 2.3507644
+[1] -21.08068
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.113458944271656"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4951571 1.0095505 1.1963043 1.3849555 2.2490076
+[1] -19.29033
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.120229811480188"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5025256 1.0430319 1.1921610 1.3147903 2.1544043
+[1] -17.93952
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.114322560221447"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5165189 1.0510345 1.1859530 1.2520709 2.0726779
+[1] -17.15008
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116925069790181"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5275363 1.0422145 1.1916774 1.2130081 2.0286426
+[1] -16.89615
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.134929167261409"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5305395 1.0317697 1.2111290 1.1933639 2.0249315
+[1] -17.096
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.8779999999997"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01744021   0.98866095   2.73672815   5.89928270 116.84390976 
+
+[1] "CVLs -25.3082442262203" "CVLs -16.8961518372308"
+[1] "Total computation time: 6.8779999999997"
+[1] "Fold 41"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.51835
+[1] -25.51835
+[1] "Relative error: 0.107683272530634"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5107404 0.8847051 1.1720961 1.5369091 2.3745056
+[1] -23.33261
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.111555588672247"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4935650 0.9493403 1.2105030 1.4963431 2.2779778
+[1] -21.2451
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.110312311368928"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4897116 1.0034414 1.2190582 1.4318697 2.1969741
+[1] -19.37663
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.12345767604163"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.497822 1.033439 1.211601 1.358460 2.109061
+[1] -17.97365
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.129699013243721"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5103871 1.0364945 1.2057183 1.2989666 2.0475756
+[1] -17.13911
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.123278485472823"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5181905 1.0297480 1.2072997 1.2673396 2.0270477
+[1] -16.84079
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.136368330985114"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5175424 1.0152446 1.2231046 1.2582136 2.0735201
+[1] -17.00481
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 7.01200000000063"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01625355   0.92959842   3.05052098   7.36411696 104.02570763 
+
+[1] "CVLs -25.5183460033547" "CVLs -16.8407895437669"
+[1] "Total computation time: 7.01300000000083"
+[1] "Fold 42"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -24.33087
+[1] -24.33087
+[1] "Relative error: 0.104774778335138"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5272586 0.8526745 1.1225647 1.5225826 2.5201088
+[1] -22.30083
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.110021213742698"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5081101 0.8991140 1.1648149 1.5005430 2.4491195
+[1] -20.51856
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117570035691762"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5005161 0.9426409 1.1874628 1.4450213 2.3792523
+[1] -18.95224
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.106719172248912"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5039422 0.9698715 1.2012767 1.3776375 2.2775203
+[1] -17.79488
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.115100067471993"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5143506 0.9817706 1.2096612 1.3104755 2.1747620
+[1] -17.18158
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.111896270835267"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5256515 0.9732328 1.2266647 1.2581778 2.1180077
+[1] -17.10174
+[1] "Partition abundance CONVERGED after 6 iterations"
+[1] "All partitions CONVERGED after 6 iterations"
+[1] "Computation time for adaptive weigthing: 6.18000000000029"
+[1] "Final lambda multipliers (summary):"
+$abundance
+     group1      group2      group3      group4      group5 
+ 0.03475678  0.68812687  2.25629115  5.96029085 72.73505482 
+
+[1] "CVLs -24.3308703415296" "CVLs -17.1815780379"   
+[1] "Total computation time: 6.18000000000029"
+[1] "Fold 43"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.67966
+[1] -25.67966
+[1] "Relative error: 0.0999222069719689"
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5105089 0.8856810 1.1572844 1.5569753 2.3865642
+[1] -23.41344
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.108425069502389"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4925571 0.9461033 1.1967874 1.5226240 2.3071761
+[1] -21.2721
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.123337769659116"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4873652 0.9996604 1.2114733 1.4565043 2.2301405
+[1] -19.34798
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116293083396971"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4939943 1.0306789 1.2043545 1.3843090 2.1506421
+[1] -17.8861
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.113614857779026"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5051264 1.0375783 1.1976491 1.3225815 2.0947067
+[1] -17.00145
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.11711061895986"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5116445 1.0300282 1.2041648 1.2911376 2.0765893
+[1] -16.67143
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.130728950236402"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5099213 1.0195444 1.2248163 1.2795676 2.1178175
+[1] -16.82423
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 7.17499999999927"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01564605   0.92270269   2.91434410   8.16233140 114.87567103 
+
+[1] "CVLs -25.6796559467035" "CVLs -16.6714334556883"
+[1] "Total computation time: 7.17599999999948"
+[1] "Fold 44"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.70754
+[1] -25.70754
+[1] "Relative error: 0.110518566453191"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5100120 0.8845443 1.1630601 1.5735152 2.3445350
+[1] -23.45076
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.120276624480375"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4924139 0.9472607 1.2034991 1.5301933 2.2632230
+[1] -21.31513
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.115203447574268"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4877473 1.0016517 1.2172461 1.4622491 2.1815844
+[1] -19.39742
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.122531438889248"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4948054 1.0319381 1.2116341 1.3873120 2.1017902
+[1] -17.94139
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.120080848433972"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5063171 1.0384453 1.2037294 1.3263952 2.0450688
+[1] -17.05842
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.123302941316987"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5132652 1.0311626 1.2097777 1.2920562 2.0286373
+[1] -16.72394
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.138715151795164"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5117305 1.0206066 1.2286429 1.2816837 2.0673627
+[1] -16.86646
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 7.40099999999984"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01575087   0.92740687   3.00629945   8.37080259 100.93871919 
+
+[1] "CVLs -25.7075407097129" "CVLs -16.7239395062351"
+[1] "Total computation time: 7.40200000000004"
+[1] "Fold 45"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.54767
+[1] -25.54767
+[1] "Relative error: 0.109090345673991"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5142572 0.8819702 1.1506881 1.5586657 2.3575739
+[1] -23.37043
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.114132627259962"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4978242 0.9429091 1.1829059 1.5167735 2.2785954
+[1] -21.31632
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.112249954702503"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4933699 0.9954834 1.1929833 1.4509240 2.2044685
+[1] -19.46364
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.113272605089207"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5002208 1.0255456 1.1872431 1.3802612 2.1227218
+[1] -18.03298
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.120254328574895"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5109338 1.0324215 1.1828678 1.3199090 2.0704402
+[1] -17.13411
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119701827050432"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.517009 1.026009 1.190520 1.288963 2.053029
+[1] -16.76037
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.133581072574034"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.514976 1.016765 1.213654 1.277104 2.085218
+[1] -16.8569
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 8.55600000000049"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01668989   0.89933403   2.71490615   8.05497350 106.85315818 
+
+[1] "CVLs -25.547665073402"  "CVLs -16.7603669521143"
+[1] "Total computation time: 8.56400000000031"
+[1] "Fold 46"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.29502
+[1] -25.29502
+[1] "Relative error: 0.102181388757757"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5003904 0.9148612 1.1490661 1.5738268 2.4028223
+[1] -22.98792
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.120262199905219"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4828633 0.9873246 1.1767062 1.5371701 2.3317565
+[1] -20.83966
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.118501790064226"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4788867 1.0514008 1.1748084 1.4709559 2.2602793
+[1] -18.99346
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117185239287421"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4866924 1.0936346 1.1547366 1.3848963 2.1963161
+[1] -17.68932
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.12736398528669"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4984109 1.1034326 1.1433241 1.3176152 2.1460279
+[1] -17.00725
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.123904556716152"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5041159 1.1016116 1.1445268 1.2852997 2.1324045
+[1] -16.89587
+[1] "Partition abundance CONVERGED after 6 iterations"
+[1] "All partitions CONVERGED after 6 iterations"
+[1] "Computation time for adaptive weigthing: 6.10900000000038"
+[1] "Final lambda multipliers (summary):"
+$abundance
+     group1      group2      group3      group4      group5 
+ 0.02806778  1.14604460  2.09716411  6.49358268 59.68939345 
+
+[1] "CVLs -25.2950246952695" "CVLs -17.007252062852" 
+[1] "Total computation time: 6.11000000000058"
+[1] "Fold 47"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.2051
+[1] -25.2051
+[1] "Relative error: 0.106825447141426"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5067550 0.8782415 1.1828385 1.5573785 2.4161074
+[1] -22.9999
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.1107758178535"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4896035 0.9433503 1.2195955 1.5172698 2.3177552
+[1] -20.97287
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.118687146717337"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4863614 1.0038973 1.2253175 1.4441777 2.2134763
+[1] -19.23804
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117293926727844"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.497054 1.039101 1.212223 1.362490 2.088524
+[1] -18.01641
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116682136737931"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5113429 1.0479131 1.2000245 1.2977863 2.0092049
+[1] -17.36569
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.12869563898606"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5206422 1.0432557 1.1990759 1.2626991 1.9758311
+[1] -17.23165
+[1] "Partition abundance CONVERGED after 6 iterations"
+[1] "All partitions CONVERGED after 6 iterations"
+[1] "Computation time for adaptive weigthing: 5.74099999999999"
+[1] "Final lambda multipliers (summary):"
+$abundance
+     group1      group2      group3      group4      group5 
+ 0.03067026  0.90564714  2.57135782  6.03412062 52.01425607 
+
+[1] "CVLs -25.2051035163534" "CVLs -17.365687932721" 
+[1] "Total computation time: 5.74099999999999"
+[1] "Fold 48"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.64341
+[1] -25.64341
+[1] "Relative error: 0.115342291000462"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5125935 0.8866048 1.1543724 1.5643104 2.3322849
+[1] -23.43159
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.105598003982576"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4937176 0.9514341 1.2001405 1.5168900 2.2535690
+[1] -21.34
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.118146422644074"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4878108 1.0081722 1.2212239 1.4447569 2.1763863
+[1] -19.47475
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.115195034840559"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4941785 1.0432353 1.2142703 1.3649226 2.1109062
+[1] -18.09956
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.121146991129662"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5047501 1.0559678 1.2066019 1.2991395 2.0615216
+[1] -17.33271
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.122197598670288"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5106564 1.0539002 1.2149290 1.2621075 2.0444144
+[1] -17.14922
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.121085054707902"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5084306 1.0494975 1.2384381 1.2434781 2.0810137
+[1] -17.47409
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.65299999999843"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01572506   0.98736092   3.01164353   7.67241301 101.76869276 
+
+[1] "CVLs -25.6434113817787" "CVLs -17.149218290342" 
+[1] "Total computation time: 6.65399999999863"
+[1] "Fold 49"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.59951
+[1] -25.59951
+[1] "Relative error: 0.104616525130389"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5112284 0.8904547 1.1436179 1.5437716 2.4262435
+[1] -23.39142
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.103902572479123"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4949979 0.9551874 1.1779449 1.4998463 2.3243559
+[1] -21.36096
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116221420109889"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4910743 1.0095510 1.1877126 1.4354318 2.2364526
+[1] -19.51507
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.118679565678392"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4979442 1.0399559 1.1837014 1.3667464 2.1463864
+[1] -18.06324
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119673971564588"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5085767 1.0428900 1.1820492 1.3118727 2.0897918
+[1] -17.14177
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.126947659458499"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5144028 1.0327715 1.1936769 1.2830067 2.0729949
+[1] -16.75903
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.133837010526198"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5120733 1.0209861 1.2174833 1.2740252 2.1120924
+[1] -16.86061
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.6309999999994"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01618848   0.96180356   2.67227868   7.64576479 117.27511245 
+
+[1] "CVLs -25.5995112425279" "CVLs -16.7590304587512"
+[1] "Total computation time: 6.6309999999994"
+[1] "Fold 50"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.3611
+[1] -25.3611
+[1] "Relative error: 0.0963858119855188"
+[1] "Shrink Factor coefficient matrix 0.98"
+[1] "exactstable"
+[1] 0.5178438 0.9197247 1.1308470 1.5024770 2.2498649
+[1] -23.38695
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.105864661071306"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4993543 0.9746474 1.1747836 1.4862190 2.1754124
+[1] -21.41985
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.10839769672315"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4939953 1.0270740 1.1893898 1.4302454 2.1091631
+[1] -19.66591
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.127427211145937"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5006004 1.0574567 1.1843526 1.3630338 2.0392290
+[1] -18.40446
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.120230526628955"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5122204 1.0635068 1.1777086 1.3057789 1.9847660
+[1] -17.73139
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119522467577818"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5194838 1.0573009 1.1844348 1.2685025 1.9691191
+[1] -17.59606
+[1] "Partition abundance CONVERGED after 6 iterations"
+[1] "All partitions CONVERGED after 6 iterations"
+[1] "Computation time for adaptive weigthing: 5.81400000000031"
+[1] "Final lambda multipliers (summary):"
+$abundance
+     group1      group2      group3      group4      group5 
+ 0.03275506  1.03540430  2.20396579  5.68430664 41.78144843 
+
+[1] "CVLs -25.3610985772073" "CVLs -17.731390751002" 
+[1] "Total computation time: 5.81500000000051"
+[1] "Fold 51"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.44688
+[1] -25.44688
+[1] "Relative error: 0.112993757528856"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5076359 0.8690809 1.1830162 1.5893188 2.3909529
+[1] -23.19662
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117269187094709"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4911231 0.9313575 1.2183614 1.5421345 2.3048753
+[1] -21.10002
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117356230930893"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4880621 0.9871312 1.2226310 1.4631940 2.2257482
+[1] -19.24432
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.115267996791177"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4967133 1.0174515 1.2128404 1.3816088 2.1377621
+[1] -17.85093
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.11869309361773"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5094859 1.0213684 1.2053862 1.3174209 2.0775122
+[1] -17.01597
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.124262554766088"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5173135 1.0121091 1.2106198 1.2820816 2.0632396
+[1] -16.71146
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.129867721919378"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5164045 0.9989411 1.2283079 1.2760881 2.0979214
+[1] -16.8699
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 7.01399999999921"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01592977   0.84037866   3.11888850   8.36874823 112.39502992 
+
+[1] "CVLs -25.4468825801151" "CVLs -16.7114624733619"
+[1] "Total computation time: 7.01399999999921"
+[1] "Fold 52"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.45549
+[1] -25.45549
+[1] "Relative error: 0.0997241292128066"
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5218311 0.9025464 1.1216065 1.5169569 2.2843916
+[1] -23.4473
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.121206319159998"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5030268 0.9676067 1.1552684 1.4811160 2.2204771
+[1] -21.4565
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.11040604658789"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4959214 1.0221274 1.1706426 1.4267851 2.1627225
+[1] -19.61283
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119404744034806"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5013347 1.0548356 1.1651678 1.3582839 2.1059532
+[1] -18.18907
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116029484076931"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5127939 1.0622608 1.1575521 1.2944323 2.0666446
+[1] -17.31855
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119917272788041"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5208581 1.0548552 1.1621080 1.2565170 2.0514787
+[1] -16.98729
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.132485383136568"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5202172 1.0404500 1.1802310 1.2432212 2.0968488
+[1] -17.12905
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.84699999999975"
+[1] "Final lambda multipliers (summary):"
+$abundance
+     group1      group2      group3      group4      group5 
+ 0.01743107  1.05507239  2.37751462  7.08205173 97.94881107 
+
+[1] "CVLs -25.4554875634991" "CVLs -16.987292170188" 
+[1] "Total computation time: 6.84799999999996"
+[1] "Fold 53"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.5712
+[1] -25.5712
+[1] "Relative error: 0.105859282770744"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5106194 0.8786110 1.1547172 1.5770022 2.4001507
+[1] -23.30558
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.121876554832413"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4937723 0.9392885 1.1899405 1.5377476 2.3125003
+[1] -21.19685
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.11217891456438"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4895757 0.9919002 1.2005274 1.4678731 2.2338918
+[1] -19.31203
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.11549123061524"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4965234 1.0222802 1.1947020 1.3906447 2.1555238
+[1] -17.87455
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119688751677266"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5076303 1.0284431 1.1910731 1.3264997 2.0997484
+[1] -16.99687
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119253509644915"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5141159 1.0214959 1.1991669 1.2938820 2.0788355
+[1] -16.66159
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.122659288310825"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.512126 1.013649 1.219148 1.280909 2.118867
+[1] -16.80227
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 8.03499999999985"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01599529   0.87912468   2.81481976   8.49618300 116.66018443 
+
+[1] "CVLs -25.5711989705718" "CVLs -16.6615878627014"
+[1] "Total computation time: 8.04299999999967"
+[1] "Fold 54"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.41687
+[1] -25.41687
+[1] "Relative error: 0.104446685561116"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5067776 0.8819078 1.1801938 1.5986221 2.3097534
+[1] -23.19702
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.10658774199144"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4899229 0.9423574 1.2229998 1.5573580 2.2198562
+[1] -21.0927
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.11699912034955"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4860034 0.9957602 1.2402159 1.4809570 2.1333953
+[1] -19.23949
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.11906790514373"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4957087 1.0273547 1.2330595 1.3933994 2.0314547
+[1] -17.89286
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116864534633321"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.509977 1.033781 1.221583 1.324638 1.962773
+[1] -17.14281
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117722565266653"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5192998 1.0277962 1.2268288 1.2855144 1.9254749
+[1] -16.93842
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119687889315104"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5189681 1.0179339 1.2510767 1.2710744 1.9389668
+[1] -17.19391
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 8.29899999999907"
+[1] "Final lambda multipliers (summary):"
+$abundance
+    group1     group2     group3     group4     group5 
+ 0.0158409  0.9033366  3.3080199  8.7483557 83.9802068 
+
+[1] "CVLs -25.4168746327712" "CVLs -16.9384230094823"
+[1] "Total computation time: 8.29999999999927"
+[1] "Fold 55"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.65613
+[1] -25.65613
+[1] "Relative error: 0.107206021012501"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5137333 0.8945351 1.1752892 1.5140383 2.2878453
+[1] -23.47565
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.110976541483947"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4959615 0.9545890 1.2129208 1.4808833 2.2271302
+[1] -21.35468
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.110333525082556"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.490895 1.006742 1.222971 1.422937 2.167044
+[1] -19.43971
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.11035906631887"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4978218 1.0358655 1.2158115 1.3548505 2.0953947
+[1] -17.99202
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.114671945246143"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5091664 1.0404005 1.2066078 1.2988532 2.0497530
+[1] -17.1266
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.125430543085471"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5169582 1.0327428 1.2126714 1.2629571 2.0304804
+[1] -16.8161
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.126280876566803"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5159018 1.0235866 1.2306021 1.2471533 2.0742964
+[1] -16.98123
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 8.07499999999891"
+[1] "Final lambda multipliers (summary):"
+$abundance
+     group1      group2      group3      group4      group5 
+ 0.01638941  0.95681536  3.10147921  7.09060833 96.29551817 
+
+[1] "CVLs -25.6561312977346" "CVLs -16.8161010128359"
+[1] "Total computation time: 8.08100000000013"
+[1] "Fold 56"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.36065
+[1] -25.36065
+[1] "Relative error: 0.10717393037622"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5135332 0.8946680 1.1665628 1.5368518 2.2733671
+[1] -23.35846
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.106794455734635"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4981162 0.9558598 1.1983757 1.4937874 2.1986866
+[1] -21.37389
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116283626773201"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4946755 1.0067910 1.2073556 1.4292662 2.1302461
+[1] -19.54114
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116133601466681"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.501594 1.034134 1.201452 1.358683 2.071033
+[1] -18.10767
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.11874540341214"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5119003 1.0410220 1.1943723 1.3023232 2.0309330
+[1] -17.20585
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119650896696512"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5178264 1.0354145 1.2001002 1.2758828 2.0100300
+[1] -16.83595
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.138428705288131"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5158552 1.0265462 1.2189872 1.2669613 2.0434866
+[1] -16.93863
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.52199999999903"
+[1] "Final lambda multipliers (summary):"
+$abundance
+     group1      group2      group3      group4      group5 
+ 0.01682448  0.95972441  2.90669830  7.40767108 90.02180864 
+
+[1] "CVLs -25.360648537443"  "CVLs -16.8359481982661"
+[1] "Total computation time: 6.52900000000045"
+[1] "Fold 57"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.64805
+[1] -25.64805
+[1] "Relative error: 0.110726817538098"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5017763 0.8987002 1.1710423 1.5919288 2.3507998
+[1] -23.31832
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.112181428457898"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4837742 0.9691016 1.2094857 1.5544283 2.2541195
+[1] -21.05361
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.117501645713341"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4784447 1.0306261 1.2210318 1.4856502 2.1745245
+[1] -19.00794
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116844553656613"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4835831 1.0693134 1.2162519 1.4080099 2.0987696
+[1] -17.47829
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.118664837697461"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4910067 1.0813993 1.2120971 1.3510427 2.0609168
+[1] -16.59711
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.120294879851499"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4928101 1.0820409 1.2226251 1.3146364 2.0835526
+[1] -16.33735
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.134230119604324"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4832226 1.0817656 1.2596803 1.3095419 2.1692545
+[1] -16.62056
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 7.00799999999981"
+[1] "Final lambda multipliers (summary):"
+$abundance
+     group1      group2      group3      group4      group5 
+  0.0135901   1.1231042   3.1171276   9.1937213 103.8452342 
+
+[1] "CVLs -25.6480509216163" "CVLs -16.3373501293466"
+[1] "Total computation time: 7.00900000000001"
+[1] "Fold 58"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.6778
+[1] -25.6778
+[1] "Relative error: 0.100505632357299"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5071578 0.8958935 1.1754393 1.5405906 2.3512190
+[1] -23.45548
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.111300480651773"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4897113 0.9584039 1.2158526 1.5063542 2.2674046
+[1] -21.31786
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.111853156728093"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4850929 1.0128174 1.2272506 1.4410993 2.1982397
+[1] -19.40569
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.112345288684679"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4924852 1.0416949 1.2190981 1.3687444 2.1243577
+[1] -17.97546
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.119026417283567"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5041928 1.0466500 1.2109496 1.3093825 2.0682892
+[1] -17.1297
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.128666779380727"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5110937 1.0370140 1.2156041 1.2789442 2.0562824
+[1] -16.83617
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.133504987370655"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.508947 1.025666 1.235718 1.270057 2.102798
+[1] -17.01883
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.58899999999994"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01528968   0.98324725   3.14754022   7.66564606 105.88119452 
+
+[1] "CVLs -25.6777998649636" "CVLs -16.8361708208084"
+[1] "Total computation time: 6.59000000000015"
+[1] "Fold 59"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.51654
+[1] -25.51654
+[1] "Relative error: 0.110709573816118"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5093151 0.8798408 1.1790072 1.5474656 2.3871891
+[1] -23.27551
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.110919265711853"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4911745 0.9392290 1.2177659 1.5191071 2.3101819
+[1] -21.14579
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116978430753799"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4863340 0.9877881 1.2280615 1.4598315 2.2480764
+[1] -19.24673
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.115589748316379"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4933163 1.0118717 1.2212087 1.3891479 2.1820203
+[1] -17.83516
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.110393951714765"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5047514 1.0122931 1.2122107 1.3322975 2.1385017
+[1] -17.03089
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.131271067839361"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5118534 1.0004370 1.2186398 1.3043721 2.1204814
+[1] -16.81113
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.128179153973488"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5102079 0.9863379 1.2358629 1.3058624 2.1575094
+[1] -17.09851
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.8809999999994"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01550621   0.83649009   3.18085425   8.28444342 122.67241863 
+
+[1] "CVLs -25.5165352867163" "CVLs -16.8111309118922"
+[1] "Total computation time: 6.88199999999961"
+[1] "Fold 60"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.40666
+[1] -25.40666
+[1] "Relative error: 0.109200713012738"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5115751 0.8981145 1.1527916 1.5434080 2.3284334
+[1] -23.23636
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.105845761028153"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4942011 0.9578768 1.1902136 1.5046960 2.2697759
+[1] -21.15422
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116347794247317"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.489415 1.012357 1.200849 1.438543 2.204837
+[1] -19.29614
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116770224308053"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4972135 1.0421019 1.1927686 1.3677349 2.1197872
+[1] -17.90931
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.126148125408742"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5095576 1.0479924 1.1853985 1.3086511 2.0521933
+[1] -17.08919
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.11730632046149"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5174549 1.0397295 1.1918778 1.2716062 2.0330527
+[1] -16.80248
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.122827882848108"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.516618 1.027215 1.212115 1.259551 2.067434
+[1] -16.97746
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.62900000000081"
+[1] "Final lambda multipliers (summary):"
+$abundance
+     group1      group2      group3      group4      group5 
+  0.0162218   0.9889256   2.7766196   7.6038009 103.0581796 
+
+[1] "CVLs -25.4066610793836" "CVLs -16.8024787325793"
+[1] "Total computation time: 6.63000000000102"
+[1] "Fold 61"
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+123456
+[1] -25.47148
+[1] -25.47148
+[1] "Relative error: 0.1068258763437"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4982771 0.8785421 1.1957557 1.5727573 2.5219909
+[1] -22.96797
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.108825717360428"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4802639 0.9432731 1.2365683 1.5260370 2.4555535
+[1] -20.65737
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116466757902306"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.4770088 0.9996892 1.2453691 1.4403713 2.3847897
+[1] -18.63543
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.112022020598308"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.487142 1.025364 1.235752 1.352728 2.291691
+[1] -17.13478
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.116356930373957"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5000008 1.0267334 1.2315079 1.2826018 2.2371239
+[1] -16.2425
+1234567
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.12171414237861"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5083871 1.0160010 1.2372252 1.2383667 2.2439668
+[1] -15.92549
+12345678
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.14025947290171"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5058597 1.0028188 1.2591081 1.2225853 2.3423293
+[1] -16.10171
+[1] "Partition abundance CONVERGED after 7 iterations"
+[1] "All partitions CONVERGED after 7 iterations"
+[1] "Computation time for adaptive weigthing: 6.94099999999889"
+[1] "Final lambda multipliers (summary):"
+$abundance
+      group1       group2       group3       group4       group5 
+  0.01413507   0.88612477   3.46717542   7.42767350 169.90476182 
+
+[1] "CVLs -25.4714773026756" "CVLs -15.9254893786299"
+[1] "Total computation time: 6.9419999999991"
+> auc <- sapply(1:length(methods), function(method) {return(pROC::roc(resp, pred[, method])$auc)})
+> names(auc) <- colnames(pred) <- methods
+> setting2 <- list(pred=pred, auc=auc)
+> save(setting2, file=paste(path.res, "grEBEN_mirna_putri_setting2.Rdata", sep=""))
+> 
+> 
+> 
+> # load(paste(path.res, "grEBEN_mirna_putri_fitted1.Rdata", sep=""))
+> # 
+> # # create partitions based on the regular elastic net and pvalues
+> # pvalues <- apply(data, 2, logreguni, resp=resp)
+> # benet <- as.numeric(coef(fit.enet, s="lambda.min"))[-1]
+> # parPval1 <- CreatePartition(pvalues, ngroup=5, uniform=TRUE)
+> # parPval2 <- rep(1:length(parPval1), times=unlist(lapply(parPval1, length)))[order(unlist(parPval1))]
+> # parEst1 <- CreatePartition(benet, ngroup=5, uniform=TRUE, decreasing=TRUE)
+> # parEst2 <- rep(1:length(parEst1), times=unlist(lapply(parEst1, length)))[order(unlist(parEst1))]
+> # 
+> # # plot p-values and elastic net estimates
+> # plot(log(pvalues[abs(benet) < 50]) ~ benet[abs(benet) < 50])
+> # boxplot(log(pvalues) ~ parEst2) # against elastic net estimates
+> # boxplot(log(pvalues) ~ parAbund2) # against abundances
+> # boxplot(benet[abs(benet) < 50] ~ parCons2[abs(benet) < 50]) # against conservation status
+> # boxplot(log(abs(benet[abs(benet) < 50]) + 1) ~ parCons2[abs(benet) < 50])
+> # 
+> # # ep(n %/% nfolds + as.numeric(rest!=0), times=rest),
+>                                              rep(n %/% nfolds, times=nfolds - rest)))))
+Error: unexpected ')' in "                                             rep(n %/% nfolds, times=nfolds - rest))"
+Execution halted

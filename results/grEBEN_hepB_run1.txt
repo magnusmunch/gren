@@ -1,0 +1,1335 @@
+
+R version 3.2.5 (2016-04-14) -- "Very, Very Secure Dishes"
+Copyright (C) 2016 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ##########################  data description  #########################
+> # Data:                                                               #
+> # http://www.ebi.ac.uk/metabolights/MTBLS253                          #
+> # http://www.ebi.ac.uk/metabolights/MTBLS279                          #
+> # http://www.ebi.ac.uk/metabolights/MTBLS280                          #
+> #                                                                     #
+> # Reference:                                                          #
+> # Metabolic characterization of the natural progression of chronic    #
+> # Hepatitis B                                                         #
+> #######################################################################
+> 
+> ### paths
+> path.code <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/code/" ,"~/EBEN/code/"))
+> path.res <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/results/" ,"~/EBEN/results/"))
+> path.data <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/data/hepB/" ,"~/EBEN/data/hepB/"))
+> path.graph <- "/Users/magnusmunch/Documents/PhD/EBEN/graphs/"
+> 
+> ### libraries
+> library(glmnet)
+Loading required package: Matrix
+Loading required package: foreach
+Loaded glmnet 2.0-5
+
+> library(penalized)
+Loading required package: survival
+Welcome to penalized. For extended examples, see vignette("penalized").
+> library(GRridge)
+Loading required package: Iso
+Iso 0.0-17
+Loading required package: GSEABase
+Loading required package: BiocGenerics
+Loading required package: parallel
+
+Attaching package: ‘BiocGenerics’
+
+The following objects are masked from ‘package:parallel’:
+
+    clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
+    clusterExport, clusterMap, parApply, parCapply, parLapply,
+    parLapplyLB, parRapply, parSapply, parSapplyLB
+
+The following object is masked from ‘package:penalized’:
+
+    as.data.frame
+
+The following object is masked from ‘package:Matrix’:
+
+    as.vector
+
+The following objects are masked from ‘package:stats’:
+
+    IQR, mad, xtabs
+
+The following objects are masked from ‘package:base’:
+
+    anyDuplicated, append, as.data.frame, as.vector, cbind, colnames,
+    do.call, duplicated, eval, evalq, Filter, Find, get, grep, grepl,
+    intersect, is.unsorted, lapply, lengths, Map, mapply, match, mget,
+    order, paste, pmax, pmax.int, pmin, pmin.int, Position, rank,
+    rbind, Reduce, rownames, sapply, setdiff, sort, table, tapply,
+    union, unique, unlist, unsplit
+
+Loading required package: Biobase
+Welcome to Bioconductor
+
+    Vignettes contain introductory material; view with
+    'browseVignettes()'. To cite Bioconductor, see
+    'citation("Biobase")', and for packages 'citation("pkgname")'.
+
+Loading required package: annotate
+Loading required package: AnnotationDbi
+Loading required package: stats4
+Loading required package: IRanges
+Loading required package: S4Vectors
+
+Attaching package: ‘IRanges’
+
+The following object is masked from ‘package:Matrix’:
+
+    expand
+
+Loading required package: XML
+Loading required package: graph
+
+Attaching package: ‘graph’
+
+The following object is masked from ‘package:XML’:
+
+    addNode
+
+
+Attaching package: ‘GRridge’
+
+The following object is masked from ‘package:glmnet’:
+
+    auc
+
+Warning messages:
+1: replacing previous import ‘stats::xtabs’ by ‘BiocGenerics::xtabs’ when loading ‘GRridge’ 
+2: replacing previous import ‘GSEABase::intersect’ by ‘BiocGenerics::intersect’ when loading ‘GRridge’ 
+3: replacing previous import ‘stats::mad’ by ‘BiocGenerics::mad’ when loading ‘GRridge’ 
+4: replacing previous import ‘GSEABase::setdiff’ by ‘BiocGenerics::setdiff’ when loading ‘GRridge’ 
+5: replacing previous import ‘penalized::as.data.frame’ by ‘BiocGenerics::as.data.frame’ when loading ‘GRridge’ 
+6: replacing previous import ‘stats::IQR’ by ‘BiocGenerics::IQR’ when loading ‘GRridge’ 
+> library(pROC)
+Type 'citation("pROC")' for a citation.
+
+Attaching package: ‘pROC’
+
+The following objects are masked from ‘package:GRridge’:
+
+    auc, roc
+
+The following objects are masked from ‘package:IRanges’:
+
+    cov, var
+
+The following object is masked from ‘package:glmnet’:
+
+    auc
+
+The following objects are masked from ‘package:stats’:
+
+    cov, smooth, var
+
+> 
+> ### functions
+> # source grENVB functions
+> source(paste(path.code, "grVBEM.R", sep=""))
+> 
+> # function to cross-validate elastic net
+> cv.en <- function(x, y, intercept=intercept) {
++   fit.pen <- cv.pen(x, y, intercept=intercept)
++   fit.en <- glmnet(x, y, family="binomial", alpha=fit.pen$alpha[which.min(fit.pen$cvll)],
++                    lambda=fit.pen$lambda[which.min(fit.pen$cvll)])
++   return(fit.en)
++ }
+> 
+> ### reading in data
+> data_oxy <- read.table(paste(path.data, "s_mtbls253.txt", sep=""), header=TRUE)
+> data_ami_acy <- read.table(paste(path.data, "s_mtbls280.txt", sep=""), header=TRUE)
+> data_lip <- read.table(paste(path.data, "s_mtbls279.txt", sep=""), header=TRUE)
+> 
+> met_ami <- read.table(paste(path.data, "m_amine_mass_spectrometry_v2_maf.tsv", sep=""), dec=",", sep="\t", header=TRUE)
+> met_POS_lip <- read.table(paste(path.data, "m_POS_lipid_mass_spectrometry_v2_maf.tsv", sep=""), dec=",", sep="\t", header=TRUE)
+> met_NEG_lip <- read.table(paste(path.data, "m_NEG_lipid_mass_spectrometry_v2_maf.tsv", sep=""), dec=",", sep="\t", header=TRUE)
+> met_oxy <- read.table(paste(path.data, "m_oxylipin_mass_spectrometry_v2_maf.tsv", sep=""), dec=",", sep="\t", header=TRUE)
+> met_acy <- read.table(paste(path.data, "m_acyl_carnitine_mass_spectrometry_v2_maf.tsv", sep=""), dec=",", sep="\t", header=TRUE)
+> 
+> ### data formatting
+> # clinical stuff
+> status1_oxy <- data_oxy$Factor.Value.control
+> status1_oxy <- factor(c(status1_oxy[1:37], NA, status1_oxy[38:66], NA, 
++                       status1_oxy[67:length(status1_oxy)]), levels=c(1, 2), 
++                       labels=c("False", "True"))
+> status2_oxy <- data_oxy$Factor.Value.phase.
+> status2_oxy <- factor(c(status2_oxy[1:37], NA, status2_oxy[38:66], NA, 
++                         status2_oxy[67:length(status2_oxy)]), levels=c(1, 2, 3, 4, 5), 
++                       labels=c("", "ENEG", "IA", "IC", "IT"))
+> id_oxy <- data_oxy$Sample.Name
+> id_oxy <- c(id_oxy[1:37], 78, id_oxy[38:66], 76, id_oxy[67:length(id_oxy)])
+> # oxy is missing patients 76 and 78
+> 
+> status1_ami_acy <- data_ami_acy$Factor.Value.control
+> status2_ami_acy <- data_ami_acy$Factor.Value.phase.
+> id_ami_acy <- data_ami_acy$Sample.Name
+> 
+> status1_lip <- data_lip$Factor.Value.control
+> status2_lip <- data_lip$Factor.Value.phase.
+> id_lip <- data_lip$Sample.Name
+> # lip and ami contain the same samples
+> 
+> # metabolomics data
+> met_ami2 <- t(met_ami[, c(22:109)])
+> met_ami3 <- apply(met_ami2, 2, function(x) {
++   as.numeric(ifelse(substr(x, 1, 2)=="0,", gsub(",", ".", x), gsub(",", "", x)))})
+> met_ami4 <- data.frame(id=as.numeric(substring(names(met_ami)[22:109], 2)), met_ami3)
+> colnames(met_ami4)[-1] <- as.character(met_ami[, 5])
+> 
+> met_POS_lip2 <- t(met_POS_lip[, c(22:109)])
+> met_POS_lip3 <- apply(met_POS_lip2, 2, function(x) {
++   as.numeric(ifelse(substr(x, 1, 2)=="0,", gsub(",", ".", x), gsub(",", "", x)))})
+> met_POS_lip4 <- data.frame(id=as.numeric(substring(names(met_POS_lip)[22:109], 2)), met_POS_lip3)
+> colnames(met_POS_lip4)[-1] <- as.character(met_POS_lip[, 5])
+> 
+> met_NEG_lip2 <- t(met_NEG_lip[, c(22:109)])
+> met_NEG_lip3 <- apply(met_NEG_lip2, 2, function(x) {
++   as.numeric(ifelse(substr(x, 1, 2)=="0,", gsub(",", ".", x), gsub(",", "", x)))})
+> met_NEG_lip4 <- data.frame(id=as.numeric(substring(names(met_NEG_lip)[22:109], 2)), met_NEG_lip3)
+> colnames(met_NEG_lip4)[-1] <- as.character(met_NEG_lip[, 5])
+> 
+> met_oxy2 <- t(met_oxy[, c(22:107)])
+> met_oxy3 <- apply(met_oxy2, 2, function(x) {
++   as.numeric(ifelse(substr(x, 1, 2)=="0,", gsub(",", ".", x), gsub(",", "", x)))})
+> met_oxy4 <- data.frame(id=as.numeric(substring(names(met_oxy)[22:107], 2)), met_oxy3)
+> colnames(met_oxy4)[-1] <- as.character(met_oxy[, 5])
+> met_oxy4 <- rbind(met_oxy4[c(1:37), ], c(78, rep(NA, ncol(met_oxy4) - 1)), 
++                   met_oxy4[c(38:66), ], c(76, rep(NA, ncol(met_oxy4) - 1)),
++                   met_oxy4[c(67:nrow(met_oxy4)), ])
+> 
+> met_acy2 <- t(met_acy[, c(22:109)])
+> met_acy3 <- apply(met_acy2, 2, function(x) {
++   as.numeric(ifelse(substr(x, 1, 2)=="0,", gsub(",", ".", x), gsub(",", "", x)))})
+> met_acy4 <- data.frame(id=as.numeric(substring(names(met_acy)[22:109], 2)), met_acy3)
+> colnames(met_acy4)[-1] <- as.character(met_acy[, 5])
+> 
+> metabol <- data.frame(met_ami4[, -1], met_POS_lip4[, -1], met_NEG_lip4[, -1], 
++                       met_oxy4[, -1], met_acy4[, -1])
+> 
+> 
+> # data preparation
+> # remove sample/feature if more than 10% missing
+> # impute half of the minimum of a feature
+> metabol2 <- metabol[, apply(metabol, 2, function(x) {sum(is.na(x))})/nrow(metabol) < 0.10]
+> indsel1 <- which(apply(metabol, 2, function(x) {sum(is.na(x))})/nrow(metabol) < 0.10)
+> metabol3 <- metabol2[apply(metabol2, 1, function(x) {sum(is.na(x))})/ncol(metabol) < 0.1, ]
+> indsel2 <- which(apply(metabol2, 1, function(x) {sum(is.na(x))})/ncol(metabol) < 0.1)
+> metabolprep <- apply(metabol3, 2, function(x) {
++   imput <- min(x, na.rm=TRUE)/2; ifelse(is.na(x), imput, x)})
+> statusprep <- status1_ami_acy[indsel2]
+> 
+> ### data analysis
+> y <- ifelse(as.numeric(statusprep)==2, 0, 1)
+> x <- apply(metabolprep, 2, function(x) {(x - mean(x))/sd(x)})
+> n <- nrow(x)
+> p <- ncol(x)
+> m <- rep(1, n)
+> 
+> # co-data
+> assay <- rep(1:5, times=c(ncol(met_ami4[, -1]), ncol(met_POS_lip4[, -1]), ncol(met_NEG_lip4[, -1]), 
++                           ncol(met_oxy4[, -1]), ncol(met_acy4[, -1])))[indsel1]
+> 
+> # cross validation of AUC
+> set.seed(3001)
+> nfolds <- 10
+> rest <- n %% nfolds
+> foldsize <- c(rep(n %/% nfolds + as.numeric(rest!=0), times=rest),
++               rep(n %/% nfolds, times=nfolds - rest))
+> foldid <- sample(rep(1:nfolds, times=foldsize))
+> 
+> cv.ridge <- cv.glmnet(x, y, family="binomial", alpha=0, standardize=FALSE, intercept=TRUE)
+> cv.en <- cv.pen(x, y, intercept=TRUE)
+> # cv.SGL <- cvSGL(list(x=x, y=y), index=groups, type="logit", standardize=FALSE)
+> 
+> lambda2ridge <- 0.5*n*cv.ridge$lambda.min
+> lambdaridge <- cv.ridge$lambda.min
+> alphaglmnet <- cv.en$alpha[which.min(cv.en$cvll)]
+> lambdaglmnet <- cv.en$lambda[which.min(cv.en$cvll)]
+> lambda1gren <- 2*n*lambdaglmnet*alphaglmnet
+> lambda2gren <- n*lambdaglmnet*(1 - alphaglmnet)
+> # lambdaSGL <- cv.SGL$lambdas[which.min(cv.SGL$lldiff)]
+> 
+> pred1.ridge <- pred1.en <- pred1.grEBEN <- pred1.grridge <- numeric(n) # pred1.SGL <- numeric(n)
+> for(k in 1:nfolds) {
++   print(paste("Fold", k, sep=" "))
++   xtrain <- x[foldid!=k, ]
++   xtest <- x[foldid==k, ]
++   ytrain <- y[foldid!=k]
++   ytest <- y[foldid==k]
++   mtrain <- m[foldid!=k]
++   mtest <- m[foldid==k]
++   ntrain <- length(ytrain)
++   ntest <- length(ytest)
++ 
++   # grVBEM
++   fit.ridge <- glmnet(xtrain, ytrain, family="binomial", alpha=0, lambda=lambdaridge, standardize=FALSE,
++                       intercept=TRUE)
++   fit.en <- glmnet(xtrain, ytrain, family="binomial", alpha=alphaglmnet, lambda=lambdaglmnet, standardize=FALSE,
++                    intercept=TRUE)
++   fit.grEBEN <- grVBEM(xtrain, ytrain, m=mtrain, partitions=assay, lambda1=lambda1gren, lambda2=lambda2gren,
++                        intercept=TRUE, eps=0.001, maxiter=500, trace=TRUE)
++   fit.grridge <- grridge(t(xtrain), ytrain, list(group=CreatePartition(as.factor(assay))), unpenal=~1,
++                          optl=lambda2ridge, trace=FALSE)
++   # fit.SGL <- SGL(list(x=xtrain, y=ytrain), index=groups, type="logit", standardize=FALSE)
++ 
++   pred1.ridge[foldid==k] <- predict(fit.ridge, xtest, type="response")
++   pred1.en[foldid==k] <- predict(fit.en, xtest, type="response")
++   pred1.grEBEN[foldid==k] <- as.numeric(exp(cbind(1, xtest) %*% fit.grEBEN$mu)/
++                                            (1 + exp(cbind(1, xtest) %*% fit.grEBEN$mu)))
++   pred1.grridge[foldid==k] <- predict(fit.grridge$predobj$GroupRegul, xtest)
++   # pred1.SGL[foldid==k] <- as.numeric(exp(cbind(1, matrix(xtest, nrow=1)) %*%
++   #                                          rbind(fit.SGL$fit$intercepts, fit.SGL$fit$beta)
++   #                                        [, which.min(fit.SGL$lldiff)])/
++   #                                      (1 + exp(cbind(1, matrix(xtest, nrow=1)) %*%
++   #                                                 rbind(fit.SGL$fit$intercepts, fit.SGL$fit$beta)
++   #                                               [, which.min(fit.SGL$lldiff)])))
++ 
++ }
+[1] "Fold 1"
+
+Estimating penalty multipliers by empirical Bayes
+Penalty multipliers estimated at partition1: 0.79, 1.08, 0.79, 1.33, 1.05      Penalty multipliers estimated at partition1: 0.81, 1.08, 0.76, 1.38, 1.09      Penalty multipliers estimated at partition1: 0.83, 1.07, 0.73, 1.42, 1.13      Penalty multipliers estimated at partition1: 0.86, 1.07, 0.7, 1.46, 1.17      Penalty multipliers estimated at partition1: 0.88, 1.07, 0.68, 1.5, 1.21      Penalty multipliers estimated at partition1: 0.9, 1.06, 0.65, 1.54, 1.24      Penalty multipliers estimated at partition1: 0.92, 1.06, 0.63, 1.57, 1.28      Penalty multipliers estimated at partition1: 0.94, 1.06, 0.6, 1.6, 1.31      Penalty multipliers estimated at partition1: 0.96, 1.06, 0.58, 1.64, 1.34      Penalty multipliers estimated at partition1: 0.98, 1.06, 0.56, 1.67, 1.37      Penalty multipliers estimated at partition1: 1, 1.06, 0.55, 1.69, 1.4      Penalty multipliers estimated at partition1: 1.03, 1.06, 0.53, 1.72, 1.43      Penalty multipliers estimated at partition1: 1.05, 1.06, 0.51, 1.74, 1.45      Penalty multipliers estimated at partition1: 1.07, 1.06, 0.5, 1.77, 1.48      Penalty multipliers estimated at partition1: 1.09, 1.07, 0.48, 1.79, 1.5      Penalty multipliers estimated at partition1: 1.11, 1.07, 0.47, 1.81, 1.52      Penalty multipliers estimated at partition1: 1.13, 1.07, 0.46, 1.83, 1.54      Penalty multipliers estimated at partition1: 1.15, 1.07, 0.44, 1.85, 1.56      Penalty multipliers estimated at partition1: 1.17, 1.07, 0.43, 1.87, 1.58      Penalty multipliers estimated at partition1: 1.18, 1.07, 0.42, 1.88, 1.6      Penalty multipliers estimated at partition1: 1.2, 1.08, 0.41, 1.9, 1.62      Penalty multipliers estimated at partition1: 1.22, 1.08, 0.4, 1.91, 1.63      Penalty multipliers estimated at partition1: 1.24, 1.08, 0.39, 1.93, 1.65      Penalty multipliers estimated at partition1: 1.26, 1.08, 0.38, 1.94, 1.66      Penalty multipliers estimated at partition1: 1.28, 1.09, 0.38, 1.95, 1.68      Penalty multipliers estimated at partition1: 1.29, 1.09, 0.37, 1.96, 1.69      Penalty multipliers estimated at partition1: 1.31, 1.09, 0.36, 1.97, 1.7      Penalty multipliers estimated at partition1: 1.33, 1.09, 0.35, 1.98, 1.72      Penalty multipliers estimated at partition1: 1.34, 1.1, 0.35, 1.99, 1.73      Penalty multipliers estimated at partition1: 1.36, 1.1, 0.34, 2, 1.74      Penalty multipliers estimated at partition1: 1.37, 1.1, 0.34, 2.01, 1.75      Penalty multipliers estimated at partition1: 1.39, 1.1, 0.33, 2.01, 1.76      Penalty multipliers estimated at partition1: 1.4, 1.11, 0.32, 2.02, 1.77      Penalty multipliers estimated at partition1: 1.42, 1.11, 0.32, 2.03, 1.77      Penalty multipliers estimated at partition1: 1.43, 1.11, 0.31, 2.03, 1.78      Penalty multipliers estimated at partition1: 1.44, 1.11, 0.31, 2.04, 1.79      Penalty multipliers estimated at partition1: 1.46, 1.12, 0.31, 2.04, 1.8      Penalty multipliers estimated at partition1: 1.47, 1.12, 0.3, 2.05, 1.8      Penalty multipliers estimated at partition1: 1.48, 1.12, 0.3, 2.05, 1.81      Penalty multipliers estimated at partition1: 1.5, 1.12, 0.29, 2.06, 1.82      Penalty multipliers estimated at partition1: 1.51, 1.12, 0.29, 2.06, 1.82      Penalty multipliers estimated at partition1: 1.52, 1.13, 0.29, 2.07, 1.83      Penalty multipliers estimated at partition1: 1.53, 1.13, 0.28, 2.07, 1.83      Penalty multipliers estimated at partition1: 1.54, 1.13, 0.28, 2.07, 1.84      Penalty multipliers estimated at partition1: 1.55, 1.13, 0.28, 2.08, 1.84      Penalty multipliers estimated at partition1: 1.56, 1.13, 0.28, 2.08, 1.85      Penalty multipliers estimated at partition1: 1.57, 1.14, 0.27, 2.08, 1.85      Penalty multipliers estimated at partition1: 1.58, 1.14, 0.27, 2.08, 1.86      Penalty multipliers estimated at partition1: 1.59, 1.14, 0.27, 2.08, 1.86      Penalty multipliers estimated at partition1: 1.6, 1.14, 0.27, 2.09, 1.86      Penalty multipliers estimated at partition1: 1.61, 1.14, 0.26, 2.09, 1.87      Penalty multipliers estimated at partition1: 1.61, 1.14, 0.26, 2.09, 1.87      Penalty multipliers estimated at partition1: 1.62, 1.14, 0.26, 2.09, 1.87      Penalty multipliers estimated at partition1: 1.63, 1.15, 0.26, 2.09, 1.88      Penalty multipliers estimated at partition1: 1.64, 1.15, 0.26, 2.09, 1.88      Penalty multipliers estimated at partition1: 1.64, 1.15, 0.26, 2.1, 1.88      Penalty multipliers estimated at partition1: 1.65, 1.15, 0.25, 2.1, 1.88      Penalty multipliers estimated at partition1: 1.66, 1.15, 0.25, 2.1, 1.89      Penalty multipliers estimated at partition1: 1.66, 1.15, 0.25, 2.1, 1.89      Penalty multipliers estimated at partition1: 1.67, 1.15, 0.25, 2.1, 1.89      Penalty multipliers estimated at partition1: 1.67, 1.15, 0.25, 2.1, 1.89      Penalty multipliers estimated at partition1: 1.68, 1.16, 0.25, 2.1, 1.89      Penalty multipliers estimated at partition1: 1.68, 1.16, 0.25, 2.1, 1.9      Penalty multipliers estimated at partition1: 1.69, 1.16, 0.25, 2.1, 1.9      Penalty multipliers estimated at partition1: 1.69, 1.16, 0.24, 2.1, 1.9      Penalty multipliers estimated at partition1: 1.7, 1.16, 0.24, 2.1, 1.9      Penalty multipliers estimated at partition1: 1.7, 1.16, 0.24, 2.1, 1.9      Penalty multipliers estimated at partition1: 1.71, 1.16, 0.24, 2.1, 1.9      Penalty multipliers estimated at partition1: 1.71, 1.16, 0.24, 2.1, 1.9      Penalty multipliers estimated at partition1: 1.72, 1.16, 0.24, 2.1, 1.9      Penalty multipliers estimated at partition1: 1.72, 1.16, 0.24, 2.1, 1.91      Penalty multipliers estimated at partition1: 1.72, 1.16, 0.24, 2.1, 1.91      Penalty multipliers estimated at partition1: 1.73, 1.16, 0.24, 2.1, 1.91      Penalty multipliers estimated at partition1: 1.73, 1.16, 0.24, 2.1, 1.91      Penalty multipliers estimated at partition1: 1.73, 1.16, 0.24, 2.1, 1.91      Penalty multipliers estimated at partition1: 1.74, 1.16, 0.24, 2.1, 1.91      Penalty multipliers estimated at partition1: 1.74, 1.17, 0.24, 2.1, 1.91      Penalty multipliers estimated at partition1: 1.74, 1.17, 0.23, 2.11, 1.91      Penalty multipliers estimated at partition1: 1.74, 1.17, 0.23, 2.11, 1.91      Penalty multipliers estimated at partition1: 1.75, 1.17, 0.23, 2.11, 1.91      Penalty multipliers estimated at partition1: 1.75, 1.17, 0.23, 2.11, 1.91      Penalty multipliers estimated at partition1: 1.75, 1.17, 0.23, 2.11, 1.91      Penalty multipliers estimated at partition1: 1.75, 1.17, 0.23, 2.11, 1.91      Penalty multipliers estimated at partition1: 1.76, 1.17, 0.23, 2.11, 1.91      Penalty multipliers estimated at partition1: 1.76, 1.17, 0.23, 2.11, 1.92      Penalty multipliers estimated at partition1: 1.76, 1.17, 0.23, 2.11, 1.92      Penalty multipliers estimated at partition1: 1.76, 1.17, 0.23, 2.11, 1.92      Penalty multipliers estimated at partition1: 1.76, 1.17, 0.23, 2.11, 1.92      Penalty multipliers estimated at partition1: 1.77, 1.17, 0.23, 2.11, 1.92      Penalty multipliers estimated at partition1: 1.77, 1.17, 0.23, 2.11, 1.92      Penalty multipliers estimated at partition1: 1.77, 1.17, 0.23, 2.11, 1.92      Penalty multipliers estimated at partition1: 1.77, 1.17, 0.23, 2.11, 1.92      Penalty multipliers estimated at partition1: 1.77, 1.17, 0.23, 2.11, 1.92      Penalty multipliers estimated at partition1: 1.77, 1.17, 0.23, 2.11, 1.92      Penalty multipliers estimated at partition1: 1.77, 1.17, 0.23, 2.11, 1.92      Penalty multipliers estimated at partition1: 1.77, 1.17, 0.23, 2.11, 1.92 in 109.53 seconds [1] "Summary of group sizes:"
+  1   2   3   4   5 
+ 38 140  59  35  26 
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+12345
+[1] -25.40539
+[1] -25.40539
+[1] "Relative error: 0.199032167340509"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.8213049 1.1558444 0.6198552 2.2427664 1.3118500
+[1] -24.14379
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.205523891222389"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7995865 1.1728781 0.6118098 2.2818839 1.3445357
+[1] -22.58013
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.198175999234182"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7726041 1.1953640 0.6056752 2.2815594 1.3724508
+[1] -20.76401
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.211378982013596"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7400516 1.2256026 0.6012252 2.2408174 1.3925742
+[1] -18.8039
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.21234710820461"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7073405 1.2609799 0.5968228 2.1849585 1.4147770
+[1] -16.83281
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.220992938525563"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6794050 1.3050625 0.5880348 2.1358042 1.4386362
+[1] -14.9702
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.212798206668254"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6554344 1.3570200 0.5745202 2.1238891 1.4703917
+[1] -13.31448
+1234567
+[1] "Partition group improved results"
+[1] "Relative error: 0.224082897851675"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6354067 1.4168705 0.5569669 2.1522309 1.5122091
+[1] -11.93613
+1234567
+[1] "Partition group improved results"
+[1] "Relative error: 0.230685600477586"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6187574 1.4948601 0.5343201 2.1967266 1.5682637
+[1] -10.87137
+12345678
+[1] "Partition group improved results"
+[1] "Relative error: 0.248232077554972"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5992130 1.6103770 0.5060778 2.2812701 1.6537200
+[1] -10.13392
+123456789
+[1] "Partition group improved results"
+[1] "Computation time for adaptive weigthing: 10.446"
+[1] "Final lambda multipliers (summary):"
+$group
+           1            2            3            4            5 
+2.786306e-02 1.512816e+01 4.193586e-03 2.797009e+03 3.956732e+01 
+
+[1] "CVLs -25.405394769358"  "CVLs -10.1339207131045"
+[1] "Total computation time: 10.447"
+[1] "Fold 2"
+
+Estimating penalty multipliers by empirical Bayes
+Penalty multipliers estimated at partition1: 0.97, 0.99, 0.71, 1.56, 1.31      Penalty multipliers estimated at partition1: 1, 0.98, 0.7, 1.58, 1.36      Penalty multipliers estimated at partition1: 1.02, 0.98, 0.68, 1.59, 1.4      Penalty multipliers estimated at partition1: 1.05, 0.97, 0.66, 1.6, 1.45      Penalty multipliers estimated at partition1: 1.08, 0.97, 0.65, 1.61, 1.49      Penalty multipliers estimated at partition1: 1.11, 0.97, 0.63, 1.62, 1.53      Penalty multipliers estimated at partition1: 1.13, 0.96, 0.62, 1.63, 1.57      Penalty multipliers estimated at partition1: 1.16, 0.96, 0.61, 1.64, 1.6      Penalty multipliers estimated at partition1: 1.18, 0.96, 0.6, 1.65, 1.64      Penalty multipliers estimated at partition1: 1.21, 0.95, 0.59, 1.65, 1.67      Penalty multipliers estimated at partition1: 1.23, 0.95, 0.58, 1.66, 1.7      Penalty multipliers estimated at partition1: 1.25, 0.95, 0.57, 1.67, 1.73      Penalty multipliers estimated at partition1: 1.27, 0.95, 0.56, 1.68, 1.75      Penalty multipliers estimated at partition1: 1.29, 0.95, 0.55, 1.68, 1.78      Penalty multipliers estimated at partition1: 1.31, 0.95, 0.54, 1.69, 1.8      Penalty multipliers estimated at partition1: 1.33, 0.95, 0.53, 1.69, 1.82      Penalty multipliers estimated at partition1: 1.35, 0.95, 0.52, 1.7, 1.84      Penalty multipliers estimated at partition1: 1.36, 0.95, 0.52, 1.7, 1.86      Penalty multipliers estimated at partition1: 1.38, 0.95, 0.51, 1.71, 1.88      Penalty multipliers estimated at partition1: 1.4, 0.95, 0.5, 1.71, 1.9      Penalty multipliers estimated at partition1: 1.41, 0.95, 0.5, 1.72, 1.92      Penalty multipliers estimated at partition1: 1.43, 0.95, 0.49, 1.72, 1.93      Penalty multipliers estimated at partition1: 1.44, 0.95, 0.49, 1.73, 1.95      Penalty multipliers estimated at partition1: 1.45, 0.95, 0.48, 1.73, 1.96      Penalty multipliers estimated at partition1: 1.47, 0.95, 0.48, 1.73, 1.97      Penalty multipliers estimated at partition1: 1.48, 0.95, 0.47, 1.74, 1.98      Penalty multipliers estimated at partition1: 1.49, 0.95, 0.47, 1.74, 1.99      Penalty multipliers estimated at partition1: 1.5, 0.95, 0.46, 1.74, 2      Penalty multipliers estimated at partition1: 1.51, 0.95, 0.46, 1.74, 2.01      Penalty multipliers estimated at partition1: 1.52, 0.95, 0.45, 1.75, 2.02      Penalty multipliers estimated at partition1: 1.53, 0.95, 0.45, 1.75, 2.03      Penalty multipliers estimated at partition1: 1.54, 0.95, 0.45, 1.75, 2.04      Penalty multipliers estimated at partition1: 1.55, 0.95, 0.44, 1.75, 2.05      Penalty multipliers estimated at partition1: 1.56, 0.95, 0.44, 1.75, 2.05      Penalty multipliers estimated at partition1: 1.57, 0.95, 0.44, 1.75, 2.06      Penalty multipliers estimated at partition1: 1.57, 0.95, 0.43, 1.76, 2.07      Penalty multipliers estimated at partition1: 1.58, 0.95, 0.43, 1.76, 2.07      Penalty multipliers estimated at partition1: 1.59, 0.96, 0.43, 1.76, 2.08      Penalty multipliers estimated at partition1: 1.6, 0.96, 0.43, 1.76, 2.08      Penalty multipliers estimated at partition1: 1.6, 0.96, 0.42, 1.76, 2.09      Penalty multipliers estimated at partition1: 1.61, 0.96, 0.42, 1.76, 2.09      Penalty multipliers estimated at partition1: 1.61, 0.96, 0.42, 1.76, 2.1      Penalty multipliers estimated at partition1: 1.62, 0.96, 0.42, 1.76, 2.1      Penalty multipliers estimated at partition1: 1.63, 0.96, 0.41, 1.76, 2.1      Penalty multipliers estimated at partition1: 1.63, 0.96, 0.41, 1.76, 2.11      Penalty multipliers estimated at partition1: 1.64, 0.96, 0.41, 1.77, 2.11      Penalty multipliers estimated at partition1: 1.64, 0.96, 0.41, 1.77, 2.11      Penalty multipliers estimated at partition1: 1.65, 0.96, 0.41, 1.77, 2.12      Penalty multipliers estimated at partition1: 1.65, 0.96, 0.41, 1.77, 2.12      Penalty multipliers estimated at partition1: 1.65, 0.96, 0.4, 1.77, 2.12      Penalty multipliers estimated at partition1: 1.66, 0.96, 0.4, 1.77, 2.12      Penalty multipliers estimated at partition1: 1.66, 0.97, 0.4, 1.77, 2.13      Penalty multipliers estimated at partition1: 1.66, 0.97, 0.4, 1.77, 2.13      Penalty multipliers estimated at partition1: 1.67, 0.97, 0.4, 1.77, 2.13      Penalty multipliers estimated at partition1: 1.67, 0.97, 0.4, 1.77, 2.13      Penalty multipliers estimated at partition1: 1.67, 0.97, 0.4, 1.77, 2.13      Penalty multipliers estimated at partition1: 1.68, 0.97, 0.39, 1.77, 2.13      Penalty multipliers estimated at partition1: 1.68, 0.97, 0.39, 1.77, 2.13      Penalty multipliers estimated at partition1: 1.68, 0.97, 0.39, 1.77, 2.14      Penalty multipliers estimated at partition1: 1.69, 0.97, 0.39, 1.77, 2.14      Penalty multipliers estimated at partition1: 1.69, 0.97, 0.39, 1.77, 2.14      Penalty multipliers estimated at partition1: 1.69, 0.97, 0.39, 1.77, 2.14      Penalty multipliers estimated at partition1: 1.69, 0.97, 0.39, 1.77, 2.14      Penalty multipliers estimated at partition1: 1.69, 0.97, 0.39, 1.77, 2.14      Penalty multipliers estimated at partition1: 1.7, 0.97, 0.39, 1.77, 2.14      Penalty multipliers estimated at partition1: 1.7, 0.97, 0.39, 1.77, 2.14      Penalty multipliers estimated at partition1: 1.7, 0.97, 0.39, 1.77, 2.14      Penalty multipliers estimated at partition1: 1.7, 0.97, 0.38, 1.77, 2.14      Penalty multipliers estimated at partition1: 1.7, 0.97, 0.38, 1.77, 2.15      Penalty multipliers estimated at partition1: 1.7, 0.97, 0.38, 1.77, 2.15      Penalty multipliers estimated at partition1: 1.71, 0.98, 0.38, 1.77, 2.15      Penalty multipliers estimated at partition1: 1.71, 0.98, 0.38, 1.77, 2.15      Penalty multipliers estimated at partition1: 1.71, 0.98, 0.38, 1.77, 2.15      Penalty multipliers estimated at partition1: 1.71, 0.98, 0.38, 1.77, 2.15      Penalty multipliers estimated at partition1: 1.71, 0.98, 0.38, 1.77, 2.15      Penalty multipliers estimated at partition1: 1.71, 0.98, 0.38, 1.77, 2.15      Penalty multipliers estimated at partition1: 1.71, 0.98, 0.38, 1.77, 2.15      Penalty multipliers estimated at partition1: 1.72, 0.98, 0.38, 1.77, 2.15      Penalty multipliers estimated at partition1: 1.72, 0.98, 0.38, 1.77, 2.15      Penalty multipliers estimated at partition1: 1.72, 0.98, 0.38, 1.77, 2.15      Penalty multipliers estimated at partition1: 1.72, 0.98, 0.38, 1.77, 2.15      Penalty multipliers estimated at partition1: 1.72, 0.98, 0.38, 1.77, 2.15      Penalty multipliers estimated at partition1: 1.72, 0.98, 0.38, 1.77, 2.15      Penalty multipliers estimated at partition1: 1.72, 0.98, 0.38, 1.77, 2.15 in 103.4 seconds [1] "Summary of group sizes:"
+  1   2   3   4   5 
+ 38 140  59  35  26 
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+12345
+[1] -23.15605
+[1] -23.15605
+[1] "Relative error: 0.207344540070963"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.9419297 1.0745130 0.6191085 2.2726181 1.5600031
+[1] -22.16407
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.184235001705421"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.8976186 1.0980682 0.6141822 2.2548544 1.5677421
+[1] -20.93417
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.206735890008626"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.8487524 1.1274160 0.6104451 2.2084498 1.5708422
+[1] -19.50997
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.206825435092973"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7985550 1.1614910 0.6087379 2.1275137 1.5751518
+[1] -17.99996
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.219478209416645"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7561359 1.1944827 0.6103078 2.0083175 1.5816160
+[1] -16.55028
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.212806735128929"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7211131 1.2217478 0.6146180 1.8927460 1.6022177
+[1] -15.27991
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.220085457521095"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6942673 1.2431907 0.6189853 1.8058509 1.6296998
+[1] -14.25143
+1234567
+[1] "Partition group improved results"
+[1] "Relative error: 0.224279928131714"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6726092 1.2606028 0.6219628 1.7475111 1.6713651
+[1] -13.47416
+1234567
+[1] "Partition group improved results"
+[1] "Relative error: 0.209996056992067"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6523167 1.2806538 0.6221956 1.7255756 1.6973090
+[1] -12.92185
+12345678
+[1] "Partition group improved results"
+[1] "Relative error: 0.24050777483846"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6288912 1.3066562 0.6178380 1.7666058 1.7188740
+[1] -12.55076
+12345678
+[1] "Partition group improved results"
+[1] "Computation time for adaptive weigthing: 10.171"
+[1] "Final lambda multipliers (summary):"
+$group
+           1            2            3            4            5 
+5.985811e-02 5.913050e+00 7.844069e-03 8.804507e+02 1.218601e+02 
+
+[1] "CVLs -23.156052441148" "CVLs -12.55076162595" 
+[1] "Total computation time: 10.172"
+[1] "Fold 3"
+
+Estimating penalty multipliers by empirical Bayes
+Penalty multipliers estimated at partition1: 0.86, 1.06, 0.78, 1.23, 1.2      Penalty multipliers estimated at partition1: 0.88, 1.06, 0.75, 1.26, 1.26      Penalty multipliers estimated at partition1: 0.9, 1.06, 0.72, 1.3, 1.31      Penalty multipliers estimated at partition1: 0.91, 1.05, 0.69, 1.33, 1.36      Penalty multipliers estimated at partition1: 0.93, 1.05, 0.66, 1.36, 1.41      Penalty multipliers estimated at partition1: 0.95, 1.05, 0.64, 1.39, 1.45      Penalty multipliers estimated at partition1: 0.97, 1.05, 0.61, 1.42, 1.49      Penalty multipliers estimated at partition1: 0.99, 1.05, 0.59, 1.45, 1.53      Penalty multipliers estimated at partition1: 1.01, 1.05, 0.57, 1.48, 1.57      Penalty multipliers estimated at partition1: 1.03, 1.05, 0.55, 1.5, 1.61      Penalty multipliers estimated at partition1: 1.05, 1.05, 0.54, 1.52, 1.64      Penalty multipliers estimated at partition1: 1.07, 1.05, 0.52, 1.55, 1.67      Penalty multipliers estimated at partition1: 1.09, 1.06, 0.5, 1.57, 1.7      Penalty multipliers estimated at partition1: 1.11, 1.06, 0.49, 1.59, 1.73      Penalty multipliers estimated at partition1: 1.12, 1.06, 0.48, 1.6, 1.76      Penalty multipliers estimated at partition1: 1.14, 1.06, 0.46, 1.62, 1.78      Penalty multipliers estimated at partition1: 1.16, 1.07, 0.45, 1.64, 1.8      Penalty multipliers estimated at partition1: 1.18, 1.07, 0.44, 1.65, 1.82      Penalty multipliers estimated at partition1: 1.2, 1.07, 0.43, 1.67, 1.84      Penalty multipliers estimated at partition1: 1.21, 1.07, 0.42, 1.68, 1.86      Penalty multipliers estimated at partition1: 1.23, 1.08, 0.41, 1.7, 1.88      Penalty multipliers estimated at partition1: 1.25, 1.08, 0.4, 1.71, 1.9      Penalty multipliers estimated at partition1: 1.26, 1.08, 0.39, 1.72, 1.91      Penalty multipliers estimated at partition1: 1.28, 1.08, 0.38, 1.73, 1.93      Penalty multipliers estimated at partition1: 1.3, 1.09, 0.37, 1.74, 1.94      Penalty multipliers estimated at partition1: 1.31, 1.09, 0.37, 1.75, 1.95      Penalty multipliers estimated at partition1: 1.33, 1.09, 0.36, 1.76, 1.96      Penalty multipliers estimated at partition1: 1.34, 1.1, 0.35, 1.77, 1.97      Penalty multipliers estimated at partition1: 1.36, 1.1, 0.35, 1.77, 1.98      Penalty multipliers estimated at partition1: 1.37, 1.1, 0.34, 1.78, 1.99      Penalty multipliers estimated at partition1: 1.38, 1.1, 0.33, 1.79, 2      Penalty multipliers estimated at partition1: 1.4, 1.11, 0.33, 1.8, 2.01      Penalty multipliers estimated at partition1: 1.41, 1.11, 0.32, 1.8, 2.02      Penalty multipliers estimated at partition1: 1.42, 1.11, 0.32, 1.81, 2.02      Penalty multipliers estimated at partition1: 1.44, 1.11, 0.32, 1.81, 2.03      Penalty multipliers estimated at partition1: 1.45, 1.12, 0.31, 1.82, 2.04      Penalty multipliers estimated at partition1: 1.46, 1.12, 0.31, 1.82, 2.04      Penalty multipliers estimated at partition1: 1.47, 1.12, 0.3, 1.83, 2.05      Penalty multipliers estimated at partition1: 1.48, 1.12, 0.3, 1.83, 2.05      Penalty multipliers estimated at partition1: 1.49, 1.13, 0.3, 1.84, 2.06      Penalty multipliers estimated at partition1: 1.5, 1.13, 0.29, 1.84, 2.06      Penalty multipliers estimated at partition1: 1.51, 1.13, 0.29, 1.84, 2.07      Penalty multipliers estimated at partition1: 1.52, 1.13, 0.29, 1.85, 2.07      Penalty multipliers estimated at partition1: 1.53, 1.13, 0.28, 1.85, 2.07      Penalty multipliers estimated at partition1: 1.54, 1.14, 0.28, 1.85, 2.08      Penalty multipliers estimated at partition1: 1.55, 1.14, 0.28, 1.85, 2.08      Penalty multipliers estimated at partition1: 1.56, 1.14, 0.28, 1.86, 2.08      Penalty multipliers estimated at partition1: 1.57, 1.14, 0.27, 1.86, 2.08      Penalty multipliers estimated at partition1: 1.58, 1.14, 0.27, 1.86, 2.09      Penalty multipliers estimated at partition1: 1.58, 1.15, 0.27, 1.86, 2.09      Penalty multipliers estimated at partition1: 1.59, 1.15, 0.27, 1.86, 2.09      Penalty multipliers estimated at partition1: 1.6, 1.15, 0.27, 1.87, 2.09      Penalty multipliers estimated at partition1: 1.6, 1.15, 0.26, 1.87, 2.09      Penalty multipliers estimated at partition1: 1.61, 1.15, 0.26, 1.87, 2.1      Penalty multipliers estimated at partition1: 1.62, 1.15, 0.26, 1.87, 2.1      Penalty multipliers estimated at partition1: 1.62, 1.15, 0.26, 1.87, 2.1      Penalty multipliers estimated at partition1: 1.63, 1.16, 0.26, 1.87, 2.1      Penalty multipliers estimated at partition1: 1.64, 1.16, 0.26, 1.87, 2.1      Penalty multipliers estimated at partition1: 1.64, 1.16, 0.25, 1.88, 2.1      Penalty multipliers estimated at partition1: 1.65, 1.16, 0.25, 1.88, 2.1      Penalty multipliers estimated at partition1: 1.65, 1.16, 0.25, 1.88, 2.1      Penalty multipliers estimated at partition1: 1.66, 1.16, 0.25, 1.88, 2.1      Penalty multipliers estimated at partition1: 1.66, 1.16, 0.25, 1.88, 2.1      Penalty multipliers estimated at partition1: 1.66, 1.16, 0.25, 1.88, 2.11      Penalty multipliers estimated at partition1: 1.67, 1.16, 0.25, 1.88, 2.11      Penalty multipliers estimated at partition1: 1.67, 1.16, 0.25, 1.88, 2.11      Penalty multipliers estimated at partition1: 1.68, 1.17, 0.25, 1.88, 2.11      Penalty multipliers estimated at partition1: 1.68, 1.17, 0.25, 1.88, 2.11      Penalty multipliers estimated at partition1: 1.68, 1.17, 0.24, 1.88, 2.11      Penalty multipliers estimated at partition1: 1.69, 1.17, 0.24, 1.88, 2.11      Penalty multipliers estimated at partition1: 1.69, 1.17, 0.24, 1.88, 2.11      Penalty multipliers estimated at partition1: 1.69, 1.17, 0.24, 1.88, 2.11      Penalty multipliers estimated at partition1: 1.7, 1.17, 0.24, 1.88, 2.11      Penalty multipliers estimated at partition1: 1.7, 1.17, 0.24, 1.88, 2.11      Penalty multipliers estimated at partition1: 1.7, 1.17, 0.24, 1.88, 2.11      Penalty multipliers estimated at partition1: 1.71, 1.17, 0.24, 1.89, 2.11      Penalty multipliers estimated at partition1: 1.71, 1.17, 0.24, 1.89, 2.11      Penalty multipliers estimated at partition1: 1.71, 1.17, 0.24, 1.89, 2.11      Penalty multipliers estimated at partition1: 1.71, 1.17, 0.24, 1.89, 2.11      Penalty multipliers estimated at partition1: 1.72, 1.17, 0.24, 1.89, 2.11      Penalty multipliers estimated at partition1: 1.72, 1.17, 0.24, 1.89, 2.11      Penalty multipliers estimated at partition1: 1.72, 1.17, 0.24, 1.89, 2.11      Penalty multipliers estimated at partition1: 1.72, 1.18, 0.24, 1.89, 2.11      Penalty multipliers estimated at partition1: 1.72, 1.18, 0.24, 1.89, 2.11      Penalty multipliers estimated at partition1: 1.73, 1.18, 0.24, 1.89, 2.11      Penalty multipliers estimated at partition1: 1.73, 1.18, 0.24, 1.89, 2.11      Penalty multipliers estimated at partition1: 1.73, 1.18, 0.24, 1.89, 2.11      Penalty multipliers estimated at partition1: 1.73, 1.18, 0.24, 1.89, 2.11      Penalty multipliers estimated at partition1: 1.73, 1.18, 0.24, 1.89, 2.11      Penalty multipliers estimated at partition1: 1.73, 1.18, 0.23, 1.89, 2.11      Penalty multipliers estimated at partition1: 1.73, 1.18, 0.23, 1.89, 2.11      Penalty multipliers estimated at partition1: 1.74, 1.18, 0.23, 1.89, 2.11      Penalty multipliers estimated at partition1: 1.74, 1.18, 0.23, 1.89, 2.11      Penalty multipliers estimated at partition1: 1.74, 1.18, 0.23, 1.89, 2.11      Penalty multipliers estimated at partition1: 1.74, 1.18, 0.23, 1.89, 2.11      Penalty multipliers estimated at partition1: 1.74, 1.18, 0.23, 1.89, 2.11 in 118.38 seconds [1] "Summary of group sizes:"
+  1   2   3   4   5 
+ 38 140  59  35  26 
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+12345
+[1] -26.57989
+[1] -26.57989
+[1] "Relative error: 0.207278002245174"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.8393406 1.1500401 0.6011212 2.0587829 1.6412872
+[1] -25.36024
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.196055103150005"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.8097995 1.1832506 0.5898143 2.0480419 1.6628612
+[1] -23.72216
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.200018987390117"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7765878 1.2196423 0.5806619 2.0311147 1.6839219
+[1] -21.75531
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.210076585590269"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7411293 1.2587193 0.5739416 1.9955833 1.7143514
+[1] -19.62881
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.217555434501773"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7052866 1.3031840 0.5671194 1.9563571 1.7606732
+[1] -17.51751
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.208627709389825"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6710791 1.3572931 0.5576253 1.9336967 1.8153328
+[1] -15.56809
+1234567
+[1] "Partition group improved results"
+[1] "Relative error: 0.204064337456366"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.640529 1.422338 0.543804 1.931835 1.907264
+[1] -13.88373
+1234567
+[1] "Partition group improved results"
+[1] "Relative error: 0.223079017494439"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6135793 1.5002009 0.5247587 1.9700758 2.0718715
+[1] -12.51535
+12345678
+[1] "Partition group improved results"
+[1] "Relative error: 0.23918763887761"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5901515 1.5952768 0.4999050 2.0726019 2.3763189
+[1] -11.47928
+123456789
+[1] "Partition group improved results"
+[1] "Relative error: 0.279245716860394"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5729503 1.7299710 0.4655008 2.2869557 2.9881592
+[1] -10.80064
+12345678910
+[1] "Partition group improved results"
+[1] "Computation time for adaptive weigthing: 9.63"
+[1] "Final lambda multipliers (summary):"
+$group
+           1            2            3            4            5 
+2.460536e-02 2.175994e+01 2.481392e-03 1.166317e+03 7.066093e+02 
+
+[1] "CVLs -26.5798947376102" "CVLs -10.8006365077452"
+[1] "Total computation time: 9.63100000000003"
+[1] "Fold 4"
+
+Estimating penalty multipliers by empirical Bayes
+Penalty multipliers estimated at partition1: 0.82, 1.09, 0.77, 1.31, 1.1      Penalty multipliers estimated at partition1: 0.83, 1.08, 0.74, 1.35, 1.16      Penalty multipliers estimated at partition1: 0.85, 1.07, 0.71, 1.38, 1.21      Penalty multipliers estimated at partition1: 0.87, 1.07, 0.68, 1.41, 1.26      Penalty multipliers estimated at partition1: 0.89, 1.07, 0.66, 1.44, 1.31      Penalty multipliers estimated at partition1: 0.91, 1.06, 0.64, 1.47, 1.36      Penalty multipliers estimated at partition1: 0.93, 1.06, 0.62, 1.5, 1.4      Penalty multipliers estimated at partition1: 0.95, 1.06, 0.6, 1.52, 1.44      Penalty multipliers estimated at partition1: 0.97, 1.06, 0.58, 1.54, 1.48      Penalty multipliers estimated at partition1: 0.99, 1.06, 0.56, 1.57, 1.52      Penalty multipliers estimated at partition1: 1.01, 1.06, 0.55, 1.59, 1.55      Penalty multipliers estimated at partition1: 1.02, 1.06, 0.53, 1.61, 1.58      Penalty multipliers estimated at partition1: 1.04, 1.06, 0.52, 1.63, 1.61      Penalty multipliers estimated at partition1: 1.06, 1.06, 0.51, 1.65, 1.64      Penalty multipliers estimated at partition1: 1.08, 1.06, 0.49, 1.66, 1.67      Penalty multipliers estimated at partition1: 1.09, 1.06, 0.48, 1.68, 1.7      Penalty multipliers estimated at partition1: 1.11, 1.06, 0.47, 1.69, 1.72      Penalty multipliers estimated at partition1: 1.13, 1.06, 0.46, 1.71, 1.75      Penalty multipliers estimated at partition1: 1.14, 1.06, 0.45, 1.72, 1.77      Penalty multipliers estimated at partition1: 1.16, 1.06, 0.44, 1.73, 1.79      Penalty multipliers estimated at partition1: 1.18, 1.06, 0.43, 1.74, 1.81      Penalty multipliers estimated at partition1: 1.19, 1.06, 0.42, 1.76, 1.82      Penalty multipliers estimated at partition1: 1.21, 1.07, 0.41, 1.77, 1.84      Penalty multipliers estimated at partition1: 1.22, 1.07, 0.41, 1.78, 1.86      Penalty multipliers estimated at partition1: 1.24, 1.07, 0.4, 1.79, 1.87      Penalty multipliers estimated at partition1: 1.25, 1.07, 0.39, 1.79, 1.89      Penalty multipliers estimated at partition1: 1.26, 1.07, 0.39, 1.8, 1.9      Penalty multipliers estimated at partition1: 1.28, 1.08, 0.38, 1.81, 1.91      Penalty multipliers estimated at partition1: 1.29, 1.08, 0.37, 1.82, 1.92      Penalty multipliers estimated at partition1: 1.3, 1.08, 0.37, 1.82, 1.93      Penalty multipliers estimated at partition1: 1.32, 1.08, 0.36, 1.83, 1.94      Penalty multipliers estimated at partition1: 1.33, 1.08, 0.36, 1.83, 1.95      Penalty multipliers estimated at partition1: 1.34, 1.08, 0.35, 1.84, 1.96      Penalty multipliers estimated at partition1: 1.35, 1.09, 0.35, 1.85, 1.97      Penalty multipliers estimated at partition1: 1.36, 1.09, 0.34, 1.85, 1.98      Penalty multipliers estimated at partition1: 1.38, 1.09, 0.34, 1.85, 1.99      Penalty multipliers estimated at partition1: 1.39, 1.09, 0.34, 1.86, 1.99      Penalty multipliers estimated at partition1: 1.4, 1.09, 0.33, 1.86, 2      Penalty multipliers estimated at partition1: 1.41, 1.1, 0.33, 1.87, 2.01      Penalty multipliers estimated at partition1: 1.42, 1.1, 0.33, 1.87, 2.01      Penalty multipliers estimated at partition1: 1.43, 1.1, 0.32, 1.87, 2.02      Penalty multipliers estimated at partition1: 1.44, 1.1, 0.32, 1.88, 2.02      Penalty multipliers estimated at partition1: 1.44, 1.1, 0.32, 1.88, 2.03      Penalty multipliers estimated at partition1: 1.45, 1.1, 0.31, 1.88, 2.03      Penalty multipliers estimated at partition1: 1.46, 1.1, 0.31, 1.88, 2.04      Penalty multipliers estimated at partition1: 1.47, 1.11, 0.31, 1.89, 2.04      Penalty multipliers estimated at partition1: 1.48, 1.11, 0.31, 1.89, 2.04      Penalty multipliers estimated at partition1: 1.48, 1.11, 0.3, 1.89, 2.05      Penalty multipliers estimated at partition1: 1.49, 1.11, 0.3, 1.89, 2.05      Penalty multipliers estimated at partition1: 1.5, 1.11, 0.3, 1.89, 2.05      Penalty multipliers estimated at partition1: 1.51, 1.11, 0.3, 1.89, 2.05      Penalty multipliers estimated at partition1: 1.51, 1.11, 0.29, 1.9, 2.06      Penalty multipliers estimated at partition1: 1.52, 1.12, 0.29, 1.9, 2.06      Penalty multipliers estimated at partition1: 1.52, 1.12, 0.29, 1.9, 2.06      Penalty multipliers estimated at partition1: 1.53, 1.12, 0.29, 1.9, 2.06      Penalty multipliers estimated at partition1: 1.54, 1.12, 0.29, 1.9, 2.07      Penalty multipliers estimated at partition1: 1.54, 1.12, 0.29, 1.9, 2.07      Penalty multipliers estimated at partition1: 1.55, 1.12, 0.29, 1.9, 2.07      Penalty multipliers estimated at partition1: 1.55, 1.12, 0.28, 1.9, 2.07      Penalty multipliers estimated at partition1: 1.56, 1.12, 0.28, 1.91, 2.07      Penalty multipliers estimated at partition1: 1.56, 1.12, 0.28, 1.91, 2.07      Penalty multipliers estimated at partition1: 1.57, 1.12, 0.28, 1.91, 2.08      Penalty multipliers estimated at partition1: 1.57, 1.13, 0.28, 1.91, 2.08      Penalty multipliers estimated at partition1: 1.58, 1.13, 0.28, 1.91, 2.08      Penalty multipliers estimated at partition1: 1.58, 1.13, 0.28, 1.91, 2.08      Penalty multipliers estimated at partition1: 1.58, 1.13, 0.28, 1.91, 2.08      Penalty multipliers estimated at partition1: 1.59, 1.13, 0.27, 1.91, 2.08      Penalty multipliers estimated at partition1: 1.59, 1.13, 0.27, 1.91, 2.08      Penalty multipliers estimated at partition1: 1.59, 1.13, 0.27, 1.91, 2.08      Penalty multipliers estimated at partition1: 1.6, 1.13, 0.27, 1.91, 2.08      Penalty multipliers estimated at partition1: 1.6, 1.13, 0.27, 1.91, 2.08      Penalty multipliers estimated at partition1: 1.6, 1.13, 0.27, 1.91, 2.08      Penalty multipliers estimated at partition1: 1.61, 1.13, 0.27, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.61, 1.13, 0.27, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.61, 1.13, 0.27, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.61, 1.13, 0.27, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.62, 1.13, 0.27, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.62, 1.13, 0.27, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.62, 1.14, 0.27, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.62, 1.14, 0.27, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.62, 1.14, 0.27, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.63, 1.14, 0.27, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.63, 1.14, 0.27, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.63, 1.14, 0.26, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.63, 1.14, 0.26, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.63, 1.14, 0.26, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.64, 1.14, 0.26, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.64, 1.14, 0.26, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.64, 1.14, 0.26, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.64, 1.14, 0.26, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.64, 1.14, 0.26, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.64, 1.14, 0.26, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.64, 1.14, 0.26, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.64, 1.14, 0.26, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.65, 1.14, 0.26, 1.91, 2.09      Penalty multipliers estimated at partition1: 1.65, 1.14, 0.26, 1.91, 2.09 in 93.62 seconds [1] "Summary of group sizes:"
+  1   2   3   4   5 
+ 38 140  59  35  26 
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+12345
+[1] -26.95401
+[1] -26.95401
+[1] "Relative error: 0.199705600478888"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.8410988 1.1480217 0.6052393 2.3316567 1.4146423
+[1] -25.64748
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.202925931601496"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.8088181 1.1715386 0.5995809 2.3167583 1.4438415
+[1] -24.01137
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.210692322894475"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.773016 1.195433 0.596975 2.275652 1.484213
+[1] -22.11298
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.217659453435722"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7352636 1.2219728 0.5963519 2.2118425 1.5302912
+[1] -20.0788
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.215804265380178"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6988659 1.2522023 0.5949554 2.1480198 1.5890482
+[1] -18.04274
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.214722571049982"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6671881 1.2900915 0.5893469 2.0853815 1.6633830
+[1] -16.12472
+1234567
+[1] "Partition group improved results"
+[1] "Relative error: 0.219881389694111"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6385968 1.3352378 0.5795874 2.0673548 1.7428739
+[1] -14.4232
+1234567
+[1] "Partition group improved results"
+[1] "Relative error: 0.233307671302704"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6137097 1.3893494 0.5674484 2.0541537 1.8179241
+[1] -13.00673
+12345678
+[1] "Partition group improved results"
+[1] "Relative error: 0.236332873476323"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5891133 1.4620463 0.5490223 2.0827157 1.9300223
+[1] -11.88765
+12345678
+[1] "Partition group improved results"
+[1] "Relative error: 0.254844520537367"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5648157 1.5392829 0.5285663 2.2388401 2.0776433
+[1] -11.06235
+123456789
+[1] "Partition group improved results"
+[1] "Computation time for adaptive weigthing: 10.115"
+[1] "Final lambda multipliers (summary):"
+$group
+           1            2            3            4            5 
+2.351077e-02 1.325068e+01 4.323384e-03 2.411738e+03 1.557905e+02 
+
+[1] "CVLs -26.9540099147917" "CVLs -11.0623525305368"
+[1] "Total computation time: 10.116"
+[1] "Fold 5"
+
+Estimating penalty multipliers by empirical Bayes
+Penalty multipliers estimated at partition1: 0.78, 1.09, 0.78, 1.32, 1.08      Penalty multipliers estimated at partition1: 0.81, 1.09, 0.76, 1.33, 1.14      Penalty multipliers estimated at partition1: 0.83, 1.08, 0.73, 1.34, 1.19      Penalty multipliers estimated at partition1: 0.85, 1.08, 0.71, 1.34, 1.25      Penalty multipliers estimated at partition1: 0.88, 1.07, 0.68, 1.35, 1.3      Penalty multipliers estimated at partition1: 0.9, 1.07, 0.66, 1.35, 1.35      Penalty multipliers estimated at partition1: 0.93, 1.07, 0.64, 1.36, 1.4      Penalty multipliers estimated at partition1: 0.95, 1.07, 0.63, 1.37, 1.44      Penalty multipliers estimated at partition1: 0.97, 1.07, 0.61, 1.37, 1.49      Penalty multipliers estimated at partition1: 0.99, 1.07, 0.59, 1.38, 1.53      Penalty multipliers estimated at partition1: 1.02, 1.07, 0.58, 1.38, 1.57      Penalty multipliers estimated at partition1: 1.04, 1.07, 0.56, 1.39, 1.6      Penalty multipliers estimated at partition1: 1.06, 1.07, 0.55, 1.39, 1.64      Penalty multipliers estimated at partition1: 1.08, 1.07, 0.53, 1.4, 1.67      Penalty multipliers estimated at partition1: 1.1, 1.07, 0.52, 1.4, 1.7      Penalty multipliers estimated at partition1: 1.12, 1.07, 0.51, 1.41, 1.73      Penalty multipliers estimated at partition1: 1.15, 1.07, 0.5, 1.41, 1.76      Penalty multipliers estimated at partition1: 1.17, 1.07, 0.49, 1.42, 1.79      Penalty multipliers estimated at partition1: 1.18, 1.07, 0.48, 1.42, 1.81      Penalty multipliers estimated at partition1: 1.2, 1.07, 0.47, 1.43, 1.84      Penalty multipliers estimated at partition1: 1.22, 1.07, 0.46, 1.43, 1.86      Penalty multipliers estimated at partition1: 1.24, 1.07, 0.45, 1.44, 1.88      Penalty multipliers estimated at partition1: 1.26, 1.07, 0.44, 1.44, 1.9      Penalty multipliers estimated at partition1: 1.28, 1.08, 0.43, 1.45, 1.92      Penalty multipliers estimated at partition1: 1.29, 1.08, 0.43, 1.45, 1.94      Penalty multipliers estimated at partition1: 1.31, 1.08, 0.42, 1.45, 1.95      Penalty multipliers estimated at partition1: 1.33, 1.08, 0.41, 1.46, 1.97      Penalty multipliers estimated at partition1: 1.34, 1.08, 0.41, 1.46, 1.98      Penalty multipliers estimated at partition1: 1.36, 1.08, 0.4, 1.47, 2      Penalty multipliers estimated at partition1: 1.37, 1.09, 0.39, 1.47, 2.01      Penalty multipliers estimated at partition1: 1.38, 1.09, 0.39, 1.47, 2.02      Penalty multipliers estimated at partition1: 1.4, 1.09, 0.38, 1.48, 2.03      Penalty multipliers estimated at partition1: 1.41, 1.09, 0.38, 1.48, 2.04      Penalty multipliers estimated at partition1: 1.42, 1.09, 0.37, 1.48, 2.05      Penalty multipliers estimated at partition1: 1.44, 1.09, 0.37, 1.49, 2.06      Penalty multipliers estimated at partition1: 1.45, 1.09, 0.36, 1.49, 2.07      Penalty multipliers estimated at partition1: 1.46, 1.1, 0.36, 1.49, 2.08      Penalty multipliers estimated at partition1: 1.47, 1.1, 0.36, 1.5, 2.09      Penalty multipliers estimated at partition1: 1.48, 1.1, 0.35, 1.5, 2.1      Penalty multipliers estimated at partition1: 1.49, 1.1, 0.35, 1.5, 2.1      Penalty multipliers estimated at partition1: 1.5, 1.1, 0.35, 1.5, 2.11      Penalty multipliers estimated at partition1: 1.51, 1.1, 0.34, 1.51, 2.12      Penalty multipliers estimated at partition1: 1.52, 1.1, 0.34, 1.51, 2.12      Penalty multipliers estimated at partition1: 1.53, 1.11, 0.34, 1.51, 2.13      Penalty multipliers estimated at partition1: 1.54, 1.11, 0.33, 1.51, 2.13      Penalty multipliers estimated at partition1: 1.55, 1.11, 0.33, 1.52, 2.14      Penalty multipliers estimated at partition1: 1.56, 1.11, 0.33, 1.52, 2.14      Penalty multipliers estimated at partition1: 1.57, 1.11, 0.33, 1.52, 2.15      Penalty multipliers estimated at partition1: 1.57, 1.11, 0.32, 1.52, 2.15      Penalty multipliers estimated at partition1: 1.58, 1.11, 0.32, 1.53, 2.16      Penalty multipliers estimated at partition1: 1.59, 1.11, 0.32, 1.53, 2.16      Penalty multipliers estimated at partition1: 1.6, 1.11, 0.32, 1.53, 2.16      Penalty multipliers estimated at partition1: 1.6, 1.12, 0.31, 1.53, 2.17      Penalty multipliers estimated at partition1: 1.61, 1.12, 0.31, 1.53, 2.17      Penalty multipliers estimated at partition1: 1.61, 1.12, 0.31, 1.53, 2.17      Penalty multipliers estimated at partition1: 1.62, 1.12, 0.31, 1.54, 2.17      Penalty multipliers estimated at partition1: 1.63, 1.12, 0.31, 1.54, 2.18      Penalty multipliers estimated at partition1: 1.63, 1.12, 0.31, 1.54, 2.18      Penalty multipliers estimated at partition1: 1.64, 1.12, 0.3, 1.54, 2.18      Penalty multipliers estimated at partition1: 1.64, 1.12, 0.3, 1.54, 2.18      Penalty multipliers estimated at partition1: 1.65, 1.12, 0.3, 1.54, 2.19      Penalty multipliers estimated at partition1: 1.65, 1.12, 0.3, 1.54, 2.19      Penalty multipliers estimated at partition1: 1.66, 1.12, 0.3, 1.55, 2.19      Penalty multipliers estimated at partition1: 1.66, 1.13, 0.3, 1.55, 2.19      Penalty multipliers estimated at partition1: 1.66, 1.13, 0.3, 1.55, 2.19      Penalty multipliers estimated at partition1: 1.67, 1.13, 0.3, 1.55, 2.19      Penalty multipliers estimated at partition1: 1.67, 1.13, 0.29, 1.55, 2.2      Penalty multipliers estimated at partition1: 1.67, 1.13, 0.29, 1.55, 2.2      Penalty multipliers estimated at partition1: 1.68, 1.13, 0.29, 1.55, 2.2      Penalty multipliers estimated at partition1: 1.68, 1.13, 0.29, 1.55, 2.2      Penalty multipliers estimated at partition1: 1.68, 1.13, 0.29, 1.56, 2.2      Penalty multipliers estimated at partition1: 1.69, 1.13, 0.29, 1.56, 2.2      Penalty multipliers estimated at partition1: 1.69, 1.13, 0.29, 1.56, 2.2      Penalty multipliers estimated at partition1: 1.69, 1.13, 0.29, 1.56, 2.2      Penalty multipliers estimated at partition1: 1.7, 1.13, 0.29, 1.56, 2.2      Penalty multipliers estimated at partition1: 1.7, 1.13, 0.29, 1.56, 2.2      Penalty multipliers estimated at partition1: 1.7, 1.13, 0.29, 1.56, 2.21      Penalty multipliers estimated at partition1: 1.7, 1.13, 0.29, 1.56, 2.21      Penalty multipliers estimated at partition1: 1.71, 1.13, 0.29, 1.56, 2.21      Penalty multipliers estimated at partition1: 1.71, 1.13, 0.28, 1.56, 2.21      Penalty multipliers estimated at partition1: 1.71, 1.13, 0.28, 1.56, 2.21      Penalty multipliers estimated at partition1: 1.71, 1.13, 0.28, 1.56, 2.21      Penalty multipliers estimated at partition1: 1.71, 1.13, 0.28, 1.56, 2.21      Penalty multipliers estimated at partition1: 1.72, 1.14, 0.28, 1.56, 2.21      Penalty multipliers estimated at partition1: 1.72, 1.14, 0.28, 1.57, 2.21      Penalty multipliers estimated at partition1: 1.72, 1.14, 0.28, 1.57, 2.21      Penalty multipliers estimated at partition1: 1.72, 1.14, 0.28, 1.57, 2.21      Penalty multipliers estimated at partition1: 1.72, 1.14, 0.28, 1.57, 2.21      Penalty multipliers estimated at partition1: 1.72, 1.14, 0.28, 1.57, 2.21      Penalty multipliers estimated at partition1: 1.73, 1.14, 0.28, 1.57, 2.21      Penalty multipliers estimated at partition1: 1.73, 1.14, 0.28, 1.57, 2.21      Penalty multipliers estimated at partition1: 1.73, 1.14, 0.28, 1.57, 2.21      Penalty multipliers estimated at partition1: 1.73, 1.14, 0.28, 1.57, 2.21      Penalty multipliers estimated at partition1: 1.73, 1.14, 0.28, 1.57, 2.21      Penalty multipliers estimated at partition1: 1.73, 1.14, 0.28, 1.57, 2.21      Penalty multipliers estimated at partition1: 1.73, 1.14, 0.28, 1.57, 2.21      Penalty multipliers estimated at partition1: 1.73, 1.14, 0.28, 1.57, 2.21 in 104.98 seconds [1] "Summary of group sizes:"
+  1   2   3   4   5 
+ 38 140  59  35  26 
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+12345
+[1] -25.52305
+[1] -25.52305
+[1] "Relative error: 0.202246269800566"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7760546 1.1874599 0.6357402 1.6353938 1.5358374
+[1] -24.45464
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.19196707311375"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7589154 1.2047279 0.6280702 1.6489347 1.5704886
+[1] -22.96064
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.200208788098973"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.736167 1.221785 0.623062 1.660749 1.622328
+[1] -21.16507
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.18371239196804"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7108762 1.2365508 0.6206142 1.6743878 1.6931031
+[1] -19.23201
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.199693468988073"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6855958 1.2516254 0.6181291 1.6936719 1.7802461
+[1] -17.30725
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.198776894832061"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6602993 1.2723238 0.6133901 1.7152321 1.8808806
+[1] -15.49618
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.212020773066424"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6339537 1.3017859 0.6052485 1.7557802 1.9848287
+[1] -13.86792
+1234567
+[1] "Partition group improved results"
+[1] "Relative error: 0.232301826929814"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6109859 1.3347308 0.5954987 1.8165250 2.0682209
+[1] -12.47532
+1234567
+[1] "Partition group improved results"
+[1] "Relative error: 0.225284744289706"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5857347 1.3784594 0.5811988 1.9161390 2.2068784
+[1] -11.32308
+12345678
+[1] "Partition group improved results"
+[1] "Relative error: 0.24679103459537"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5602674 1.4284620 0.5626760 2.1153853 2.4149635
+[1] -10.40435
+12345678
+[1] "Partition group improved results"
+[1] "Computation time for adaptive weigthing: 10.1799999999999"
+[1] "Final lambda multipliers (summary):"
+$group
+           1            2            3            4            5 
+1.773577e-02 1.177559e+01 6.900085e-03 2.816217e+02 4.853469e+02 
+
+[1] "CVLs -25.5230471149088" "CVLs -10.4043465483885"
+[1] "Total computation time: 10.1799999999999"
+[1] "Fold 6"
+
+Estimating penalty multipliers by empirical Bayes
+Penalty multipliers estimated at partition1: 0.88, 1.02, 0.74, 1.31, 1.49      Penalty multipliers estimated at partition1: 0.9, 1.01, 0.72, 1.35, 1.53      Penalty multipliers estimated at partition1: 0.92, 1.01, 0.7, 1.4, 1.56      Penalty multipliers estimated at partition1: 0.94, 1, 0.67, 1.44, 1.6      Penalty multipliers estimated at partition1: 0.96, 1, 0.66, 1.48, 1.63      Penalty multipliers estimated at partition1: 0.98, 1, 0.64, 1.51, 1.66      Penalty multipliers estimated at partition1: 1, 0.99, 0.62, 1.55, 1.69      Penalty multipliers estimated at partition1: 1.02, 0.99, 0.6, 1.58, 1.71      Penalty multipliers estimated at partition1: 1.04, 0.99, 0.59, 1.61, 1.74      Penalty multipliers estimated at partition1: 1.06, 0.99, 0.57, 1.64, 1.76      Penalty multipliers estimated at partition1: 1.07, 0.99, 0.56, 1.67, 1.79      Penalty multipliers estimated at partition1: 1.09, 0.99, 0.55, 1.7, 1.81      Penalty multipliers estimated at partition1: 1.11, 0.99, 0.54, 1.72, 1.83      Penalty multipliers estimated at partition1: 1.12, 0.99, 0.52, 1.74, 1.84      Penalty multipliers estimated at partition1: 1.14, 0.99, 0.51, 1.77, 1.86      Penalty multipliers estimated at partition1: 1.16, 0.99, 0.5, 1.79, 1.88      Penalty multipliers estimated at partition1: 1.17, 0.99, 0.49, 1.81, 1.89      Penalty multipliers estimated at partition1: 1.19, 0.99, 0.48, 1.82, 1.91      Penalty multipliers estimated at partition1: 1.2, 0.99, 0.47, 1.84, 1.92      Penalty multipliers estimated at partition1: 1.22, 0.99, 0.47, 1.86, 1.93      Penalty multipliers estimated at partition1: 1.23, 0.99, 0.46, 1.87, 1.94      Penalty multipliers estimated at partition1: 1.24, 0.99, 0.45, 1.89, 1.96      Penalty multipliers estimated at partition1: 1.26, 1, 0.44, 1.9, 1.97      Penalty multipliers estimated at partition1: 1.27, 1, 0.44, 1.91, 1.98      Penalty multipliers estimated at partition1: 1.28, 1, 0.43, 1.92, 1.98      Penalty multipliers estimated at partition1: 1.29, 1, 0.42, 1.93, 1.99      Penalty multipliers estimated at partition1: 1.31, 1, 0.42, 1.94, 2      Penalty multipliers estimated at partition1: 1.32, 1, 0.41, 1.95, 2.01      Penalty multipliers estimated at partition1: 1.33, 1, 0.41, 1.96, 2.01      Penalty multipliers estimated at partition1: 1.34, 1.01, 0.4, 1.97, 2.02      Penalty multipliers estimated at partition1: 1.35, 1.01, 0.4, 1.98, 2.03      Penalty multipliers estimated at partition1: 1.36, 1.01, 0.39, 1.99, 2.03      Penalty multipliers estimated at partition1: 1.37, 1.01, 0.39, 1.99, 2.04      Penalty multipliers estimated at partition1: 1.38, 1.01, 0.38, 2, 2.04      Penalty multipliers estimated at partition1: 1.39, 1.01, 0.38, 2.01, 2.05      Penalty multipliers estimated at partition1: 1.4, 1.02, 0.37, 2.01, 2.05      Penalty multipliers estimated at partition1: 1.41, 1.02, 0.37, 2.02, 2.05      Penalty multipliers estimated at partition1: 1.41, 1.02, 0.37, 2.02, 2.06      Penalty multipliers estimated at partition1: 1.42, 1.02, 0.36, 2.03, 2.06      Penalty multipliers estimated at partition1: 1.43, 1.02, 0.36, 2.03, 2.06      Penalty multipliers estimated at partition1: 1.44, 1.02, 0.36, 2.03, 2.07      Penalty multipliers estimated at partition1: 1.45, 1.03, 0.35, 2.04, 2.07      Penalty multipliers estimated at partition1: 1.45, 1.03, 0.35, 2.04, 2.07      Penalty multipliers estimated at partition1: 1.46, 1.03, 0.35, 2.04, 2.07      Penalty multipliers estimated at partition1: 1.47, 1.03, 0.34, 2.05, 2.08      Penalty multipliers estimated at partition1: 1.47, 1.03, 0.34, 2.05, 2.08      Penalty multipliers estimated at partition1: 1.48, 1.03, 0.34, 2.05, 2.08      Penalty multipliers estimated at partition1: 1.49, 1.04, 0.34, 2.06, 2.08      Penalty multipliers estimated at partition1: 1.49, 1.04, 0.33, 2.06, 2.08      Penalty multipliers estimated at partition1: 1.5, 1.04, 0.33, 2.06, 2.08      Penalty multipliers estimated at partition1: 1.5, 1.04, 0.33, 2.06, 2.09      Penalty multipliers estimated at partition1: 1.51, 1.04, 0.33, 2.06, 2.09      Penalty multipliers estimated at partition1: 1.51, 1.04, 0.33, 2.06, 2.09      Penalty multipliers estimated at partition1: 1.52, 1.04, 0.32, 2.07, 2.09      Penalty multipliers estimated at partition1: 1.52, 1.04, 0.32, 2.07, 2.09      Penalty multipliers estimated at partition1: 1.53, 1.05, 0.32, 2.07, 2.09      Penalty multipliers estimated at partition1: 1.53, 1.05, 0.32, 2.07, 2.09      Penalty multipliers estimated at partition1: 1.54, 1.05, 0.32, 2.07, 2.09      Penalty multipliers estimated at partition1: 1.54, 1.05, 0.32, 2.07, 2.09      Penalty multipliers estimated at partition1: 1.54, 1.05, 0.32, 2.07, 2.09      Penalty multipliers estimated at partition1: 1.55, 1.05, 0.31, 2.08, 2.09      Penalty multipliers estimated at partition1: 1.55, 1.05, 0.31, 2.08, 2.09      Penalty multipliers estimated at partition1: 1.55, 1.05, 0.31, 2.08, 2.1      Penalty multipliers estimated at partition1: 1.56, 1.05, 0.31, 2.08, 2.1      Penalty multipliers estimated at partition1: 1.56, 1.06, 0.31, 2.08, 2.1      Penalty multipliers estimated at partition1: 1.56, 1.06, 0.31, 2.08, 2.1      Penalty multipliers estimated at partition1: 1.57, 1.06, 0.31, 2.08, 2.1      Penalty multipliers estimated at partition1: 1.57, 1.06, 0.31, 2.08, 2.1      Penalty multipliers estimated at partition1: 1.57, 1.06, 0.3, 2.08, 2.1      Penalty multipliers estimated at partition1: 1.58, 1.06, 0.3, 2.08, 2.1      Penalty multipliers estimated at partition1: 1.58, 1.06, 0.3, 2.08, 2.1      Penalty multipliers estimated at partition1: 1.58, 1.06, 0.3, 2.08, 2.1      Penalty multipliers estimated at partition1: 1.58, 1.06, 0.3, 2.08, 2.1      Penalty multipliers estimated at partition1: 1.59, 1.06, 0.3, 2.08, 2.1      Penalty multipliers estimated at partition1: 1.59, 1.06, 0.3, 2.08, 2.1      Penalty multipliers estimated at partition1: 1.59, 1.06, 0.3, 2.08, 2.1      Penalty multipliers estimated at partition1: 1.59, 1.06, 0.3, 2.08, 2.1      Penalty multipliers estimated at partition1: 1.6, 1.07, 0.3, 2.08, 2.1      Penalty multipliers estimated at partition1: 1.6, 1.07, 0.3, 2.08, 2.1      Penalty multipliers estimated at partition1: 1.6, 1.07, 0.3, 2.08, 2.1      Penalty multipliers estimated at partition1: 1.6, 1.07, 0.3, 2.08, 2.1      Penalty multipliers estimated at partition1: 1.6, 1.07, 0.29, 2.08, 2.1      Penalty multipliers estimated at partition1: 1.6, 1.07, 0.29, 2.09, 2.1      Penalty multipliers estimated at partition1: 1.61, 1.07, 0.29, 2.09, 2.1      Penalty multipliers estimated at partition1: 1.61, 1.07, 0.29, 2.09, 2.1      Penalty multipliers estimated at partition1: 1.61, 1.07, 0.29, 2.09, 2.1      Penalty multipliers estimated at partition1: 1.61, 1.07, 0.29, 2.09, 2.1      Penalty multipliers estimated at partition1: 1.61, 1.07, 0.29, 2.09, 2.1      Penalty multipliers estimated at partition1: 1.61, 1.07, 0.29, 2.09, 2.1      Penalty multipliers estimated at partition1: 1.62, 1.07, 0.29, 2.09, 2.1      Penalty multipliers estimated at partition1: 1.62, 1.07, 0.29, 2.09, 2.1      Penalty multipliers estimated at partition1: 1.62, 1.07, 0.29, 2.09, 2.1      Penalty multipliers estimated at partition1: 1.62, 1.07, 0.29, 2.09, 2.1      Penalty multipliers estimated at partition1: 1.62, 1.07, 0.29, 2.09, 2.1      Penalty multipliers estimated at partition1: 1.62, 1.07, 0.29, 2.09, 2.1      Penalty multipliers estimated at partition1: 1.62, 1.07, 0.29, 2.09, 2.1      Penalty multipliers estimated at partition1: 1.62, 1.07, 0.29, 2.09, 2.1      Penalty multipliers estimated at partition1: 1.62, 1.07, 0.29, 2.09, 2.1      Penalty multipliers estimated at partition1: 1.62, 1.07, 0.29, 2.09, 2.1      Penalty multipliers estimated at partition1: 1.63, 1.07, 0.29, 2.09, 2.1      Penalty multipliers estimated at partition1: 1.63, 1.07, 0.29, 2.09, 2.1      Penalty multipliers estimated at partition1: 1.63, 1.07, 0.29, 2.09, 2.1 in 104.59 seconds [1] "Summary of group sizes:"
+  1   2   3   4   5 
+ 38 140  59  35  26 
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+12345
+[1] -25.41657
+[1] -25.41657
+[1] "Relative error: 0.210031697191393"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.8840038 1.0898381 0.6013034 2.2330100 2.0375835
+[1] -24.12013
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.220815704361623"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.8528665 1.1170016 0.5884251 2.2432556 2.1243804
+[1] -22.50673
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.211572087527094"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.8132872 1.1492831 0.5771982 2.2340595 2.2459282
+[1] -20.66621
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.198361162648063"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7641361 1.1920361 0.5666171 2.1987945 2.4118830
+[1] -18.73361
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.224248232286213"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7080894 1.2478854 0.5569339 2.1457939 2.6271867
+[1] -16.86376
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.23594152772589"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6543476 1.3142558 0.5484511 2.0806931 2.8870502
+[1] -15.20132
+1234567
+[1] "Partition group improved results"
+[1] "Relative error: 0.249790822203078"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6057090 1.3935216 0.5371044 2.0482057 3.3069267
+[1] -13.82958
+12345678
+[1] "Partition group improved results"
+[1] "Relative error: 0.247900702275121"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5668816 1.4776280 0.5238502 2.0626362 3.9251361
+[1] -12.79461
+12345678
+[1] "Partition group improved results"
+[1] "Relative error: 0.258789189183087"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.532854 1.593860 0.504005 2.170601 4.592063
+[1] -12.0939
+123456789
+[1] "Partition group improved results"
+[1] "Relative error: 0.294988716953059"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5015522 1.7166599 0.4795046 2.5436659 6.7041979
+[1] -11.71701
+12345678910
+[1] "Partition group improved results"
+[1] "Computation time for adaptive weigthing: 10.1180000000001"
+[1] "Final lambda multipliers (summary):"
+$group
+           1            2            3            4            5 
+1.992174e-02 1.540991e+01 2.403447e-03 2.562602e+03 7.106880e+04 
+
+[1] "CVLs -25.4165686596494" "CVLs -11.717005706112" 
+[1] "Total computation time: 10.119"
+[1] "Fold 7"
+
+Estimating penalty multipliers by empirical Bayes
+Penalty multipliers estimated at partition1: 0.85, 1.13, 0.74, 1.22, 0.99      Penalty multipliers estimated at partition1: 0.86, 1.13, 0.71, 1.26, 1.03      Penalty multipliers estimated at partition1: 0.88, 1.12, 0.69, 1.3, 1.06      Penalty multipliers estimated at partition1: 0.89, 1.12, 0.67, 1.33, 1.1      Penalty multipliers estimated at partition1: 0.9, 1.12, 0.65, 1.37, 1.13      Penalty multipliers estimated at partition1: 0.92, 1.11, 0.63, 1.4, 1.16      Penalty multipliers estimated at partition1: 0.93, 1.11, 0.61, 1.43, 1.19      Penalty multipliers estimated at partition1: 0.94, 1.11, 0.59, 1.46, 1.22      Penalty multipliers estimated at partition1: 0.96, 1.11, 0.58, 1.48, 1.24      Penalty multipliers estimated at partition1: 0.97, 1.11, 0.56, 1.51, 1.27      Penalty multipliers estimated at partition1: 0.99, 1.11, 0.55, 1.53, 1.29      Penalty multipliers estimated at partition1: 1, 1.11, 0.53, 1.56, 1.32      Penalty multipliers estimated at partition1: 1.01, 1.11, 0.52, 1.58, 1.34      Penalty multipliers estimated at partition1: 1.03, 1.11, 0.51, 1.6, 1.36      Penalty multipliers estimated at partition1: 1.04, 1.11, 0.5, 1.62, 1.38      Penalty multipliers estimated at partition1: 1.06, 1.11, 0.49, 1.64, 1.4      Penalty multipliers estimated at partition1: 1.07, 1.11, 0.48, 1.65, 1.42      Penalty multipliers estimated at partition1: 1.08, 1.11, 0.47, 1.67, 1.44      Penalty multipliers estimated at partition1: 1.1, 1.11, 0.46, 1.68, 1.45      Penalty multipliers estimated at partition1: 1.11, 1.11, 0.45, 1.7, 1.47      Penalty multipliers estimated at partition1: 1.12, 1.12, 0.44, 1.71, 1.48      Penalty multipliers estimated at partition1: 1.14, 1.12, 0.43, 1.73, 1.5      Penalty multipliers estimated at partition1: 1.15, 1.12, 0.42, 1.74, 1.51      Penalty multipliers estimated at partition1: 1.16, 1.12, 0.41, 1.75, 1.52      Penalty multipliers estimated at partition1: 1.17, 1.12, 0.41, 1.76, 1.53      Penalty multipliers estimated at partition1: 1.19, 1.12, 0.4, 1.77, 1.55      Penalty multipliers estimated at partition1: 1.2, 1.12, 0.39, 1.78, 1.56      Penalty multipliers estimated at partition1: 1.21, 1.13, 0.39, 1.79, 1.57      Penalty multipliers estimated at partition1: 1.22, 1.13, 0.38, 1.8, 1.58      Penalty multipliers estimated at partition1: 1.24, 1.13, 0.38, 1.8, 1.59      Penalty multipliers estimated at partition1: 1.25, 1.13, 0.37, 1.81, 1.59      Penalty multipliers estimated at partition1: 1.26, 1.13, 0.37, 1.82, 1.6      Penalty multipliers estimated at partition1: 1.27, 1.13, 0.36, 1.82, 1.61      Penalty multipliers estimated at partition1: 1.28, 1.14, 0.36, 1.83, 1.62      Penalty multipliers estimated at partition1: 1.29, 1.14, 0.35, 1.84, 1.62      Penalty multipliers estimated at partition1: 1.3, 1.14, 0.35, 1.84, 1.63      Penalty multipliers estimated at partition1: 1.31, 1.14, 0.34, 1.85, 1.64      Penalty multipliers estimated at partition1: 1.33, 1.14, 0.34, 1.85, 1.64      Penalty multipliers estimated at partition1: 1.34, 1.15, 0.33, 1.86, 1.65      Penalty multipliers estimated at partition1: 1.35, 1.15, 0.33, 1.86, 1.65      Penalty multipliers estimated at partition1: 1.36, 1.15, 0.33, 1.86, 1.66      Penalty multipliers estimated at partition1: 1.36, 1.15, 0.32, 1.87, 1.66      Penalty multipliers estimated at partition1: 1.37, 1.15, 0.32, 1.87, 1.67      Penalty multipliers estimated at partition1: 1.38, 1.15, 0.32, 1.87, 1.67      Penalty multipliers estimated at partition1: 1.39, 1.15, 0.32, 1.88, 1.68      Penalty multipliers estimated at partition1: 1.4, 1.16, 0.31, 1.88, 1.68      Penalty multipliers estimated at partition1: 1.41, 1.16, 0.31, 1.88, 1.69      Penalty multipliers estimated at partition1: 1.42, 1.16, 0.31, 1.88, 1.69      Penalty multipliers estimated at partition1: 1.42, 1.16, 0.3, 1.89, 1.69      Penalty multipliers estimated at partition1: 1.43, 1.16, 0.3, 1.89, 1.7      Penalty multipliers estimated at partition1: 1.44, 1.16, 0.3, 1.89, 1.7      Penalty multipliers estimated at partition1: 1.45, 1.16, 0.3, 1.89, 1.7      Penalty multipliers estimated at partition1: 1.45, 1.17, 0.3, 1.9, 1.7      Penalty multipliers estimated at partition1: 1.46, 1.17, 0.29, 1.9, 1.71      Penalty multipliers estimated at partition1: 1.47, 1.17, 0.29, 1.9, 1.71      Penalty multipliers estimated at partition1: 1.47, 1.17, 0.29, 1.9, 1.71      Penalty multipliers estimated at partition1: 1.48, 1.17, 0.29, 1.9, 1.71      Penalty multipliers estimated at partition1: 1.49, 1.17, 0.29, 1.9, 1.72      Penalty multipliers estimated at partition1: 1.49, 1.17, 0.29, 1.9, 1.72      Penalty multipliers estimated at partition1: 1.5, 1.17, 0.28, 1.91, 1.72      Penalty multipliers estimated at partition1: 1.5, 1.17, 0.28, 1.91, 1.72      Penalty multipliers estimated at partition1: 1.51, 1.17, 0.28, 1.91, 1.72      Penalty multipliers estimated at partition1: 1.52, 1.18, 0.28, 1.91, 1.73      Penalty multipliers estimated at partition1: 1.52, 1.18, 0.28, 1.91, 1.73      Penalty multipliers estimated at partition1: 1.52, 1.18, 0.28, 1.91, 1.73      Penalty multipliers estimated at partition1: 1.53, 1.18, 0.28, 1.91, 1.73      Penalty multipliers estimated at partition1: 1.53, 1.18, 0.27, 1.91, 1.73      Penalty multipliers estimated at partition1: 1.54, 1.18, 0.27, 1.91, 1.73      Penalty multipliers estimated at partition1: 1.54, 1.18, 0.27, 1.91, 1.73      Penalty multipliers estimated at partition1: 1.55, 1.18, 0.27, 1.91, 1.74      Penalty multipliers estimated at partition1: 1.55, 1.18, 0.27, 1.91, 1.74      Penalty multipliers estimated at partition1: 1.55, 1.18, 0.27, 1.91, 1.74      Penalty multipliers estimated at partition1: 1.56, 1.18, 0.27, 1.91, 1.74      Penalty multipliers estimated at partition1: 1.56, 1.18, 0.27, 1.92, 1.74      Penalty multipliers estimated at partition1: 1.57, 1.18, 0.27, 1.92, 1.74      Penalty multipliers estimated at partition1: 1.57, 1.18, 0.27, 1.92, 1.74      Penalty multipliers estimated at partition1: 1.57, 1.18, 0.27, 1.92, 1.74      Penalty multipliers estimated at partition1: 1.57, 1.19, 0.27, 1.92, 1.74      Penalty multipliers estimated at partition1: 1.58, 1.19, 0.26, 1.92, 1.74      Penalty multipliers estimated at partition1: 1.58, 1.19, 0.26, 1.92, 1.75      Penalty multipliers estimated at partition1: 1.58, 1.19, 0.26, 1.92, 1.75      Penalty multipliers estimated at partition1: 1.59, 1.19, 0.26, 1.92, 1.75      Penalty multipliers estimated at partition1: 1.59, 1.19, 0.26, 1.92, 1.75      Penalty multipliers estimated at partition1: 1.59, 1.19, 0.26, 1.92, 1.75      Penalty multipliers estimated at partition1: 1.59, 1.19, 0.26, 1.92, 1.75      Penalty multipliers estimated at partition1: 1.6, 1.19, 0.26, 1.92, 1.75      Penalty multipliers estimated at partition1: 1.6, 1.19, 0.26, 1.92, 1.75      Penalty multipliers estimated at partition1: 1.6, 1.19, 0.26, 1.92, 1.75      Penalty multipliers estimated at partition1: 1.6, 1.19, 0.26, 1.92, 1.75      Penalty multipliers estimated at partition1: 1.6, 1.19, 0.26, 1.92, 1.75      Penalty multipliers estimated at partition1: 1.61, 1.19, 0.26, 1.92, 1.75      Penalty multipliers estimated at partition1: 1.61, 1.19, 0.26, 1.92, 1.75      Penalty multipliers estimated at partition1: 1.61, 1.19, 0.26, 1.92, 1.75      Penalty multipliers estimated at partition1: 1.61, 1.19, 0.26, 1.92, 1.75      Penalty multipliers estimated at partition1: 1.61, 1.19, 0.26, 1.92, 1.75      Penalty multipliers estimated at partition1: 1.61, 1.19, 0.26, 1.92, 1.75      Penalty multipliers estimated at partition1: 1.62, 1.19, 0.26, 1.92, 1.75      Penalty multipliers estimated at partition1: 1.62, 1.19, 0.26, 1.92, 1.75      Penalty multipliers estimated at partition1: 1.62, 1.19, 0.26, 1.92, 1.75      Penalty multipliers estimated at partition1: 1.62, 1.19, 0.26, 1.92, 1.75      Penalty multipliers estimated at partition1: 1.62, 1.19, 0.26, 1.92, 1.76      Penalty multipliers estimated at partition1: 1.62, 1.19, 0.26, 1.92, 1.76      Penalty multipliers estimated at partition1: 1.62, 1.19, 0.26, 1.92, 1.76      Penalty multipliers estimated at partition1: 1.62, 1.19, 0.26, 1.92, 1.76 in 104.7 seconds [1] "Summary of group sizes:"
+  1   2   3   4   5 
+ 38 140  59  35  26 
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+12345
+[1] -25.78619
+[1] -25.78619
+[1] "Relative error: 0.216240948654622"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7673139 1.3188035 0.5967155 1.7351120 1.1171470
+[1] -24.42244
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.20327172803459"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7502963 1.3484311 0.5903755 1.7104740 1.1240607
+[1] -22.66406
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.224412933277002"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7242267 1.3839469 0.5861344 1.6827091 1.1348263
+[1] -20.62877
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.194917294168937"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6949055 1.4151793 0.5854228 1.6598053 1.1545170
+[1] -18.50778
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.212254648885235"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6662545 1.4428034 0.5848623 1.6413113 1.1965824
+[1] -16.47359
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.204079123034547"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6388157 1.4748861 0.5815579 1.6314343 1.2568164
+[1] -14.64676
+1234567
+[1] "Partition group improved results"
+[1] "Relative error: 0.228887358872059"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6098609 1.5241391 0.5745925 1.6148848 1.3346510
+[1] -13.09309
+1234567
+[1] "Partition group improved results"
+[1] "Relative error: 0.232780892681408"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5812482 1.6024101 0.5612446 1.6046149 1.4192551
+[1] -11.83192
+12345678
+[1] "Partition group improved results"
+[1] "Relative error: 0.254119218554684"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5520982 1.7026518 0.5461037 1.5973725 1.5295980
+[1] -10.85807
+12345678
+[1] "Partition group improved results"
+[1] "Relative error: 0.285002139898772"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5240809 1.8118367 0.5296307 1.6399582 1.6793617
+[1] -10.1424
+123456789
+[1] "Partition group improved results"
+[1] "Computation time for adaptive weigthing: 9.93099999999993"
+[1] "Final lambda multipliers (summary):"
+$group
+           1            2            3            4            5 
+1.264821e-02 5.584041e+01 3.835038e-03 1.506684e+02 1.203910e+01 
+
+[1] "CVLs -25.7861938022534" "CVLs -10.1424049034103"
+[1] "Total computation time: 9.93099999999993"
+[1] "Fold 8"
+
+Estimating penalty multipliers by empirical Bayes
+Penalty multipliers estimated at partition1: 0.86, 1.06, 0.77, 1.36, 1.08      Penalty multipliers estimated at partition1: 0.89, 1.06, 0.74, 1.4, 1.13      Penalty multipliers estimated at partition1: 0.92, 1.05, 0.71, 1.43, 1.18      Penalty multipliers estimated at partition1: 0.94, 1.05, 0.68, 1.46, 1.22      Penalty multipliers estimated at partition1: 0.97, 1.05, 0.65, 1.49, 1.26      Penalty multipliers estimated at partition1: 1, 1.04, 0.63, 1.52, 1.3      Penalty multipliers estimated at partition1: 1.02, 1.04, 0.61, 1.55, 1.34      Penalty multipliers estimated at partition1: 1.05, 1.04, 0.59, 1.57, 1.38      Penalty multipliers estimated at partition1: 1.07, 1.04, 0.57, 1.6, 1.41      Penalty multipliers estimated at partition1: 1.1, 1.04, 0.55, 1.62, 1.45      Penalty multipliers estimated at partition1: 1.12, 1.04, 0.53, 1.64, 1.48      Penalty multipliers estimated at partition1: 1.15, 1.04, 0.52, 1.66, 1.51      Penalty multipliers estimated at partition1: 1.17, 1.04, 0.5, 1.68, 1.54      Penalty multipliers estimated at partition1: 1.19, 1.04, 0.49, 1.7, 1.56      Penalty multipliers estimated at partition1: 1.22, 1.04, 0.47, 1.72, 1.59      Penalty multipliers estimated at partition1: 1.24, 1.04, 0.46, 1.73, 1.61      Penalty multipliers estimated at partition1: 1.26, 1.04, 0.45, 1.75, 1.64      Penalty multipliers estimated at partition1: 1.28, 1.05, 0.44, 1.76, 1.66      Penalty multipliers estimated at partition1: 1.3, 1.05, 0.43, 1.78, 1.68      Penalty multipliers estimated at partition1: 1.32, 1.05, 0.42, 1.79, 1.7      Penalty multipliers estimated at partition1: 1.34, 1.05, 0.41, 1.8, 1.72      Penalty multipliers estimated at partition1: 1.36, 1.05, 0.4, 1.81, 1.74      Penalty multipliers estimated at partition1: 1.38, 1.06, 0.39, 1.82, 1.76      Penalty multipliers estimated at partition1: 1.4, 1.06, 0.38, 1.83, 1.77      Penalty multipliers estimated at partition1: 1.42, 1.06, 0.37, 1.84, 1.79      Penalty multipliers estimated at partition1: 1.43, 1.06, 0.37, 1.85, 1.8      Penalty multipliers estimated at partition1: 1.45, 1.07, 0.36, 1.86, 1.82      Penalty multipliers estimated at partition1: 1.47, 1.07, 0.35, 1.87, 1.83      Penalty multipliers estimated at partition1: 1.48, 1.07, 0.35, 1.87, 1.84      Penalty multipliers estimated at partition1: 1.5, 1.07, 0.34, 1.88, 1.85      Penalty multipliers estimated at partition1: 1.51, 1.08, 0.34, 1.89, 1.86      Penalty multipliers estimated at partition1: 1.52, 1.08, 0.33, 1.89, 1.87      Penalty multipliers estimated at partition1: 1.54, 1.08, 0.33, 1.9, 1.88      Penalty multipliers estimated at partition1: 1.55, 1.08, 0.32, 1.9, 1.89      Penalty multipliers estimated at partition1: 1.56, 1.08, 0.32, 1.91, 1.9      Penalty multipliers estimated at partition1: 1.58, 1.09, 0.31, 1.91, 1.91      Penalty multipliers estimated at partition1: 1.59, 1.09, 0.31, 1.92, 1.92      Penalty multipliers estimated at partition1: 1.6, 1.09, 0.31, 1.92, 1.93      Penalty multipliers estimated at partition1: 1.61, 1.09, 0.3, 1.92, 1.93      Penalty multipliers estimated at partition1: 1.62, 1.1, 0.3, 1.93, 1.94      Penalty multipliers estimated at partition1: 1.63, 1.1, 0.3, 1.93, 1.95      Penalty multipliers estimated at partition1: 1.64, 1.1, 0.29, 1.93, 1.95      Penalty multipliers estimated at partition1: 1.65, 1.1, 0.29, 1.94, 1.96      Penalty multipliers estimated at partition1: 1.66, 1.1, 0.29, 1.94, 1.96      Penalty multipliers estimated at partition1: 1.66, 1.11, 0.28, 1.94, 1.97      Penalty multipliers estimated at partition1: 1.67, 1.11, 0.28, 1.94, 1.97      Penalty multipliers estimated at partition1: 1.68, 1.11, 0.28, 1.95, 1.98      Penalty multipliers estimated at partition1: 1.69, 1.11, 0.28, 1.95, 1.98      Penalty multipliers estimated at partition1: 1.7, 1.11, 0.28, 1.95, 1.99      Penalty multipliers estimated at partition1: 1.7, 1.11, 0.27, 1.95, 1.99      Penalty multipliers estimated at partition1: 1.71, 1.11, 0.27, 1.95, 1.99      Penalty multipliers estimated at partition1: 1.71, 1.12, 0.27, 1.95, 2      Penalty multipliers estimated at partition1: 1.72, 1.12, 0.27, 1.95, 2      Penalty multipliers estimated at partition1: 1.73, 1.12, 0.27, 1.96, 2      Penalty multipliers estimated at partition1: 1.73, 1.12, 0.26, 1.96, 2.01      Penalty multipliers estimated at partition1: 1.74, 1.12, 0.26, 1.96, 2.01      Penalty multipliers estimated at partition1: 1.74, 1.12, 0.26, 1.96, 2.01      Penalty multipliers estimated at partition1: 1.75, 1.12, 0.26, 1.96, 2.01      Penalty multipliers estimated at partition1: 1.75, 1.12, 0.26, 1.96, 2.02      Penalty multipliers estimated at partition1: 1.76, 1.13, 0.26, 1.96, 2.02      Penalty multipliers estimated at partition1: 1.76, 1.13, 0.26, 1.96, 2.02      Penalty multipliers estimated at partition1: 1.76, 1.13, 0.26, 1.96, 2.02      Penalty multipliers estimated at partition1: 1.77, 1.13, 0.26, 1.96, 2.02      Penalty multipliers estimated at partition1: 1.77, 1.13, 0.25, 1.96, 2.02      Penalty multipliers estimated at partition1: 1.78, 1.13, 0.25, 1.96, 2.03      Penalty multipliers estimated at partition1: 1.78, 1.13, 0.25, 1.96, 2.03      Penalty multipliers estimated at partition1: 1.78, 1.13, 0.25, 1.97, 2.03      Penalty multipliers estimated at partition1: 1.78, 1.13, 0.25, 1.97, 2.03      Penalty multipliers estimated at partition1: 1.79, 1.13, 0.25, 1.97, 2.03      Penalty multipliers estimated at partition1: 1.79, 1.13, 0.25, 1.97, 2.03      Penalty multipliers estimated at partition1: 1.79, 1.14, 0.25, 1.97, 2.03      Penalty multipliers estimated at partition1: 1.8, 1.14, 0.25, 1.97, 2.03      Penalty multipliers estimated at partition1: 1.8, 1.14, 0.25, 1.97, 2.04      Penalty multipliers estimated at partition1: 1.8, 1.14, 0.25, 1.97, 2.04      Penalty multipliers estimated at partition1: 1.8, 1.14, 0.25, 1.97, 2.04      Penalty multipliers estimated at partition1: 1.8, 1.14, 0.25, 1.97, 2.04      Penalty multipliers estimated at partition1: 1.81, 1.14, 0.25, 1.97, 2.04      Penalty multipliers estimated at partition1: 1.81, 1.14, 0.24, 1.97, 2.04      Penalty multipliers estimated at partition1: 1.81, 1.14, 0.24, 1.97, 2.04      Penalty multipliers estimated at partition1: 1.81, 1.14, 0.24, 1.97, 2.04      Penalty multipliers estimated at partition1: 1.81, 1.14, 0.24, 1.97, 2.04      Penalty multipliers estimated at partition1: 1.82, 1.14, 0.24, 1.97, 2.04      Penalty multipliers estimated at partition1: 1.82, 1.14, 0.24, 1.97, 2.04      Penalty multipliers estimated at partition1: 1.82, 1.14, 0.24, 1.97, 2.04      Penalty multipliers estimated at partition1: 1.82, 1.14, 0.24, 1.97, 2.04      Penalty multipliers estimated at partition1: 1.82, 1.14, 0.24, 1.97, 2.04      Penalty multipliers estimated at partition1: 1.82, 1.14, 0.24, 1.97, 2.04      Penalty multipliers estimated at partition1: 1.82, 1.14, 0.24, 1.97, 2.04      Penalty multipliers estimated at partition1: 1.82, 1.14, 0.24, 1.97, 2.05      Penalty multipliers estimated at partition1: 1.83, 1.14, 0.24, 1.97, 2.05      Penalty multipliers estimated at partition1: 1.83, 1.14, 0.24, 1.97, 2.05      Penalty multipliers estimated at partition1: 1.83, 1.14, 0.24, 1.97, 2.05 in 127.34 seconds [1] "Summary of group sizes:"
+  1   2   3   4   5 
+ 38 140  59  35  26 
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+12345
+[1] -26.0985
+[1] -26.0985
+[1] "Relative error: 0.204946973717589"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.9023980 1.1581752 0.5854075 2.1109391 1.4734746
+[1] -24.81398
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.216197345584208"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.8575805 1.1852577 0.5823077 2.1024651 1.4769885
+[1] -23.1616
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.221106096173789"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.8136865 1.2098710 0.5835577 2.0613395 1.4856359
+[1] -21.27995
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.214817105615019"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7727121 1.2339835 0.5873732 1.9892384 1.5005511
+[1] -19.34013
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.220567653107405"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7372347 1.2594814 0.5905543 1.9107411 1.5226454
+[1] -17.48722
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.215207883058018"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7070838 1.2878872 0.5903831 1.8601379 1.5474296
+[1] -15.8301
+1234567
+[1] "Partition group improved results"
+[1] "Relative error: 0.202388564730338"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6823530 1.3236244 0.5841462 1.8343370 1.5798186
+[1] -14.4399
+1234567
+[1] "Partition group improved results"
+[1] "Relative error: 0.223596816503229"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6630536 1.3662108 0.5719621 1.8255501 1.6362271
+[1] -13.35423
+12345678
+[1] "Partition group improved results"
+[1] "Relative error: 0.245443871602107"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6548383 1.3972538 0.5563283 1.8532512 1.7525350
+[1] -12.58742
+12345678
+[1] "Partition group improved results"
+[1] "Relative error: 0.240980237514617"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6589165 1.4172078 0.5375343 1.9176982 1.9213321
+[1] -12.12804
+123456789
+[1] "Partition group improved results"
+[1] "Computation time for adaptive weigthing: 10.428"
+[1] "Final lambda multipliers (summary):"
+$group
+           1            2            3            4            5 
+  0.04951614  11.90409537   0.00407032 769.79533421  99.49757879 
+
+[1] "CVLs -26.0984987718138" "CVLs -12.1280395041428"
+[1] "Total computation time: 10.429"
+[1] "Fold 9"
+
+Estimating penalty multipliers by empirical Bayes
+Penalty multipliers estimated at partition1: 0.79, 1.09, 0.77, 1.3, 1.11      Penalty multipliers estimated at partition1: 0.8, 1.08, 0.75, 1.33, 1.19      Penalty multipliers estimated at partition1: 0.81, 1.08, 0.72, 1.36, 1.25      Penalty multipliers estimated at partition1: 0.82, 1.07, 0.7, 1.39, 1.32      Penalty multipliers estimated at partition1: 0.83, 1.07, 0.68, 1.42, 1.38      Penalty multipliers estimated at partition1: 0.84, 1.07, 0.66, 1.45, 1.44      Penalty multipliers estimated at partition1: 0.85, 1.06, 0.64, 1.47, 1.5      Penalty multipliers estimated at partition1: 0.86, 1.06, 0.62, 1.5, 1.55      Penalty multipliers estimated at partition1: 0.87, 1.06, 0.61, 1.52, 1.6      Penalty multipliers estimated at partition1: 0.88, 1.06, 0.59, 1.54, 1.65      Penalty multipliers estimated at partition1: 0.89, 1.05, 0.58, 1.56, 1.69      Penalty multipliers estimated at partition1: 0.9, 1.05, 0.57, 1.58, 1.74      Penalty multipliers estimated at partition1: 0.91, 1.05, 0.55, 1.6, 1.78      Penalty multipliers estimated at partition1: 0.92, 1.05, 0.54, 1.61, 1.81      Penalty multipliers estimated at partition1: 0.93, 1.05, 0.53, 1.63, 1.85      Penalty multipliers estimated at partition1: 0.94, 1.05, 0.52, 1.64, 1.88      Penalty multipliers estimated at partition1: 0.95, 1.05, 0.51, 1.66, 1.91      Penalty multipliers estimated at partition1: 0.96, 1.05, 0.5, 1.67, 1.94      Penalty multipliers estimated at partition1: 0.97, 1.05, 0.5, 1.68, 1.96      Penalty multipliers estimated at partition1: 0.98, 1.05, 0.49, 1.69, 1.99      Penalty multipliers estimated at partition1: 0.98, 1.05, 0.48, 1.7, 2.01      Penalty multipliers estimated at partition1: 0.99, 1.05, 0.47, 1.71, 2.03      Penalty multipliers estimated at partition1: 1, 1.05, 0.47, 1.72, 2.05      Penalty multipliers estimated at partition1: 1.01, 1.05, 0.46, 1.73, 2.07      Penalty multipliers estimated at partition1: 1.02, 1.05, 0.45, 1.74, 2.09      Penalty multipliers estimated at partition1: 1.03, 1.05, 0.45, 1.74, 2.11      Penalty multipliers estimated at partition1: 1.04, 1.06, 0.44, 1.75, 2.12      Penalty multipliers estimated at partition1: 1.04, 1.06, 0.44, 1.75, 2.13      Penalty multipliers estimated at partition1: 1.05, 1.06, 0.43, 1.76, 2.15      Penalty multipliers estimated at partition1: 1.06, 1.06, 0.43, 1.76, 2.16      Penalty multipliers estimated at partition1: 1.07, 1.06, 0.42, 1.77, 2.17      Penalty multipliers estimated at partition1: 1.08, 1.06, 0.42, 1.77, 2.18      Penalty multipliers estimated at partition1: 1.08, 1.06, 0.42, 1.78, 2.19      Penalty multipliers estimated at partition1: 1.09, 1.06, 0.41, 1.78, 2.2      Penalty multipliers estimated at partition1: 1.1, 1.06, 0.41, 1.78, 2.21      Penalty multipliers estimated at partition1: 1.1, 1.06, 0.41, 1.79, 2.22      Penalty multipliers estimated at partition1: 1.11, 1.06, 0.4, 1.79, 2.23      Penalty multipliers estimated at partition1: 1.12, 1.06, 0.4, 1.79, 2.23      Penalty multipliers estimated at partition1: 1.12, 1.07, 0.4, 1.79, 2.24      Penalty multipliers estimated at partition1: 1.13, 1.07, 0.39, 1.8, 2.25      Penalty multipliers estimated at partition1: 1.13, 1.07, 0.39, 1.8, 2.25      Penalty multipliers estimated at partition1: 1.14, 1.07, 0.39, 1.8, 2.26      Penalty multipliers estimated at partition1: 1.15, 1.07, 0.39, 1.8, 2.26      Penalty multipliers estimated at partition1: 1.15, 1.07, 0.38, 1.8, 2.27      Penalty multipliers estimated at partition1: 1.16, 1.07, 0.38, 1.8, 2.27      Penalty multipliers estimated at partition1: 1.16, 1.07, 0.38, 1.81, 2.27      Penalty multipliers estimated at partition1: 1.17, 1.07, 0.38, 1.81, 2.28      Penalty multipliers estimated at partition1: 1.17, 1.07, 0.37, 1.81, 2.28      Penalty multipliers estimated at partition1: 1.18, 1.07, 0.37, 1.81, 2.28      Penalty multipliers estimated at partition1: 1.18, 1.07, 0.37, 1.81, 2.29      Penalty multipliers estimated at partition1: 1.18, 1.07, 0.37, 1.81, 2.29      Penalty multipliers estimated at partition1: 1.19, 1.08, 0.37, 1.81, 2.29      Penalty multipliers estimated at partition1: 1.19, 1.08, 0.37, 1.81, 2.3      Penalty multipliers estimated at partition1: 1.2, 1.08, 0.36, 1.81, 2.3      Penalty multipliers estimated at partition1: 1.2, 1.08, 0.36, 1.81, 2.3      Penalty multipliers estimated at partition1: 1.2, 1.08, 0.36, 1.81, 2.3      Penalty multipliers estimated at partition1: 1.21, 1.08, 0.36, 1.81, 2.3      Penalty multipliers estimated at partition1: 1.21, 1.08, 0.36, 1.81, 2.31      Penalty multipliers estimated at partition1: 1.21, 1.08, 0.36, 1.81, 2.31      Penalty multipliers estimated at partition1: 1.22, 1.08, 0.36, 1.81, 2.31      Penalty multipliers estimated at partition1: 1.22, 1.08, 0.36, 1.81, 2.31      Penalty multipliers estimated at partition1: 1.22, 1.08, 0.35, 1.81, 2.31      Penalty multipliers estimated at partition1: 1.23, 1.08, 0.35, 1.81, 2.31      Penalty multipliers estimated at partition1: 1.23, 1.08, 0.35, 1.81, 2.31      Penalty multipliers estimated at partition1: 1.23, 1.08, 0.35, 1.81, 2.32      Penalty multipliers estimated at partition1: 1.24, 1.08, 0.35, 1.81, 2.32      Penalty multipliers estimated at partition1: 1.24, 1.08, 0.35, 1.81, 2.32      Penalty multipliers estimated at partition1: 1.24, 1.08, 0.35, 1.81, 2.32      Penalty multipliers estimated at partition1: 1.24, 1.08, 0.35, 1.81, 2.32      Penalty multipliers estimated at partition1: 1.24, 1.08, 0.35, 1.81, 2.32      Penalty multipliers estimated at partition1: 1.25, 1.08, 0.35, 1.81, 2.32      Penalty multipliers estimated at partition1: 1.25, 1.09, 0.35, 1.81, 2.32      Penalty multipliers estimated at partition1: 1.25, 1.09, 0.35, 1.81, 2.32      Penalty multipliers estimated at partition1: 1.25, 1.09, 0.34, 1.81, 2.32      Penalty multipliers estimated at partition1: 1.26, 1.09, 0.34, 1.81, 2.32      Penalty multipliers estimated at partition1: 1.26, 1.09, 0.34, 1.81, 2.32      Penalty multipliers estimated at partition1: 1.26, 1.09, 0.34, 1.81, 2.32      Penalty multipliers estimated at partition1: 1.26, 1.09, 0.34, 1.81, 2.32      Penalty multipliers estimated at partition1: 1.26, 1.09, 0.34, 1.81, 2.33      Penalty multipliers estimated at partition1: 1.26, 1.09, 0.34, 1.81, 2.33      Penalty multipliers estimated at partition1: 1.27, 1.09, 0.34, 1.81, 2.33      Penalty multipliers estimated at partition1: 1.27, 1.09, 0.34, 1.81, 2.33      Penalty multipliers estimated at partition1: 1.27, 1.09, 0.34, 1.81, 2.33      Penalty multipliers estimated at partition1: 1.27, 1.09, 0.34, 1.81, 2.33      Penalty multipliers estimated at partition1: 1.27, 1.09, 0.34, 1.81, 2.33      Penalty multipliers estimated at partition1: 1.27, 1.09, 0.34, 1.81, 2.33      Penalty multipliers estimated at partition1: 1.27, 1.09, 0.34, 1.81, 2.33      Penalty multipliers estimated at partition1: 1.27, 1.09, 0.34, 1.81, 2.33      Penalty multipliers estimated at partition1: 1.28, 1.09, 0.34, 1.81, 2.33      Penalty multipliers estimated at partition1: 1.28, 1.09, 0.34, 1.81, 2.33      Penalty multipliers estimated at partition1: 1.28, 1.09, 0.34, 1.81, 2.33 in 76.23 seconds [1] "Summary of group sizes:"
+  1   2   3   4   5 
+ 38 140  59  35  26 
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+12345
+[1] -26.03865
+[1] -26.03865
+[1] "Relative error: 0.201751444756018"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7736609 1.1637974 0.6010539 2.3714694 1.6595042
+[1] -24.63989
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.19694653697865"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7474487 1.1808180 0.6009976 2.2963243 1.7120290
+[1] -22.97553
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.197330477842695"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7163669 1.1991112 0.6040820 2.2037342 1.7746926
+[1] -21.15589
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.208053647819877"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6830159 1.2190133 0.6099226 2.0887611 1.8535042
+[1] -19.3184
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.213122663718509"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.650654 1.242959 0.615638 1.981158 1.931539
+[1] -17.57417
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.193788646008753"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6212670 1.2731341 0.6169608 1.9054612 2.0199654
+[1] -16.00247
+1234567
+[1] "Partition group improved results"
+[1] "Relative error: 0.217837571810886"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5957897 1.3087988 0.6129410 1.8619862 2.1317706
+[1] -14.66407
+1234567
+[1] "Partition group improved results"
+[1] "Relative error: 0.231938007413137"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5714638 1.3441578 0.6069395 1.8790519 2.2580799
+[1] -13.59324
+12345678
+[1] "Partition group improved results"
+[1] "Relative error: 0.255959824888464"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5500974 1.3831806 0.5961161 1.9572053 2.3966040
+[1] -12.80428
+12345678
+[1] "Partition group improved results"
+[1] "Relative error: 0.273002747760933"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.5278870 1.4166323 0.5887519 2.0993307 2.5230451
+[1] -12.29686
+123456789
+[1] "Partition group improved results"
+[1] "Computation time for adaptive weigthing: 9.96500000000015"
+[1] "Final lambda multipliers (summary):"
+$group
+           1            2            3            4            5 
+1.130808e-02 1.095767e+01 6.600351e-03 1.360349e+03 1.061340e+03 
+
+[1] "CVLs -26.0386483017597" "CVLs -12.2968592024477"
+[1] "Total computation time: 9.96600000000012"
+[1] "Fold 10"
+
+Estimating penalty multipliers by empirical Bayes
+Penalty multipliers estimated at partition1: 0.88, 1.02, 0.79, 1.35, 1.21      Penalty multipliers estimated at partition1: 0.9, 1.02, 0.76, 1.39, 1.27      Penalty multipliers estimated at partition1: 0.93, 1.01, 0.74, 1.42, 1.32      Penalty multipliers estimated at partition1: 0.95, 1.01, 0.71, 1.45, 1.37      Penalty multipliers estimated at partition1: 0.98, 1, 0.69, 1.47, 1.42      Penalty multipliers estimated at partition1: 1, 1, 0.67, 1.5, 1.47      Penalty multipliers estimated at partition1: 1.02, 1, 0.65, 1.53, 1.51      Penalty multipliers estimated at partition1: 1.05, 0.99, 0.63, 1.55, 1.55      Penalty multipliers estimated at partition1: 1.07, 0.99, 0.61, 1.57, 1.59      Penalty multipliers estimated at partition1: 1.09, 0.99, 0.59, 1.59, 1.63      Penalty multipliers estimated at partition1: 1.11, 0.99, 0.57, 1.62, 1.66      Penalty multipliers estimated at partition1: 1.13, 0.99, 0.56, 1.63, 1.7      Penalty multipliers estimated at partition1: 1.15, 0.99, 0.54, 1.65, 1.73      Penalty multipliers estimated at partition1: 1.17, 0.99, 0.53, 1.67, 1.76      Penalty multipliers estimated at partition1: 1.19, 0.99, 0.52, 1.69, 1.78      Penalty multipliers estimated at partition1: 1.21, 0.99, 0.5, 1.7, 1.81      Penalty multipliers estimated at partition1: 1.23, 0.99, 0.49, 1.72, 1.83      Penalty multipliers estimated at partition1: 1.25, 0.99, 0.48, 1.73, 1.86      Penalty multipliers estimated at partition1: 1.27, 1, 0.47, 1.74, 1.88      Penalty multipliers estimated at partition1: 1.29, 1, 0.46, 1.76, 1.9      Penalty multipliers estimated at partition1: 1.3, 1, 0.45, 1.77, 1.92      Penalty multipliers estimated at partition1: 1.32, 1, 0.44, 1.78, 1.93      Penalty multipliers estimated at partition1: 1.34, 1, 0.43, 1.79, 1.95      Penalty multipliers estimated at partition1: 1.35, 1, 0.43, 1.8, 1.97      Penalty multipliers estimated at partition1: 1.37, 1.01, 0.42, 1.81, 1.98      Penalty multipliers estimated at partition1: 1.39, 1.01, 0.41, 1.82, 2      Penalty multipliers estimated at partition1: 1.4, 1.01, 0.4, 1.83, 2.01      Penalty multipliers estimated at partition1: 1.41, 1.01, 0.4, 1.83, 2.02      Penalty multipliers estimated at partition1: 1.43, 1.02, 0.39, 1.84, 2.03      Penalty multipliers estimated at partition1: 1.44, 1.02, 0.38, 1.85, 2.04      Penalty multipliers estimated at partition1: 1.46, 1.02, 0.38, 1.85, 2.05      Penalty multipliers estimated at partition1: 1.47, 1.02, 0.37, 1.86, 2.06      Penalty multipliers estimated at partition1: 1.48, 1.02, 0.37, 1.87, 2.07      Penalty multipliers estimated at partition1: 1.49, 1.03, 0.36, 1.87, 2.08      Penalty multipliers estimated at partition1: 1.5, 1.03, 0.36, 1.88, 2.08      Penalty multipliers estimated at partition1: 1.52, 1.03, 0.35, 1.88, 2.09      Penalty multipliers estimated at partition1: 1.53, 1.03, 0.35, 1.89, 2.1      Penalty multipliers estimated at partition1: 1.54, 1.04, 0.34, 1.89, 2.1      Penalty multipliers estimated at partition1: 1.55, 1.04, 0.34, 1.89, 2.11      Penalty multipliers estimated at partition1: 1.56, 1.04, 0.34, 1.9, 2.12      Penalty multipliers estimated at partition1: 1.57, 1.04, 0.33, 1.9, 2.12      Penalty multipliers estimated at partition1: 1.58, 1.04, 0.33, 1.91, 2.13      Penalty multipliers estimated at partition1: 1.59, 1.05, 0.33, 1.91, 2.13      Penalty multipliers estimated at partition1: 1.59, 1.05, 0.32, 1.91, 2.13      Penalty multipliers estimated at partition1: 1.6, 1.05, 0.32, 1.91, 2.14      Penalty multipliers estimated at partition1: 1.61, 1.05, 0.32, 1.92, 2.14      Penalty multipliers estimated at partition1: 1.62, 1.05, 0.31, 1.92, 2.14      Penalty multipliers estimated at partition1: 1.63, 1.06, 0.31, 1.92, 2.15      Penalty multipliers estimated at partition1: 1.63, 1.06, 0.31, 1.92, 2.15      Penalty multipliers estimated at partition1: 1.64, 1.06, 0.31, 1.93, 2.15      Penalty multipliers estimated at partition1: 1.65, 1.06, 0.3, 1.93, 2.16      Penalty multipliers estimated at partition1: 1.65, 1.06, 0.3, 1.93, 2.16      Penalty multipliers estimated at partition1: 1.66, 1.06, 0.3, 1.93, 2.16      Penalty multipliers estimated at partition1: 1.67, 1.07, 0.3, 1.93, 2.16      Penalty multipliers estimated at partition1: 1.67, 1.07, 0.3, 1.93, 2.16      Penalty multipliers estimated at partition1: 1.68, 1.07, 0.29, 1.94, 2.17      Penalty multipliers estimated at partition1: 1.68, 1.07, 0.29, 1.94, 2.17      Penalty multipliers estimated at partition1: 1.69, 1.07, 0.29, 1.94, 2.17      Penalty multipliers estimated at partition1: 1.69, 1.07, 0.29, 1.94, 2.17      Penalty multipliers estimated at partition1: 1.7, 1.07, 0.29, 1.94, 2.17      Penalty multipliers estimated at partition1: 1.7, 1.07, 0.29, 1.94, 2.17      Penalty multipliers estimated at partition1: 1.71, 1.08, 0.29, 1.94, 2.17      Penalty multipliers estimated at partition1: 1.71, 1.08, 0.28, 1.94, 2.17      Penalty multipliers estimated at partition1: 1.72, 1.08, 0.28, 1.94, 2.18      Penalty multipliers estimated at partition1: 1.72, 1.08, 0.28, 1.94, 2.18      Penalty multipliers estimated at partition1: 1.72, 1.08, 0.28, 1.95, 2.18      Penalty multipliers estimated at partition1: 1.73, 1.08, 0.28, 1.95, 2.18      Penalty multipliers estimated at partition1: 1.73, 1.08, 0.28, 1.95, 2.18      Penalty multipliers estimated at partition1: 1.73, 1.08, 0.28, 1.95, 2.18      Penalty multipliers estimated at partition1: 1.74, 1.08, 0.28, 1.95, 2.18      Penalty multipliers estimated at partition1: 1.74, 1.09, 0.28, 1.95, 2.18      Penalty multipliers estimated at partition1: 1.74, 1.09, 0.27, 1.95, 2.18      Penalty multipliers estimated at partition1: 1.75, 1.09, 0.27, 1.95, 2.18      Penalty multipliers estimated at partition1: 1.75, 1.09, 0.27, 1.95, 2.18      Penalty multipliers estimated at partition1: 1.75, 1.09, 0.27, 1.95, 2.18      Penalty multipliers estimated at partition1: 1.75, 1.09, 0.27, 1.95, 2.18      Penalty multipliers estimated at partition1: 1.76, 1.09, 0.27, 1.95, 2.18      Penalty multipliers estimated at partition1: 1.76, 1.09, 0.27, 1.95, 2.18      Penalty multipliers estimated at partition1: 1.76, 1.09, 0.27, 1.95, 2.18      Penalty multipliers estimated at partition1: 1.76, 1.09, 0.27, 1.95, 2.18      Penalty multipliers estimated at partition1: 1.77, 1.09, 0.27, 1.95, 2.18      Penalty multipliers estimated at partition1: 1.77, 1.09, 0.27, 1.95, 2.18      Penalty multipliers estimated at partition1: 1.77, 1.09, 0.27, 1.95, 2.18      Penalty multipliers estimated at partition1: 1.77, 1.09, 0.27, 1.95, 2.19      Penalty multipliers estimated at partition1: 1.77, 1.1, 0.27, 1.95, 2.19      Penalty multipliers estimated at partition1: 1.78, 1.1, 0.26, 1.95, 2.19      Penalty multipliers estimated at partition1: 1.78, 1.1, 0.26, 1.95, 2.19      Penalty multipliers estimated at partition1: 1.78, 1.1, 0.26, 1.95, 2.19      Penalty multipliers estimated at partition1: 1.78, 1.1, 0.26, 1.95, 2.19      Penalty multipliers estimated at partition1: 1.78, 1.1, 0.26, 1.95, 2.19      Penalty multipliers estimated at partition1: 1.78, 1.1, 0.26, 1.95, 2.19      Penalty multipliers estimated at partition1: 1.78, 1.1, 0.26, 1.95, 2.19      Penalty multipliers estimated at partition1: 1.79, 1.1, 0.26, 1.95, 2.19      Penalty multipliers estimated at partition1: 1.79, 1.1, 0.26, 1.96, 2.19      Penalty multipliers estimated at partition1: 1.79, 1.1, 0.26, 1.96, 2.19      Penalty multipliers estimated at partition1: 1.79, 1.1, 0.26, 1.96, 2.19      Penalty multipliers estimated at partition1: 1.79, 1.1, 0.26, 1.96, 2.19      Penalty multipliers estimated at partition1: 1.79, 1.1, 0.26, 1.96, 2.19      Penalty multipliers estimated at partition1: 1.79, 1.1, 0.26, 1.96, 2.19      Penalty multipliers estimated at partition1: 1.79, 1.1, 0.26, 1.96, 2.19      Penalty multipliers estimated at partition1: 1.79, 1.1, 0.26, 1.96, 2.19      Penalty multipliers estimated at partition1: 1.79, 1.1, 0.26, 1.96, 2.19 in 116.63 seconds [1] "Summary of group sizes:"
+  1   2   3   4   5 
+ 38 140  59  35  26 
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+12345
+[1] -25.62236
+[1] -25.62236
+[1] "Relative error: 0.210807862377112"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.8803860 1.1012947 0.6390795 1.9920910 1.4586870
+[1] -24.67361
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.199460962306083"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.8505106 1.1274091 0.6296745 1.9704085 1.4705539
+[1] -23.35744
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.206267984559669"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.8209066 1.1554775 0.6226380 1.9160758 1.4837580
+[1] -21.73615
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.213135858444378"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7880821 1.1871665 0.6184381 1.8315945 1.4991497
+[1] -19.92084
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.208749331912178"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7537877 1.2221311 0.6165051 1.7304368 1.5198383
+[1] -18.04168
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.218439799037733"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.7208611 1.2595030 0.6153521 1.6301834 1.5494390
+[1] -16.21843
+123456
+[1] "Partition group improved results"
+[1] "Relative error: 0.22959886289696"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6922299 1.2984841 0.6122429 1.5530596 1.5869357
+[1] -14.54203
+1234567
+[1] "Partition group improved results"
+[1] "Relative error: 0.227861983967631"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6685641 1.3399881 0.6062409 1.4910194 1.6364242
+[1] -13.07317
+1234567
+[1] "Partition group improved results"
+[1] "Relative error: 0.236341604797048"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6496365 1.3842791 0.5975582 1.4505892 1.6766849
+[1] -11.8438
+12345678
+[1] "Partition group improved results"
+[1] "Relative error: 0.240315249145038"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 0.6338258 1.4272117 0.5859764 1.4389714 1.7398665
+[1] -10.86033
+12345678
+[1] "Partition group improved results"
+[1] "Computation time for adaptive weigthing: 10.3230000000001"
+[1] "Final lambda multipliers (summary):"
+$group
+           1            2            3            4            5 
+5.015941e-02 9.012077e+00 7.639986e-03 1.878312e+02 8.512274e+01 
+
+[1] "CVLs -25.6223626234331" "CVLs -10.8603264178861"
+[1] "Total computation time: 10.3240000000001"
+> 
+> auc1.ridge <- pROC::roc(y, pred1.ridge)$auc
+> auc1.en <- pROC::roc(y, pred1.en)$auc
+> auc1.grEBEN <- pROC::roc(y, pred1.grEBEN)$auc
+> auc1.grridge <- pROC::roc(y, pred1.grridge)$auc
+> # auc1.SGL <- pROC::roc(y, pred1.SGL)$auc
+> 
+> pred1 <- cbind(ridge=pred1.ridge, en=pred1.en, grEBEN=pred1.grEBEN, grridge=pred1.grridge)# , SGL=pred1.SGL)
+> auc1 <- c(ridge=auc1.ridge, en=auc1.en, grEBEN=auc1.grEBEN, grridge=auc1.grridge)# , SGL=auc1.SGL)
+> hepB1 <- list(pred=pred1, auc=auc1)
+> 
+> save(hepB1, file=paste(path.res, "grVBEM_hepB_res1.Rdata", sep=""))
+> 
+> # fit1.grEBEN <- grVBEM(x, y, m, list(assay=assay), lambda1=NULL, lambda2=NULL, intercept=TRUE, eps=0.001,
+> #                       maxiter=300, trace=TRUE)
+> # fit1.grridge <- grridge(t(x), y, list(assay=CreatePartition(as.factor(assay))), unpenal=~1)
+> # fit1.2 <- grridgeCV(fit1.grridge, t(x), y)
+> # 
+> # 
+> # 
+> # ### plots
+> # # with platform as co-data
+> # load(paste(path.res, "grVBEM_hepB_res1.Rdata", sep=""))
+> # xlabels1 <- c("Biogenic amine", "Positive lipid", "Negative lipid", "Oxylipins", "Acyl-carnitines")
+> # barplot(rbind(fit1.grridge$lambdamults$assay,
+> #               fit1.grEBEN$lambdag$assay[, fit1.grEBEN$nouteriter + 1]), beside=TRUE,
+> #         names.arg=xlabels1, args.legend=list(x="topleft"), ylab=expression(paste(lambda[g], "'")),
+> #         legend.text=paste(c("GRridge", "grEBEN", "ridge", "enet"), ", AUC=",
+> #                           round(hepB1$auc, 2)[c(4, 3, 1, 2)], sep=""))
+> # abline(h=1, lty=2)
+> 
+> 
+> 
+> proc.time()
+    user   system  elapsed 
+1188.605    6.492 1196.774 

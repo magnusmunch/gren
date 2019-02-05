@@ -1,0 +1,704 @@
+
+R version 3.2.5 (2016-04-14) -- "Very, Very Secure Dishes"
+Copyright (C) 2016 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ##############################  preamble  #############################
+> # grMCEM on real data                                                 #
+> # version: 01                                                         #
+> # author: Magnus M?nch                                                #
+> # created: 21-03-2017                                                 #
+> # last edited: 21-03-2017                                             #
+> #######################################################################
+> 
+> ###############################  notes  ###############################
+> # 21-03-2017: Results are used in presentation for channel meeting    #
+> #             2017                                                    #
+> #######################################################################
+> 
+> ##########################  data description  #########################
+> # A deep sequencing analysis on small non-coding ribonucleic acid     #
+> # (miRNAseq) was performed on 56 samples (24 women with high-grade    #
+> # cervical intraepithelial neoplasia (CIN3) and 32 healthy women) for #
+> # the purpose of finding relevant screening markers for cervical      #
+> # cancer screening. The next generation sequencing analysis resulted  #
+> # in 2,576 transcripts. The data was normalized and pre-processed,    #
+> # rendering 772 transcripts. More detail description of the data sets #
+> # and the preprocessing step are available on the supplementary       #
+> # material of this following publication "Better diagnostic           #
+> # signatures from RNAseq data through use of auxiliary co-data",      #
+> # Bioinformatics (2017).                                              #
+> #######################################################################
+> 
+> ### paths
+> path.code <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/code/" ,"~/EBEN/code/"))
+> path.res <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/results/" ,"~/EBEN/results/"))
+> path.data <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/data/" ,"~/EBEN/data/"))
+> path.graph <- "/Users/magnusmunch/Documents/PhD/EBEN/graphs/"
+> 
+> ### libraries
+> library(glmnet)
+Loading required package: Matrix
+Loading required package: foreach
+Loaded glmnet 2.0-5
+
+> library(penalized)
+Loading required package: survival
+Welcome to penalized. For extended examples, see vignette("penalized").
+> library(GRridge)
+Loading required package: Iso
+Iso 0.0-17
+Loading required package: GSEABase
+Loading required package: BiocGenerics
+Loading required package: parallel
+
+Attaching package: ‘BiocGenerics’
+
+The following objects are masked from ‘package:parallel’:
+
+    clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
+    clusterExport, clusterMap, parApply, parCapply, parLapply,
+    parLapplyLB, parRapply, parSapply, parSapplyLB
+
+The following object is masked from ‘package:penalized’:
+
+    as.data.frame
+
+The following object is masked from ‘package:Matrix’:
+
+    as.vector
+
+The following objects are masked from ‘package:stats’:
+
+    IQR, mad, xtabs
+
+The following objects are masked from ‘package:base’:
+
+    anyDuplicated, append, as.data.frame, as.vector, cbind, colnames,
+    do.call, duplicated, eval, evalq, Filter, Find, get, grep, grepl,
+    intersect, is.unsorted, lapply, lengths, Map, mapply, match, mget,
+    order, paste, pmax, pmax.int, pmin, pmin.int, Position, rank,
+    rbind, Reduce, rownames, sapply, setdiff, sort, table, tapply,
+    union, unique, unlist, unsplit
+
+Loading required package: Biobase
+Welcome to Bioconductor
+
+    Vignettes contain introductory material; view with
+    'browseVignettes()'. To cite Bioconductor, see
+    'citation("Biobase")', and for packages 'citation("pkgname")'.
+
+Loading required package: annotate
+Loading required package: AnnotationDbi
+Loading required package: stats4
+Loading required package: IRanges
+Loading required package: S4Vectors
+
+Attaching package: ‘IRanges’
+
+The following object is masked from ‘package:Matrix’:
+
+    expand
+
+Loading required package: XML
+Loading required package: graph
+
+Attaching package: ‘graph’
+
+The following object is masked from ‘package:XML’:
+
+    addNode
+
+
+Attaching package: ‘GRridge’
+
+The following object is masked from ‘package:glmnet’:
+
+    auc
+
+Warning messages:
+1: replacing previous import ‘stats::xtabs’ by ‘BiocGenerics::xtabs’ when loading ‘GRridge’ 
+2: replacing previous import ‘GSEABase::intersect’ by ‘BiocGenerics::intersect’ when loading ‘GRridge’ 
+3: replacing previous import ‘stats::mad’ by ‘BiocGenerics::mad’ when loading ‘GRridge’ 
+4: replacing previous import ‘GSEABase::setdiff’ by ‘BiocGenerics::setdiff’ when loading ‘GRridge’ 
+5: replacing previous import ‘penalized::as.data.frame’ by ‘BiocGenerics::as.data.frame’ when loading ‘GRridge’ 
+6: replacing previous import ‘stats::IQR’ by ‘BiocGenerics::IQR’ when loading ‘GRridge’ 
+> library(pROC)
+Type 'citation("pROC")' for a citation.
+
+Attaching package: ‘pROC’
+
+The following objects are masked from ‘package:GRridge’:
+
+    auc, roc
+
+The following objects are masked from ‘package:IRanges’:
+
+    cov, var
+
+The following object is masked from ‘package:glmnet’:
+
+    auc
+
+The following objects are masked from ‘package:stats’:
+
+    cov, smooth, var
+
+> 
+> ### functions
+> # source grENVB functions
+> source(paste(path.code, "grVBEM.R", sep=""))
+> 
+> # function to cross-validate elastic net
+> cv.en <- function(x, y, intercept=intercept) {
++   fit.pen <- cv.pen(x, y, intercept=intercept)
++   fit.en <- glmnet(x, y, family="binomial", alpha=fit.pen$alpha[which.min(fit.pen$cvll)],
++                    lambda=fit.pen$lambda[which.min(fit.pen$cvll)])
++   return(fit.en)
++ }
+> 
+> ### loading data
+> data(dataVerlaat)
+> 
+> ### using annotation as grouping information
+> set.seed(2017)
+> data(dataVerlaat)
+> partitions <- list(annotation=sort(as.numeric(CpGann)))
+> x <- apply(datcenVerlaat, 1, function(x) {(x - mean(x))/sd(x)})[, order(as.numeric(CpGann))]
+> y <- respVerlaat
+> n <- nrow(x)
+> p <- ncol(x)
+> m <- rep(1, n)
+> 
+> # cross validation of AUC
+> set.seed(5001)
+> nfolds <- 10
+> rest <- n %% nfolds
+> foldsize <- c(rep(n %/% nfolds + as.numeric(rest!=0), times=rest),
++               rep(n %/% nfolds, times=nfolds - rest))
+> foldid <- sample(rep(1:nfolds, times=foldsize))
+> 
+> cv.ridge <- cv.glmnet(x, y, family="binomial", alpha=0, standardize=FALSE, intercept=TRUE)
+> cv.en <- cv.pen(x, y, intercept=TRUE)
+> # cv.SGL <- cvSGL(list(x=x, y=y), index=groups, type="logit", standardize=FALSE)
+> 
+> lambda2ridge <- 0.5*n*cv.ridge$lambda.min
+> lambdaridge <- cv.ridge$lambda.min
+> alphaglmnet <- cv.en$alpha[which.min(cv.en$cvll)]
+> lambdaglmnet <- cv.en$lambda[which.min(cv.en$cvll)]
+> lambda1gren <- 2*n*lambdaglmnet*alphaglmnet
+> lambda2gren <- n*lambdaglmnet*(1 - alphaglmnet)
+> # lambdaSGL <- cv.SGL$lambdas[which.min(cv.SGL$lldiff)]
+> 
+> pred1.ridge <- pred1.en <- pred1.grEBEN <- pred1.grridge <- numeric(n) # pred1.SGL <- numeric(n)
+> for(k in 1:nfolds) {
++   print(paste("Fold", k, sep=" "))
++   xtrain <- x[foldid!=k, ]
++   xtest <- x[foldid==k, ]
++   ytrain <- y[foldid!=k]
++   ytest <- y[foldid==k]
++   mtrain <- m[foldid!=k]
++   mtest <- m[foldid==k]
++   ntrain <- length(ytrain)
++   ntest <- length(ytest)
++ 
++   # grVBEM
++   fit.ridge <- glmnet(xtrain, ytrain, family="binomial", alpha=0, lambda=lambdaridge, standardize=FALSE,
++                       intercept=TRUE)
++   fit.en <- glmnet(xtrain, ytrain, family="binomial", alpha=alphaglmnet, lambda=lambdaglmnet, standardize=FALSE,
++                    intercept=TRUE)
++   fit.grEBEN <- grVBEM2(xtrain, ytrain, mtrain, partitions, lambda1=lambda1gren, lambda2=lambda2gren,
++                         intercept=TRUE, posterior=TRUE, eps=0.001, maxiter=500, trace=TRUE)
++   fit.grridge <- grridge(t(xtrain), ytrain, list(group=CreatePartition(as.factor(partitions[[1]]))), unpenal=~1,
++                          optl=lambda2ridge, trace=FALSE)
++   # fit.SGL <- SGL(list(x=xtrain, y=ytrain), index=groups, type="logit", standardize=FALSE)
++ 
++   pred1.ridge[foldid==k] <- predict(fit.ridge, xtest, type="response")
++   pred1.en[foldid==k] <- predict(fit.en, xtest, type="response")
++   pred1.grEBEN[foldid==k] <- as.numeric(exp(cbind(1, xtest) %*% fit.grEBEN$mu)/
++                                            (1 + exp(cbind(1, xtest) %*% fit.grEBEN$mu)))
++   pred1.grridge[foldid==k] <- predict(fit.grridge$predobj$GroupRegul, xtest)
++   # pred1.SGL[foldid==k] <- as.numeric(exp(cbind(1, matrix(xtest, nrow=1)) %*%
++   #                                          rbind(fit.SGL$fit$intercepts, fit.SGL$fit$beta)
++   #                                        [, which.min(fit.SGL$lldiff)])/
++   #                                      (1 + exp(cbind(1, matrix(xtest, nrow=1)) %*%
++   #                                                 rbind(fit.SGL$fit$intercepts, fit.SGL$fit$beta)
++   #                                               [, which.min(fit.SGL$lldiff)])))
++ 
++ }
+[1] "Fold 1"
+
+Estimating penalty multipliers by empirical Bayes
+Penalty multipliers estimated at annotation: 1.04, 0.59, 1.13, 0.98, 1.03, 1.04      Penalty multipliers estimated at annotation: 1.04, 0.59, 1.13, 0.98, 1.03, 1.04      Penalty multipliers estimated at annotation: 1.04, 0.59, 1.13, 0.98, 1.03, 1.04 in 23.5 seconds [1] "Summary of group sizes:"
+   1    2    3    4    5    6 
+5851  584  598 1107  517  834 
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+1234
+[1] -25.35373
+[1] -25.35373
+[1] "Relative error: 0.0457306077693339"
+[1] "Shrink Factor coefficient matrix 0.57"
+[1] "exactstable"
+[1] 1.0421038 0.3750831 1.9697706 1.1144047 1.3030717 1.3328878
+[1] -24.9718
+1234
+[1] "Partition group improved results"
+[1] "Relative error: 0.0466006384491509"
+[1] "Shrink Factor coefficient matrix 0.575"
+[1] "exactstable"
+[1] 1.040946 0.358827 2.162889 1.137850 1.316891 1.388458
+[1] -24.44908
+1234
+[1] "Partition group improved results"
+[1] "Relative error: 0.0465100322774698"
+[1] "Shrink Factor coefficient matrix 0.6"
+[1] "exactstable"
+[1] 1.0482579 0.3071376 3.4149076 1.1849566 1.3896184 1.5838656
+[1] -24.12879
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.0462315870227747"
+[1] "Shrink Factor coefficient matrix 0.595"
+[1] "exactstable"
+[1]   1.0920914   0.2220886 428.0742688   1.2896830   1.6323214   2.5478562
+[1] -25.40467
+[1] "Partition group CONVERGED after 4 iterations"
+[1] "All partitions CONVERGED after 4 iterations"
+[1] "Computation time for adaptive weigthing: 17.693"
+[1] "Final lambda multipliers (summary):"
+$group
+          1           2           3           4           5           6 
+ 1.13712298  0.04133763 14.54885270  1.50255523  2.38459005  2.93119463 
+
+[1] "CVLs -25.3537292763722" "CVLs -24.1287893194391"
+[1] "Total computation time: 17.694"
+[1] "Fold 2"
+
+Estimating penalty multipliers by empirical Bayes
+Penalty multipliers estimated at annotation: 1.03, 0.68, 1.08, 0.98, 1.01, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.68, 1.08, 0.98, 1.01, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.68, 1.08, 0.98, 1.01, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.68, 1.08, 0.98, 1.01, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.68, 1.08, 0.98, 1.01, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.68, 1.08, 0.98, 1.01, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.68, 1.08, 0.98, 1.01, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.68, 1.08, 0.98, 1.01, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.68, 1.08, 0.98, 1.01, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.68, 1.08, 0.98, 1.01, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.68, 1.08, 0.98, 1.01, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.68, 1.08, 0.98, 1.01, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.68, 1.08, 0.98, 1.01, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.69, 1.08, 0.98, 1.01, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.69, 1.08, 0.98, 1.01, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.69, 1.08, 0.98, 1.01, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.69, 1.08, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.69, 1.08, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.69, 1.08, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.69, 1.08, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.69, 1.08, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.69, 1.08, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.69, 1.08, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.69, 1.08, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.69, 1.08, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.69, 1.08, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.07, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.07, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.07, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.07, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.07, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.07, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.07, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.07, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.07, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.07, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.07, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.07, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.07, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.07, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.07, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.71, 1.07, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.71, 1.07, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.71, 1.07, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.71, 1.07, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.71, 1.07, 0.98, 1.01, 1.05 in 155.05 seconds [1] "Summary of group sizes:"
+   1    2    3    4    5    6 
+5851  584  598 1107  517  834 
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+1234
+[1] -23.75897
+[1] -23.75897
+[1] "Relative error: 0.039776808469842"
+[1] "Shrink Factor coefficient matrix 0.51"
+[1] "exactstable"
+[1] 0.9853282 0.4983163 1.4910227 1.1294478 1.4074184 1.3187868
+[1] -23.63269
+1234
+[1] "Partition group improved results"
+[1] "Relative error: 0.0367718192558467"
+[1] "Shrink Factor coefficient matrix 0.465"
+[1] "exactstable"
+[1] 0.9847599 0.4601628 1.6181905 1.1507523 1.4895239 1.3860369
+[1] -23.43927
+[1] "Partition group CONVERGED after 2 iterations"
+[1] "All partitions CONVERGED after 2 iterations"
+[1] "Computation time for adaptive weigthing: 9.399"
+[1] "Final lambda multipliers (summary):"
+$group
+        1         2         3         4         5         6 
+0.9853282 0.4983163 1.4910227 1.1294478 1.4074184 1.3187868 
+
+[1] "CVLs -23.758973261744"  "CVLs -23.6326916090527"
+[1] "Total computation time: 9.399"
+[1] "Fold 3"
+
+Estimating penalty multipliers by empirical Bayes
+Penalty multipliers estimated at annotation: 1.02, 0.67, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.71, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.71, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.71, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.71, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.71, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.71, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.71, 1.12, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.71, 1.12, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.71, 1.12, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.71, 1.12, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.72, 1.12, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.72, 1.12, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.72, 1.12, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.72, 1.12, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.72, 1.12, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.72, 1.12, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.72, 1.11, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.72, 1.11, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.72, 1.11, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.73, 1.11, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.73, 1.11, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.73, 1.11, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.73, 1.11, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.73, 1.11, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.73, 1.11, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.02, 0.73, 1.11, 0.98, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.01, 0.73, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.73, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.73, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.74, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.74, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.74, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.74, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.74, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.74, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.74, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.74, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.74, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.74, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.75, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.75, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.75, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.75, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.75, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.75, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.75, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.75, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.75, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.75, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.76, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.76, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.76, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.76, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.76, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.76, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.76, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.76, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.76, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.76, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.77, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.77, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.77, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.77, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.77, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.77, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.77, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.77, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.77, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.77, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.78, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.78, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.78, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.78, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.78, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.78, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.78, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.78, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.78, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.78, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.79, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.79, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.79, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.79, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.79, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.79, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.79, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.79, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.79, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.79, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.79, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.8, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.8, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.8, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.8, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.8, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.8, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.8, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.8, 1.1, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.8, 1.1, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.8, 1.1, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.8, 1.1, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.81, 1.1, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.01, 0.81, 1.1, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1, 0.81, 1.1, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1, 0.81, 1.1, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1, 0.81, 1.1, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1, 0.81, 1.1, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1, 0.81, 1.1, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1, 0.81, 1.1, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1, 0.81, 1.1, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1, 0.81, 1.1, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1, 0.81, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.82, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.82, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.82, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.82, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.82, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.82, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.82, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.82, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.82, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.82, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.82, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.83, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.83, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.83, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.83, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.83, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.83, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.83, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.83, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.83, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.83, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.83, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.83, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.84, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.84, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.84, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.84, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.84, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.84, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.84, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.84, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.84, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.84, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.84, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.84, 1.1, 0.98, 1.01, 1.07      Penalty multipliers estimated at annotation: 1, 0.84, 1.1, 0.98, 1.01, 1.07 in 521.64 seconds [1] "Summary of group sizes:"
+   1    2    3    4    5    6 
+5851  584  598 1107  517  834 
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+1234
+[1] -24.96025
+[1] -24.96025
+[1] "Relative error: 0.0455874841680743"
+[1] "Shrink Factor coefficient matrix 0.565"
+[1] "exactstable"
+[1] 0.9687050 0.5624269 1.5025075 1.1219168 1.0818347 1.5163002
+[1] -24.86531
+1234
+[1] "Partition group improved results"
+[1] "Relative error: 0.0447503904402626"
+[1] "Shrink Factor coefficient matrix 0.545"
+[1] "exactstable"
+[1] 0.9666844 0.5502008 1.5515234 1.1306928 1.0840329 1.5573482
+[1] -24.77293
+[1] "Partition group CONVERGED after 2 iterations"
+[1] "All partitions CONVERGED after 2 iterations"
+[1] "Computation time for adaptive weigthing: 9.346"
+[1] "Final lambda multipliers (summary):"
+$group
+        1         2         3         4         5         6 
+0.9687050 0.5624269 1.5025075 1.1219168 1.0818347 1.5163002 
+
+[1] "CVLs -24.9602488012997" "CVLs -24.865305473479" 
+[1] "Total computation time: 9.34699999999998"
+[1] "Fold 4"
+
+Estimating penalty multipliers by empirical Bayes
+Penalty multipliers estimated at annotation: 1.04, 0.62, 1.1, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.62, 1.1, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.62, 1.1, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.62, 1.1, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.62, 1.1, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.62, 1.1, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.62, 1.1, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.62, 1.1, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.62, 1.1, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.62, 1.1, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.62, 1.1, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.62, 1.1, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.63, 1.1, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.63, 1.1, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.63, 1.1, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.63, 1.1, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.63, 1.1, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.63, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.63, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.63, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.63, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.63, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.63, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.63, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.63, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.04, 0.63, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.09, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.09, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.09, 0.97, 1.01, 1.06 in 197.4 seconds [1] "Summary of group sizes:"
+   1    2    3    4    5    6 
+5851  584  598 1107  517  834 
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+12345
+[1] -24.39706
+[1] -24.39706
+[1] "Relative error: 0.0414313077495913"
+[1] "Shrink Factor coefficient matrix 0.525"
+[1] "exactstable"
+[1] 1.0576053 0.4585661 1.2885322 1.0136779 1.1252425 1.2456279
+[1] -24.1608
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.038862237780448"
+[1] "Shrink Factor coefficient matrix 0.5"
+[1] "exactstable"
+[1] 1.0642576 0.4293326 1.3569505 1.0156622 1.1367066 1.2878836
+[1] -23.80733
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.038543922901715"
+[1] "Shrink Factor coefficient matrix 0.515"
+[1] "exactstable"
+[1] 1.0737298 0.3943863 1.4859028 1.0093515 1.1318451 1.3784672
+[1] -23.44744
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.0396123056226222"
+[1] "Shrink Factor coefficient matrix 0.585"
+[1] "exactstable"
+[1] 1.1070396 0.3299599 1.9019611 0.9624257 1.0812873 1.6914910
+[1] -23.62745
+[1] "Partition group CONVERGED after 4 iterations"
+[1] "All partitions CONVERGED after 4 iterations"
+[1] "Computation time for adaptive weigthing: 18.28"
+[1] "Final lambda multipliers (summary):"
+$group
+         1          2          3          4          5          6 
+1.20855200 0.07764576 2.59806304 1.03918220 1.44770987 2.21136979 
+
+[1] "CVLs -24.397062121522"  "CVLs -23.4474431692155"
+[1] "Total computation time: 18.2809999999999"
+[1] "Fold 5"
+
+Estimating penalty multipliers by empirical Bayes
+Penalty multipliers estimated at annotation: 1.03, 0.62, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.11, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.11, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.11, 0.98, 1.01, 1.06 in 167.16 seconds [1] "Summary of group sizes:"
+   1    2    3    4    5    6 
+5851  584  598 1107  517  834 
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+1234
+[1] -26.54656
+[1] -26.54656
+[1] "Relative error: 0.0417233341033603"
+[1] "Shrink Factor coefficient matrix 0.525"
+[1] "exactstable"
+[1] 1.0484854 0.4042265 1.6025478 1.0527103 1.3029543 1.2943942
+[1] -26.24219
+1234
+[1] "Partition group improved results"
+[1] "Relative error: 0.042815598409658"
+[1] "Shrink Factor coefficient matrix 0.535"
+[1] "exactstable"
+[1] 1.0474667 0.3963653 1.6706273 1.0600007 1.3076437 1.3152542
+[1] -25.82006
+1234
+[1] "Partition group improved results"
+[1] "Relative error: 0.0419966092391447"
+[1] "Shrink Factor coefficient matrix 0.55"
+[1] "exactstable"
+[1] 1.0610880 0.3487158 2.0931253 1.0537617 1.3704793 1.4167459
+[1] -25.46579
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.0432820447792602"
+[1] "Shrink Factor coefficient matrix 0.61"
+[1] "exactstable"
+[1] 1.1103857 0.2729243 5.3870546 0.9749095 1.4708082 1.7236106
+[1] -26.09038
+[1] "Partition group CONVERGED after 4 iterations"
+[1] "All partitions CONVERGED after 4 iterations"
+[1] "Computation time for adaptive weigthing: 18.364"
+[1] "Final lambda multipliers (summary):"
+$group
+         1          2          3          4          5          6 
+1.16534363 0.05587172 5.60384071 1.17586490 2.33502261 2.41194958 
+
+[1] "CVLs -26.5465642389304" "CVLs -25.4657926449746"
+[1] "Total computation time: 18.365"
+[1] "Fold 6"
+
+Estimating penalty multipliers by empirical Bayes
+Penalty multipliers estimated at annotation: 1.03, 0.6, 1.14, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.6, 1.14, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.14, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.14, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.14, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.14, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.14, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.14, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.14, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.14, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.14, 0.97, 1.01, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.14, 0.97, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.14, 0.97, 1, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.14, 0.97, 1, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.14, 0.97, 1, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.14, 0.97, 1, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.14, 0.97, 1, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.14, 0.97, 1, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.14, 0.97, 1, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.14, 0.97, 1, 1.06 in 150.71 seconds [1] "Summary of group sizes:"
+   1    2    3    4    5    6 
+5851  584  598 1107  517  834 
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+1234
+[1] -25.69348
+[1] -25.69348
+[1] "Relative error: 0.0441824523989815"
+[1] "Shrink Factor coefficient matrix 0.55"
+[1] "exactstable"
+[1] 1.0240061 0.3959922 2.0341286 1.0639829 1.3275343 1.4415771
+[1] -25.35299
+1234
+[1] "Partition group improved results"
+[1] "Relative error: 0.0412513281165783"
+[1] "Shrink Factor coefficient matrix 0.515"
+[1] "exactstable"
+[1] 1.0290438 0.3551395 2.5926393 1.0763381 1.3879636 1.5763017
+[1] -24.83537
+1234
+[1] "Partition group improved results"
+[1] "Relative error: 0.0462182173186965"
+[1] "Shrink Factor coefficient matrix 0.59"
+[1] "exactstable"
+[1] 1.0329133 0.3417155 3.0360876 1.0712273 1.3397761 1.6641002
+[1] -24.4863
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.0475821898231205"
+[1] "Shrink Factor coefficient matrix 0.635"
+[1] "exactstable"
+[1]  1.0761460  0.2730397 12.9450497  1.0156747  1.3027207  2.1823932
+[1] -25.28812
+[1] "Partition group CONVERGED after 4 iterations"
+[1] "All partitions CONVERGED after 4 iterations"
+[1] "Computation time for adaptive weigthing: 18.107"
+[1] "Final lambda multipliers (summary):"
+$group
+          1           2           3           4           5           6 
+ 1.08842952  0.04805629 16.01160271  1.22677515  2.46863017  3.78143547 
+
+[1] "CVLs -25.693480516816"  "CVLs -24.4862993299197"
+[1] "Total computation time: 18.107"
+[1] "Fold 7"
+
+Estimating penalty multipliers by empirical Bayes
+Penalty multipliers estimated at annotation: 1.03, 0.61, 1.13, 0.98, 1.03, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.13, 0.98, 1.03, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.13, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.12, 0.98, 1.02, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.03, 0.66, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 0.98, 1.02, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 0.98, 1.02, 1.06 in 238.49 seconds [1] "Summary of group sizes:"
+   1    2    3    4    5    6 
+5851  584  598 1107  517  834 
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+1234
+[1] -26.23417
+[1] -26.23417
+[1] "Relative error: 0.0414810242682507"
+[1] "Shrink Factor coefficient matrix 0.525"
+[1] "exactstable"
+[1] 1.039593 0.385829 2.041041 1.035963 1.239113 1.462078
+[1] -25.88687
+1234
+[1] "Partition group improved results"
+[1] "Relative error: 0.0427132849531634"
+[1] "Shrink Factor coefficient matrix 0.535"
+[1] "exactstable"
+[1] 1.0369683 0.3751324 2.2152494 1.0464327 1.2354173 1.5288782
+[1] -25.43644
+1234
+[1] "Partition group improved results"
+[1] "Relative error: 0.0453590026514971"
+[1] "Shrink Factor coefficient matrix 0.585"
+[1] "exactstable"
+[1] 1.0377129 0.3505385 2.8274107 1.0394532 1.2219525 1.7123394
+[1] -25.18397
+[1] "Partition group CONVERGED after 3 iterations"
+[1] "All partitions CONVERGED after 3 iterations"
+[1] "Computation time for adaptive weigthing: 14.8889999999999"
+[1] "Final lambda multipliers (summary):"
+$group
+       1        2        3        4        5        6 
+1.078025 0.144737 4.521415 1.084066 1.530821 2.235339 
+
+[1] "CVLs -26.2341657796306" "CVLs -25.4364359916493"
+[1] "Total computation time: 14.8899999999999"
+[1] "Fold 8"
+
+Estimating penalty multipliers by empirical Bayes
+Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.13, 1, 1.02, 1.02      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.13, 1, 1.02, 1.03      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.13, 1, 1.02, 1.03      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.13, 1, 1.02, 1.03      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.13, 1, 1.02, 1.03      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.13, 1, 1.02, 1.03      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.13, 1, 1.02, 1.03      Penalty multipliers estimated at annotation: 1.03, 0.65, 1.13, 1, 1.02, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.65, 1.13, 1, 1.02, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.65, 1.12, 1, 1.02, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.65, 1.12, 1, 1.02, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.65, 1.12, 1, 1.02, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.65, 1.12, 1, 1.02, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.65, 1.12, 1.01, 1.02, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.65, 1.12, 1.01, 1.02, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.65, 1.12, 1.01, 1.02, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.65, 1.12, 1.01, 1.02, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.65, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.12, 1.01, 1.03, 1.03      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.12, 1.01, 1.03, 1.03 in 400.39 seconds [1] "Summary of group sizes:"
+   1    2    3    4    5    6 
+5851  584  598 1107  517  834 
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+12345
+[1] -24.61022
+[1] -24.61022
+[1] "Relative error: 0.0405017505713974"
+[1] "Shrink Factor coefficient matrix 0.515"
+[1] "exactstable"
+[1] 1.0669287 0.4109965 1.3537782 1.0861652 1.2935947 1.1495079
+[1] -24.31202
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.0390371621972739"
+[1] "Shrink Factor coefficient matrix 0.505"
+[1] "exactstable"
+[1] 1.0769006 0.3825886 1.4171676 1.0988491 1.3248705 1.1717458
+[1] -23.8416
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.0444819521601225"
+[1] "Shrink Factor coefficient matrix 0.585"
+[1] "exactstable"
+[1] 1.0789827 0.3750582 1.4659486 1.1095968 1.2817615 1.1875775
+[1] -23.4839
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.0436112886011749"
+[1] "Shrink Factor coefficient matrix 0.625"
+[1] "exactstable"
+[1] 1.1380562 0.2804211 2.2818574 1.1295315 1.3048932 1.3261783
+[1] -24.22931
+[1] "Partition group CONVERGED after 4 iterations"
+[1] "All partitions CONVERGED after 4 iterations"
+[1] "Computation time for adaptive weigthing: 19.9319999999998"
+[1] "Final lambda multipliers (summary):"
+$group
+         1          2          3          4          5          6 
+1.23972533 0.05897513 2.81246719 1.32433891 2.19674092 1.59958511 
+
+[1] "CVLs -24.6102238521795" "CVLs -23.4838969580256"
+[1] "Total computation time: 19.9319999999998"
+[1] "Fold 9"
+
+Estimating penalty multipliers by empirical Bayes
+Penalty multipliers estimated at annotation: 1.02, 0.64, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.65, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.65, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.65, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.65, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.65, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.65, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.65, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.65, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.65, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.65, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.65, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.66, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.67, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.68, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.15, 0.98, 1.01, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.15, 0.98, 1, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.15, 0.98, 1, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.69, 1.15, 0.98, 1, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.15, 0.98, 1, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.15, 0.98, 1, 1.06      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.02, 0.7, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.02, 0.71, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.02, 0.71, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.02, 0.71, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.02, 0.71, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.71, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.71, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.71, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.71, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.71, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.71, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.71, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.71, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.71, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.72, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.72, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.72, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.72, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.72, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.72, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.72, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.72, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.72, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.72, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.72, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.72, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.72, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.73, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.73, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.73, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.73, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.73, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.73, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.73, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.73, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.73, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.73, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.73, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.73, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.73, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.74, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.74, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.74, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.74, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.74, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.74, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.74, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.74, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.74, 1.15, 0.98, 1, 1.07      Penalty multipliers estimated at annotation: 1.01, 0.74, 1.15, 0.98, 1, 1.07 in 541.58 seconds [1] "Summary of group sizes:"
+   1    2    3    4    5    6 
+5851  584  598 1107  517  834 
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+12345
+[1] -23.75409
+[1] -23.75409
+[1] "Relative error: 0.0373548346250697"
+[1] "Shrink Factor coefficient matrix 0.48"
+[1] "exactstable"
+[1] 0.9448092 0.5046564 2.4920373 1.1536146 1.4355113 1.4347521
+[1] -23.59465
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.038643066356445"
+[1] "Shrink Factor coefficient matrix 0.475"
+[1] "exactstable"
+[1] 0.9437654 0.5039338 2.5529102 1.1574401 1.4274704 1.4388211
+[1] -23.44048
+[1] "Partition group CONVERGED after 2 iterations"
+[1] "All partitions CONVERGED after 2 iterations"
+[1] "Computation time for adaptive weigthing: 10.6610000000001"
+[1] "Final lambda multipliers (summary):"
+$group
+        1         2         3         4         5         6 
+0.9448092 0.5046564 2.4920373 1.1536146 1.4355113 1.4347521 
+
+[1] "CVLs -23.7540921377861" "CVLs -23.5946489610677"
+[1] "Total computation time: 10.6620000000003"
+[1] "Fold 10"
+
+Estimating penalty multipliers by empirical Bayes
+Penalty multipliers estimated at annotation: 1.03, 0.6, 1.12, 0.99, 1.03, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.6, 1.12, 0.99, 1.03, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.6, 1.12, 0.99, 1.03, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.6, 1.12, 0.99, 1.03, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.12, 0.99, 1.03, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.12, 0.99, 1.03, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.12, 0.99, 1.03, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.12, 0.99, 1.03, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.12, 0.99, 1.03, 1.04      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.61, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.62, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.63, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.99, 1.03, 1.05      Penalty multipliers estimated at annotation: 1.03, 0.64, 1.12, 0.99, 1.03, 1.05 in 229.76 seconds [1] "Summary of group sizes:"
+   1    2    3    4    5    6 
+5851  584  598 1107  517  834 
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+1234
+[1] -25.22422
+[1] -25.22422
+[1] "Relative error: 0.0436786709223406"
+[1] "Shrink Factor coefficient matrix 0.545"
+[1] "exactstable"
+[1] 1.0221000 0.4261269 1.6554025 1.1011051 1.2827468 1.3314369
+[1] -24.94233
+1234
+[1] "Partition group improved results"
+[1] "Relative error: 0.0420961580728377"
+[1] "Shrink Factor coefficient matrix 0.525"
+[1] "exactstable"
+[1] 1.0225711 0.4018821 1.8245084 1.1177764 1.3103384 1.3823674
+[1] -24.52832
+1234
+[1] "Partition group improved results"
+[1] "Relative error: 0.0450868945998508"
+[1] "Shrink Factor coefficient matrix 0.57"
+[1] "exactstable"
+[1] 1.0200727 0.3896428 2.0351190 1.1283575 1.2982537 1.4300755
+[1] -24.13171
+12345
+[1] "Partition group improved results"
+[1] "Relative error: 0.0440365282454804"
+[1] "Shrink Factor coefficient matrix 0.615"
+[1] "exactstable"
+[1] 1.0327312 0.3104648 4.4734330 1.1536373 1.3788306 1.7514288
+[1] -24.23018
+[1] "Partition group CONVERGED after 4 iterations"
+[1] "All partitions CONVERGED after 4 iterations"
+[1] "Computation time for adaptive weigthing: 19.7999999999997"
+[1] "Final lambda multipliers (summary):"
+$group
+         1          2          3          4          5          6 
+1.06614926 0.06672741 6.14666143 1.38877026 2.18214697 2.63210404 
+
+[1] "CVLs -25.22421801015"   "CVLs -24.1317056385154"
+[1] "Total computation time: 19.8009999999999"
+> 
+> auc1.ridge <- pROC::roc(y, pred1.ridge)$auc
+> auc1.en <- pROC::roc(y, pred1.en)$auc
+> auc1.grEBEN <- pROC::roc(y, pred1.grEBEN)$auc
+> auc1.grridge <- pROC::roc(y, pred1.grridge)$auc
+> # auc1.SGL <- pROC::roc(y, pred1.SGL)$auc
+> 
+> pred1 <- cbind(ridge=pred1.ridge, en=pred1.en, grEBEN=pred1.grEBEN, grridge=pred1.grridge)# , SGL=pred1.SGL)
+> auc1 <- c(ridge=auc1.ridge, en=auc1.en, grEBEN=auc1.grEBEN, grridge=auc1.grridge)# , SGL=auc1.SGL)
+> anno1 <- list(pred=pred1, auc=auc1)
+> 
+> save(anno1, file=paste(path.res, "grEBEN_verlaat_anno_res1.Rdata", sep=""))
+> 
+> # # co-data
+> # set.seed(1001)
+> # # conservation status as co-data
+> # fit1.grEBEN <- grVBEM(x, y, m, partitions1, lambda1=NULL, lambda2=NULL, intercept=TRUE, eps=0.001,
+> #                       maxiter=300, trace=TRUE)
+> # fit1.grridge <- grridge(t(x), y, list(conservation=CreatePartition(as.factor(groups))), unpenal=~1)
+> 
+> 
+> 
+> 
+> 
+> # ### saving fitted models
+> # save(fit1.grEBEN, fit1.grridge, fit2.grEBEN, fit2.grridge, fit3.grEBEN, fit3.grridge,
+> #      fit4.grEBEN, fit4.grridge, file=paste(path.res, "grVBEM_channel2_cons_fitted.Rdata", sep=""))
+> 
+> 
+> 
+> # ### plots
+> # load(paste(path.res, "grVBEM_channel2_cons_fitted.Rdata", sep=""))
+> # 
+> # # conservation status of genes
+> 
+> 
+> 
+> 
+> proc.time()
+    user   system  elapsed 
+2933.014   20.917 2960.705 

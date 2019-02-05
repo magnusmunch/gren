@@ -1,0 +1,401 @@
+
+R version 3.2.5 (2016-04-14) -- "Very, Very Secure Dishes"
+Copyright (C) 2016 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ##############################  preamble  #############################
+> # grMCEM on real data                                                 #
+> # version: 01                                                         #
+> # author: Magnus M?nch                                                #
+> # created: 21-03-2017                                                 #
+> # last edited: 21-03-2017                                             #
+> #######################################################################
+> 
+> ###############################  notes  ###############################
+> # 21-03-2017: Results are used in presentation for channel meeting    #
+> #             2017                                                    #
+> #######################################################################
+> 
+> ##########################  data description  #########################
+> # A deep sequencing analysis on small non-coding ribonucleic acid     #
+> # (miRNAseq) was performed on 56 samples (24 women with high-grade    #
+> # cervical intraepithelial neoplasia (CIN3) and 32 healthy women) for #
+> # the purpose of finding relevant screening markers for cervical      #
+> # cancer screening. The next generation sequencing analysis resulted  #
+> # in 2,576 transcripts. The data was normalized and pre-processed,    #
+> # rendering 772 transcripts. More detail description of the data sets #
+> # and the preprocessing step are available on the supplementary       #
+> # material of this following publication "Better diagnostic           #
+> # signatures from RNAseq data through use of auxiliary co-data",      #
+> # Bioinformatics (2017).                                              #
+> #######################################################################
+> 
+> ### paths
+> path.code <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/code/" ,"~/EBEN/code/"))
+> path.res <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/results/" ,"~/EBEN/results/"))
+> path.data <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/data/" ,"~/EBEN/data/"))
+> path.graph <- "/Users/magnusmunch/Documents/PhD/EBEN/graphs/"
+> 
+> ### libraries
+> library(glmnet)
+Loading required package: Matrix
+Loading required package: foreach
+Loaded glmnet 2.0-5
+
+> library(penalized)
+Loading required package: survival
+Welcome to penalized. For extended examples, see vignette("penalized").
+> library(GRridge)
+Loading required package: Iso
+Iso 0.0-17
+Loading required package: GSEABase
+Loading required package: BiocGenerics
+Loading required package: parallel
+
+Attaching package: ‘BiocGenerics’
+
+The following objects are masked from ‘package:parallel’:
+
+    clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
+    clusterExport, clusterMap, parApply, parCapply, parLapply,
+    parLapplyLB, parRapply, parSapply, parSapplyLB
+
+The following object is masked from ‘package:penalized’:
+
+    as.data.frame
+
+The following object is masked from ‘package:Matrix’:
+
+    as.vector
+
+The following objects are masked from ‘package:stats’:
+
+    IQR, mad, xtabs
+
+The following objects are masked from ‘package:base’:
+
+    anyDuplicated, append, as.data.frame, as.vector, cbind, colnames,
+    do.call, duplicated, eval, evalq, Filter, Find, get, grep, grepl,
+    intersect, is.unsorted, lapply, lengths, Map, mapply, match, mget,
+    order, paste, pmax, pmax.int, pmin, pmin.int, Position, rank,
+    rbind, Reduce, rownames, sapply, setdiff, sort, table, tapply,
+    union, unique, unlist, unsplit
+
+Loading required package: Biobase
+Welcome to Bioconductor
+
+    Vignettes contain introductory material; view with
+    'browseVignettes()'. To cite Bioconductor, see
+    'citation("Biobase")', and for packages 'citation("pkgname")'.
+
+Loading required package: annotate
+Loading required package: AnnotationDbi
+Loading required package: stats4
+Loading required package: IRanges
+Loading required package: S4Vectors
+
+Attaching package: ‘IRanges’
+
+The following object is masked from ‘package:Matrix’:
+
+    expand
+
+Loading required package: XML
+Loading required package: graph
+
+Attaching package: ‘graph’
+
+The following object is masked from ‘package:XML’:
+
+    addNode
+
+
+Attaching package: ‘GRridge’
+
+The following object is masked from ‘package:glmnet’:
+
+    auc
+
+Warning messages:
+1: replacing previous import ‘stats::xtabs’ by ‘BiocGenerics::xtabs’ when loading ‘GRridge’ 
+2: replacing previous import ‘GSEABase::intersect’ by ‘BiocGenerics::intersect’ when loading ‘GRridge’ 
+3: replacing previous import ‘stats::mad’ by ‘BiocGenerics::mad’ when loading ‘GRridge’ 
+4: replacing previous import ‘GSEABase::setdiff’ by ‘BiocGenerics::setdiff’ when loading ‘GRridge’ 
+5: replacing previous import ‘penalized::as.data.frame’ by ‘BiocGenerics::as.data.frame’ when loading ‘GRridge’ 
+6: replacing previous import ‘stats::IQR’ by ‘BiocGenerics::IQR’ when loading ‘GRridge’ 
+> library(pROC)
+Type 'citation("pROC")' for a citation.
+
+Attaching package: ‘pROC’
+
+The following objects are masked from ‘package:GRridge’:
+
+    auc, roc
+
+The following objects are masked from ‘package:IRanges’:
+
+    cov, var
+
+The following object is masked from ‘package:glmnet’:
+
+    auc
+
+The following objects are masked from ‘package:stats’:
+
+    cov, smooth, var
+
+> 
+> ### functions
+> # source grENVB functions
+> source(paste(path.code, "grVBEM.R", sep=""))
+> 
+> # functions to cross-validate elastic net
+> cv.pen <- function(x, y, intercept, psel) {
++   n <- nrow(x)
++   seq.alpha <- seq(0.01, 0.99, length.out=50)
++   seq.lam <- seq.df <- seq.cvll <- numeric(length(seq.alpha))
++   for(a in 1:length(seq.alpha)) {
++     fit <- glmnet(x, y, family="binomial", alpha=seq.alpha[a], dfmax=psel, 
++                   standardize=FALSE, intercept=intercept)
++     cv.fit <- cv.glmnet(x, y, family="binomial", alpha=seq.alpha[a], 
++                         lambda=tail(fit$lambda, n=2L), standardize=FALSE, 
++                         intercept=intercept)
++     seq.lam[a] <- tail(cv.fit$lambda.min, n=1L)
++     seq.df[a] <- tail(cv.fit$nzero, n=1L)
++     seq.cvll[a] <- tail(cv.fit$cvm, n=1L)
++   }
++   lambda1 <- 2*n*seq.alpha*seq.lam
++   lambda2 <- n*(1 - seq.alpha)*seq.lam
++   
++   out <- list(alpha=seq.alpha, lambda=seq.lam, cvll=seq.cvll, df=seq.df)
++   return(out)
++ }
+> 
+> ### loading data
+> load(paste(path.data, "mirsData.RData", sep=""))
+> 
+> # ### creating partitions
+> parCons <- CreatePartition(mirsData$conservation) # using conservation status as grouping
+[1] "Summary of group sizes:"
+  0   1   2 
+552  72 148 
+> parAbund <- CreatePartition(rowSums(mirsData$countData), mingr=25, ngroup=10, decreasing=TRUE)
+[1] "Sorting vec in decreasing order, assuming small values are LESS relevant"
+[1] "Summary of group sizes:"
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  29.00   45.25   68.00   77.20  101.80  153.00 
+[1] "Summary of group sizes:"
+ group1  group2  group3  group4  group5  group6  group7  group8  group9 group10 
+     29      36      43      52      62      74      89     106     128     153 
+> 
+> ### abundance on top of conservation status
+> conservation <- rep(1:length(parCons), times=unlist(lapply(parCons, length)))[order(unlist(parCons))]
+> abundance <- rep(1:length(parAbund), times=unlist(lapply(parAbund, length)))[order(unlist(parAbund))]
+> x <- apply(t(as.matrix(mirsData$transformedData)), 2, function(x) {
++   (x - mean(x))/sd(x)})[, order(conservation, abundance)]
+> partitions <- list(conservation=conservation[order(conservation, abundance)],
++                    abundance=abundance[order(conservation, abundance)])
+> y <- as.numeric(mirsData$response) - 1
+> n <- nrow(x)
+> p <- ncol(x)
+> m <- rep(1, n)
+> 
+> # number of selected variables
+> pselseq <- c(5, 10, 15, 20, 50, 100)
+> 
+> # estimating ridge model (fixed for number of selected variables)
+> cv.ridge <- cv.glmnet(x, y, family="binomial", alpha=0, standardize=FALSE, intercept=TRUE)
+> lambda2ridge <- 0.5*n*cv.ridge$lambda.min
+> lambdaridge <- cv.ridge$lambda.min
+> 
+> # determining the fixed folds
+> set.seed(1010)
+> nfolds <- n
+> rest <- n %% nfolds
+> foldsize <- c(rep(n %/% nfolds + as.numeric(rest!=0), times=rest),
++               rep(n %/% nfolds, times=nfolds - rest))
+> foldid <- sample(rep(1:nfolds, times=foldsize))
+> 
+> # repeating the procedure for different numbers of selected variables
+> selmat <- matrix(NA, nrow=10*length(pselseq), ncol=3)
+> aucmat <- matrix(NA, nrow=length(pselseq), ncol=4)
+> for(cursel in 1:length(pselseq)) {
++ 
++   psel <- pselseq[cursel]
++   print(paste("Psel", psel, sep=" "))
++ 
++   # estimating global penalty parameters by cross-validation
++   cv.en <- cv.pen(x, y, intercept=TRUE, psel=psel)
++   alphaglmnet <- cv.en$alpha[which.min(cv.en$cvll)]
++   lambdaglmnet <- cv.en$lambda[which.min(cv.en$cvll)]
++   lambda1gren <- 2*n*lambdaglmnet*alphaglmnet
++   lambda2gren <- n*lambdaglmnet*(1 - alphaglmnet)
++ 
++   # cross validating AUC
++   pred.ridge <- pred.en <- pred.grEBEN <- pred.grridge <- numeric(n)
++   for(k in 1:nfolds) {
++     print(paste("Fold", k, sep=" "))
++     xtrain <- x[foldid!=k, ]
++     xtest <- x[foldid==k, ]
++     ytrain <- y[foldid!=k]
++     ytest <- y[foldid==k]
++     mtrain <- m[foldid!=k]
++     mtest <- m[foldid==k]
++     ntrain <- length(ytrain)
++     ntest <- length(ytest)
++ 
++     # estimating the models
++     fit.ridge <- glmnet(xtrain, ytrain, family="binomial", alpha=0, lambda=lambdaridge,
++                         standardize=FALSE, intercept=TRUE)
++     fit.en <- glmnet(xtrain, ytrain, family="binomial", alpha=alphaglmnet, lambda=lambdaglmnet,
++                      standardize=FALSE, intercept=TRUE)
++     fit.grEBEN <- grVBEM2(xtrain, ytrain, mtrain, partitions, lambda1=lambda1gren, lambda2=lambda2gren,
++                           intercept=TRUE, posterior=FALSE, eps=0.001, maxiter=300, trace=TRUE)
++     lambdag <- fit.grEBEN$lambdag$conservation[, fit.grEBEN$nouteriter + 1][conservation[order(conservation, abundance)]]*
++       fit.grEBEN$lambdag$abundance[, fit.grEBEN$nouteriter + 1][abundance[order(conservation, abundance)]]
++     fit.grEBEN2 <- penalized(ytrain, xtrain, unpenalized=~1, lambda1=0.5*fit.grEBEN$lambda1*sqrt(lambdag),
++                              lambda2=0.5*fit.grEBEN$lambda2*lambdag, model="logistic")
++     fit.grridge <- grridge(t(xtrain), ytrain, optl=lambda2ridge,
++                            list(conservation=CreatePartition(as.factor(partitions$conservation)),
++                                 abundance=CreatePartition(as.factor(partitions$abundance))),
++                            unpenal=~1, trace=FALSE, selectionEN=TRUE, maxsel=psel)
++ 
++     # checking the number of selected variables
++     selmat[(cursel - 1)*10 + k, ] <- c(sum(as.numeric(fit.en$beta)!=0),
++                                        sum(fit.grEBEN2@penalized!=0),
++                                        length(fit.grridge$resEN$whichEN))
++ 
++     # getting cross-validated predictions
++     pred.ridge[foldid==k] <- predict(fit.ridge, xtest, type="response")
++     pred.en[foldid==k] <- predict(fit.en, xtest, type="response")
++     pred.grEBEN[foldid==k] <- predict(fit.grEBEN2, xtest)
++     pred.grridge[foldid==k] <- predict(fit.grridge$predobj$EN, xtest[, fit.grridge$resEN$whichEN])
++ 
++   }
++ 
++   auc.ridge <- pROC::roc(y, pred.ridge)$auc
++   auc.en <- pROC::roc(y, pred.en)$auc
++   auc.grEBEN <- pROC::roc(y, pred.grEBEN)$auc
++   auc.grridge <- pROC::roc(y, pred.grridge)$auc
++ 
++   aucmat[cursel, ] <- c(ridge=auc.ridge, en=auc.en, grEBEN=auc.grEBEN, grridge=auc.grridge)
++   mirna1 <- list(auc=aucmat, sel=selmat)
++ 
++ }
+[1] "Psel 5"
+[1] "Fold 1"
+
+Estimating penalty multipliers by empirical Bayes
+Penalty multipliers estimated at conservation: 1.05, 0.81, 0.92 and abundance: 0.95, 0.87, 1.18, 0.83, 0.98, 0.98, 1.16, 1.1, 0.94, 0.98      Penalty multipliers estimated at conservation: 1.05, 0.82, 0.91 and abundance: 0.95, 0.85, 1.23, 0.84, 0.95, 0.97, 1.16, 1.11, 0.94, 0.98      Penalty multipliers estimated at conservation: 1.06, 0.82, 0.9 and abundance: 0.93, 0.84, 1.21, 0.83, 0.95, 0.97, 1.16, 1.12, 0.95, 0.98      Penalty multipliers estimated at conservation: 1.06, 0.82, 0.89 and abundance: 0.93, 0.84, 1.19, 0.82, 0.95, 0.97, 1.15, 1.12, 0.95, 0.99      Penalty multipliers estimated at conservation: 1.06, 0.82, 0.88 and abundance: 0.92, 0.83, 1.16, 0.81, 0.96, 0.97, 1.15, 1.13, 0.96, 0.99      Penalty multipliers estimated at conservation: 1.06, 0.82, 0.88 and abundance: 0.92, 0.82, 1.15, 0.81, 0.96, 0.96, 1.15, 1.13, 0.96, 1      Penalty multipliers estimated at conservation: 1.06, 0.82, 0.87 and abundance: 0.9, 0.81, 1.12, 0.8, 0.96, 0.96, 1.15, 1.14, 0.97, 1      Penalty multipliers estimated at conservation: 1.07, 0.82, 0.86 and abundance: 0.91, 0.8, 1.11, 0.8, 0.96, 0.96, 1.15, 1.14, 0.97, 1      Penalty multipliers estimated at conservation: 1.07, 0.82, 0.86 and abundance: 0.9, 0.8, 1.1, 0.79, 0.96, 0.96, 1.15, 1.15, 0.98, 1.01      Penalty multipliers estimated at conservation: 1.07, 0.82, 0.85 and abundance: 0.89, 0.8, 1.07, 0.78, 0.96, 0.96, 1.15, 1.15, 0.98, 1.01      Penalty multipliers estimated at conservation: 1.07, 0.81, 0.84 and abundance: 0.87, 0.79, 1.06, 0.77, 0.96, 0.96, 1.15, 1.16, 0.99, 1.02      Penalty multipliers estimated at conservation: 1.08, 0.82, 0.84 and abundance: 0.87, 0.78, 1.05, 0.77, 0.97, 0.96, 1.14, 1.16, 0.99, 1.02      Penalty multipliers estimated at conservation: 1.08, 0.82, 0.84 and abundance: 0.84, 0.77, 1.03, 0.75, 0.97, 0.96, 1.14, 1.17, 1, 1.03      Penalty multipliers estimated at conservation: 1.08, 0.82, 0.84 and abundance: 0.83, 0.76, 1.01, 0.75, 0.97, 0.96, 1.14, 1.18, 1.01, 1.03      Penalty multipliers estimated at conservation: 1.08, 0.82, 0.83 and abundance: 0.83, 0.77, 0.98, 0.73, 0.97, 0.96, 1.15, 1.18, 1.01, 1.04      Penalty multipliers estimated at conservation: 1.08, 0.82, 0.82 and abundance: 0.82, 0.77, 0.97, 0.72, 0.97, 0.96, 1.14, 1.19, 1.02, 1.04      Penalty multipliers estimated at conservation: 1.08, 0.83, 0.82 and abundance: 0.8, 0.76, 0.95, 0.71, 0.97, 0.96, 1.14, 1.19, 1.02, 1.05      Penalty multipliers estimated at conservation: 1.08, 0.83, 0.81 and abundance: 0.82, 0.77, 0.94, 0.7, 0.97, 0.96, 1.14, 1.19, 1.02, 1.05      Penalty multipliers estimated at conservation: 1.09, 0.83, 0.81 and abundance: 0.81, 0.77, 0.93, 0.7, 0.97, 0.96, 1.13, 1.2, 1.03, 1.05      Penalty multipliers estimated at conservation: 1.09, 0.83, 0.79 and abundance: 0.82, 0.77, 0.93, 0.69, 0.98, 0.96, 1.13, 1.2, 1.03, 1.05      Penalty multipliers estimated at conservation: 1.09, 0.83, 0.79 and abundance: 0.81, 0.76, 0.91, 0.69, 0.98, 0.96, 1.14, 1.21, 1.03, 1.05      Penalty multipliers estimated at conservation: 1.09, 0.83, 0.79 and abundance: 0.78, 0.76, 0.9, 0.68, 0.97, 0.96, 1.14, 1.22, 1.04, 1.06      Penalty multipliers estimated at conservation: 1.1, 0.83, 0.78 and abundance: 0.8, 0.76, 0.9, 0.67, 0.98, 0.96, 1.14, 1.22, 1.04, 1.06      Penalty multipliers estimated at conservation: 1.1, 0.84, 0.77 and abundance: 0.79, 0.75, 0.88, 0.66, 0.98, 0.96, 1.14, 1.23, 1.05, 1.06      Penalty multipliers estimated at conservation: 1.1, 0.84, 0.77 and abundance: 0.78, 0.75, 0.87, 0.66, 0.98, 0.96, 1.14, 1.23, 1.05, 1.06      Penalty multipliers estimated at conservation: 1.1, 0.84, 0.77 and abundance: 0.75, 0.73, 0.85, 0.66, 0.98, 0.97, 1.14, 1.24, 1.06, 1.07      Penalty multipliers estimated at conservation: 1.1, 0.84, 0.77 and abundance: 0.73, 0.73, 0.85, 0.66, 0.98, 0.98, 1.15, 1.24, 1.06, 1.07      Penalty multipliers estimated at conservation: 1.1, 0.84, 0.76 and abundance: 0.74, 0.73, 0.86, 0.65, 0.99, 0.98, 1.14, 1.24, 1.06, 1.07      Penalty multipliers estimated at conservation: 1.1, 0.85, 0.76 and abundance: 0.72, 0.73, 0.84, 0.65, 0.99, 0.98, 1.14, 1.24, 1.06, 1.07      Penalty multipliers estimated at conservation: 1.11, 0.84, 0.75 and abundance: 0.73, 0.73, 0.84, 0.65, 1, 0.98, 1.14, 1.24, 1.06, 1.07      Penalty multipliers estimated at conservation: 1.1, 0.85, 0.75 and abundance: 0.72, 0.72, 0.84, 0.65, 0.99, 0.97, 1.14, 1.24, 1.07, 1.07      Penalty multipliers estimated at conservation: 1.11, 0.85, 0.74 and abundance: 0.72, 0.73, 0.83, 0.65, 0.99, 0.97, 1.14, 1.24, 1.07, 1.07      Penalty multipliers estimated at conservation: 1.11, 0.84, 0.74 and abundance: 0.69, 0.71, 0.82, 0.65, 1, 0.98, 1.14, 1.25, 1.08, 1.08      Penalty multipliers estimated at conservation: 1.11, 0.85, 0.74 and abundance: 0.67, 0.71, 0.81, 0.64, 1, 0.98, 1.14, 1.25, 1.09, 1.08      Penalty multipliers estimated at conservation: 1.11, 0.85, 0.72 and abundance: 0.69, 0.72, 0.8, 0.63, 1, 0.98, 1.14, 1.25, 1.09, 1.08      Penalty multipliers estimated at conservation: 1.11, 0.86, 0.72 and abundance: 0.68, 0.72, 0.79, 0.63, 0.99, 0.97, 1.14, 1.26, 1.09, 1.09      Penalty multipliers estimated at conservation: 1.12, 0.87, 0.71 and abundance: 0.68, 0.71, 0.78, 0.62, 0.99, 0.97, 1.14, 1.26, 1.09, 1.09      Penalty multipliers estimated at conservation: 1.12, 0.86, 0.71 and abundance: 0.68, 0.72, 0.77, 0.62, 1, 0.97, 1.14, 1.26, 1.1, 1.09      Penalty multipliers estimated at conservation: 1.12, 0.86, 0.7 and abundance: 0.67, 0.71, 0.76, 0.61, 1, 0.97, 1.14, 1.27, 1.1, 1.09      Penalty multipliers estimated at conservation: 1.12, 0.86, 0.69 and abundance: 0.68, 0.72, 0.76, 0.61, 1, 0.96, 1.13, 1.27, 1.11, 1.09      Penalty multipliers estimated at conservation: 1.13, 0.86, 0.69 and abundance: 0.66, 0.72, 0.75, 0.62, 1.01, 0.96, 1.14, 1.27, 1.11, 1.09      Penalty multipliers estimated at conservation: 1.13, 0.85, 0.68 and abundance: 0.68, 0.73, 0.75, 0.61, 1.01, 0.96, 1.14, 1.27, 1.11, 1.09      Penalty multipliers estimated at conservation: 1.14, 0.85, 0.67 and abundance: 0.69, 0.74, 0.75, 0.61, 1.01, 0.96, 1.13, 1.27, 1.1, 1.09      Penalty multipliers estimated at conservation: 1.14, 0.84, 0.66 and abundance: 0.7, 0.75, 0.75, 0.61, 1.01, 0.95, 1.13, 1.27, 1.1, 1.09      Penalty multipliers estimated at conservation: 1.14, 0.85, 0.66 and abundance: 0.69, 0.75, 0.73, 0.6, 1.01, 0.95, 1.13, 1.28, 1.11, 1.09      Penalty multipliers estimated at conservation: 1.14, 0.86, 0.66 and abundance: 0.68, 0.74, 0.71, 0.6, 1.01, 0.96, 1.13, 1.29, 1.12, 1.1      Penalty multipliers estimated at conservation: 1.14, 0.86, 0.66 and abundance: 0.67, 0.73, 0.7, 0.6, 1.02, 0.95, 1.14, 1.29, 1.12, 1.1      Penalty multipliers estimated at conservation: 1.14, 0.86, 0.66 and abundance: 0.67, 0.73, 0.69, 0.6, 1.01, 0.95, 1.14, 1.3, 1.12, 1.1      Penalty multipliers estimated at conservation: 1.14, 0.87, 0.66 and abundance: 0.66, 0.73, 0.68, 0.59, 1.02, 0.96, 1.13, 1.3, 1.12, 1.11      Penalty multipliers estimated at conservation: 1.14, 0.87, 0.65 and abundance: 0.66, 0.74, 0.66, 0.58, 1.02, 0.96, 1.13, 1.31, 1.13, 1.11      Penalty multipliers estimated at conservation: 1.14, 0.88, 0.65 and abundance: 0.64, 0.73, 0.65, 0.58, 1.02, 0.96, 1.13, 1.32, 1.14, 1.12      Penalty multipliers estimated at conservation: 1.14, 0.88, 0.65 and abundance: 0.63, 0.71, 0.63, 0.57, 1.02, 0.96, 1.14, 1.32, 1.14, 1.12      Penalty multipliers estimated at conservation: 1.14, 0.89, 0.65 and abundance: 0.61, 0.7, 0.62, 0.57, 1.03, 0.97, 1.14, 1.33, 1.15, 1.13      Penalty multipliers estimated at conservation: 1.14, 0.89, 0.64 and abundance: 0.62, 0.71, 0.61, 0.57, 1.03, 0.96, 1.14, 1.33, 1.15, 1.13      Penalty multipliers estimated at conservation: 1.15, 0.89, 0.64 and abundance: 0.62, 0.72, 0.6, 0.57, 1.03, 0.96, 1.14, 1.33, 1.15, 1.13      Penalty multipliers estimated at conservation: 1.15, 0.89, 0.64 and abundance: 0.62, 0.71, 0.58, 0.56, 1.04, 0.97, 1.14, 1.34, 1.15, 1.14      Penalty multipliers estimated at conservation: 1.15, 0.89, 0.63 and abundance: 0.62, 0.72, 0.58, 0.56, 1.03, 0.97, 1.13, 1.34, 1.15, 1.13      Penalty multipliers estimated at conservation: 1.15, 0.9, 0.63 and abundance: 0.61, 0.72, 0.56, 0.56, 1.03, 0.97, 1.13, 1.35, 1.16, 1.14      Penalty multipliers estimated at conservation: 1.15, 0.9, 0.63 and abundance: 0.6, 0.71, 0.55, 0.56, 1.03, 0.97, 1.13, 1.36, 1.16, 1.15      Penalty multipliers estimated at conservation: 1.15, 0.91, 0.63 and abundance: 0.59, 0.71, 0.53, 0.55, 1.03, 0.97, 1.13, 1.37, 1.17, 1.16      Penalty multipliers estimated at conservation: 1.15, 0.91, 0.63 and abundance: 0.58, 0.71, 0.53, 0.55, 1.04, 0.97, 1.14, 1.37, 1.17, 1.16      Penalty multipliers estimated at conservation: 1.15, 0.93, 0.62 and abundance: 0.57, 0.72, 0.52, 0.54, 1.05, 0.98, 1.14, 1.37, 1.17, 1.16      Penalty multipliers estimated at conservation: 1.15, 0.93, 0.62 and abundance: 0.57, 0.72, 0.51, 0.54, 1.05, 0.98, 1.14, 1.37, 1.17, 1.16      Penalty multipliers estimated at conservation: 1.15, 0.94, 0.62 and abundance: 0.56, 0.71, 0.49, 0.53, 1.05, 0.98, 1.14, 1.38, 1.18, 1.17      Penalty multipliers estimated at conservation: 1.15, 0.95, 0.61 and abundance: 0.56, 0.71, 0.48, 0.53, 1.05, 0.98, 1.14, 1.38, 1.18, 1.18      Penalty multipliers estimated at conservation: 1.15, 0.95, 0.6 and abundance: 0.56, 0.71, 0.48, 0.53, 1.06, 0.98, 1.14, 1.38, 1.18, 1.18      Penalty multipliers estimated at conservation: 1.15, 0.95, 0.6 and abundance: 0.55, 0.73, 0.47, 0.53, 1.06, 0.97, 1.14, 1.38, 1.19, 1.18      Penalty multipliers estimated at conservation: 1.15, 0.96, 0.6 and abundance: 0.54, 0.73, 0.46, 0.53, 1.05, 0.98, 1.15, 1.38, 1.19, 1.19      Penalty multipliers estimated at conservation: 1.16, 0.96, 0.59 and abundance: 0.54, 0.73, 0.45, 0.53, 1.05, 0.98, 1.15, 1.39, 1.19, 1.19      Penalty multipliers estimated at conservation: 1.16, 0.96, 0.59 and abundance: 0.53, 0.72, 0.44, 0.52, 1.06, 0.98, 1.15, 1.39, 1.19, 1.19      Penalty multipliers estimated at conservation: 1.15, 0.97, 0.59 and abundance: 0.53, 0.72, 0.43, 0.52, 1.06, 0.98, 1.15, 1.4, 1.2, 1.2      Penalty multipliers estimated at conservation: 1.15, 0.98, 0.59 and abundance: 0.52, 0.71, 0.41, 0.51, 1.05, 0.99, 1.16, 1.41, 1.21, 1.2      Penalty multipliers estimated at conservation: 1.15, 0.99, 0.59 and abundance: 0.51, 0.7, 0.4, 0.51, 1.06, 1, 1.16, 1.41, 1.22, 1.21      Penalty multipliers estimated at conservation: 1.15, 1, 0.59 and abundance: 0.51, 0.7, 0.39, 0.5, 1.06, 1, 1.16, 1.42, 1.22, 1.21      Penalty multipliers estimated at conservation: 1.15, 1.01, 0.59 and abundance: 0.5, 0.7, 0.37, 0.5, 1.06, 1, 1.16, 1.43, 1.23, 1.22      Penalty multipliers estimated at conservation: 1.15, 1.01, 0.59 and abundance: 0.49, 0.69, 0.36, 0.5, 1.06, 1.01, 1.17, 1.43, 1.23, 1.22      Penalty multipliers estimated at conservation: 1.15, 1.02, 0.59 and abundance: 0.48, 0.69, 0.35, 0.5, 1.06, 1.01, 1.17, 1.44, 1.24, 1.23      Penalty multipliers estimated at conservation: 1.15, 1.03, 0.59 and abundance: 0.48, 0.69, 0.34, 0.5, 1.07, 1.01, 1.17, 1.45, 1.24, 1.23      Penalty multipliers estimated at conservation: 1.15, 1.04, 0.59 and abundance: 0.47, 0.68, 0.33, 0.49, 1.07, 1.01, 1.17, 1.45, 1.24, 1.24      Penalty multipliers estimated at conservation: 1.15, 1.05, 0.58 and abundance: 0.47, 0.69, 0.32, 0.49, 1.07, 1.02, 1.17, 1.46, 1.25, 1.25      Penalty multipliers estimated at conservation: 1.15, 1.06, 0.58 and abundance: 0.46, 0.69, 0.31, 0.49, 1.07, 1.02, 1.17, 1.47, 1.25, 1.25      Penalty multipliers estimated at conservation: 1.15, 1.06, 0.58 and abundance: 0.47, 0.69, 0.3, 0.49, 1.07, 1.02, 1.17, 1.47, 1.25, 1.26      Penalty multipliers estimated at conservation: 1.15, 1.08, 0.58 and abundance: 0.47, 0.69, 0.29, 0.49, 1.07, 1.02, 1.17, 1.47, 1.26, 1.26      Penalty multipliers estimated at conservation: 1.15, 1.08, 0.57 and abundance: 0.47, 0.7, 0.28, 0.48, 1.08, 1.02, 1.17, 1.48, 1.26, 1.27      Penalty multipliers estimated at conservation: 1.15, 1.08, 0.57 and abundance: 0.47, 0.7, 0.27, 0.48, 1.08, 1.02, 1.17, 1.48, 1.26, 1.27      Penalty multipliers estimated at conservation: 1.15, 1.09, 0.56 and abundance: 0.48, 0.71, 0.26, 0.48, 1.08, 1.02, 1.17, 1.48, 1.27, 1.27      Penalty multipliers estimated at conservation: 1.15, 1.1, 0.56 and abundance: 0.47, 0.7, 0.25, 0.48, 1.07, 1.02, 1.18, 1.49, 1.27, 1.28      Penalty multipliers estimated at conservation: 1.15, 1.11, 0.56 and abundance: 0.46, 0.7, 0.24, 0.48, 1.07, 1.03, 1.18, 1.49, 1.28, 1.29      Penalty multipliers estimated at conservation: 1.15, 1.11, 0.56 and abundance: 0.46, 0.71, 0.24, 0.48, 1.08, 1.03, 1.18, 1.49, 1.28, 1.29      Penalty multipliers estimated at conservation: 1.15, 1.12, 0.55 and abundance: 0.46, 0.71, 0.23, 0.48, 1.08, 1.04, 1.19, 1.49, 1.28, 1.29      Penalty multipliers estimated at conservation: 1.15, 1.13, 0.55 and abundance: 0.45, 0.71, 0.22, 0.48, 1.07, 1.04, 1.19, 1.5, 1.29, 1.3      Penalty multipliers estimated at conservation: 1.16, 1.13, 0.55 and abundance: 0.46, 0.72, 0.22, 0.48, 1.08, 1.03, 1.19, 1.49, 1.29, 1.3      Penalty multipliers estimated at conservation: 1.16, 1.14, 0.55 and abundance: 0.45, 0.72, 0.22, 0.48, 1.08, 1.03, 1.19, 1.5, 1.29, 1.3      Penalty multipliers estimated at conservation: 1.16, 1.13, 0.54 and abundance: 0.46, 0.72, 0.21, 0.47, 1.08, 1.04, 1.19, 1.5, 1.29, 1.31      Penalty multipliers estimated at conservation: 1.16, 1.13, 0.54 and abundance: 0.47, 0.73, 0.21, 0.47, 1.08, 1.04, 1.19, 1.5, 1.3, 1.31      Penalty multipliers estimated at conservation: 1.16, 1.14, 0.54 and abundance: 0.46, 0.72, 0.2, 0.47, 1.08, 1.04, 1.19, 1.51, 1.31, 1.32      Penalty multipliers estimated at conservation: 1.16, 1.15, 0.54 and abundance: 0.46, 0.72, 0.19, 0.47, 1.09, 1.04, 1.19, 1.51, 1.31, 1.32      Penalty multipliers estimated at conservation: 1.16, 1.15, 0.54 and abundance: 0.46, 0.72, 0.18, 0.47, 1.09, 1.05, 1.19, 1.52, 1.32, 1.33      Penalty multipliers estimated at conservation: 1.16, 1.16, 0.54 and abundance: 0.45, 0.71, 0.18, 0.47, 1.08, 1.05, 1.2, 1.52, 1.32, 1.33      Penalty multipliers estimated at conservation: 1.16, 1.17, 0.54 and abundance: 0.46, 0.71, 0.18, 0.47, 1.08, 1.05, 1.2, 1.52, 1.32, 1.33      Penalty multipliers estimated at conservation: 1.16, 1.18, 0.53 and abundance: 0.46, 0.71, 0.17, 0.47, 1.08, 1.05, 1.2, 1.53, 1.33, 1.34      Penalty multipliers estimated at conservation: 1.16, 1.18, 0.53 and abundance: 0.47, 0.71, 0.17, 0.47, 1.08, 1.05, 1.2, 1.52, 1.33, 1.34      Penalty multipliers estimated at conservation: 1.16, 1.19, 0.52 and abundance: 0.48, 0.71, 0.17, 0.47, 1.08, 1.05, 1.2, 1.52, 1.33, 1.33      Penalty multipliers estimated at conservation: 1.17, 1.19, 0.52 and abundance: 0.5, 0.72, 0.17, 0.47, 1.09, 1.05, 1.2, 1.52, 1.32, 1.33      Penalty multipliers estimated at conservation: 1.17, 1.2, 0.51 and abundance: 0.5, 0.73, 0.16, 0.47, 1.1, 1.05, 1.2, 1.53, 1.32, 1.33      Penalty multipliers estimated at conservation: 1.17, 1.2, 0.51 and abundance: 0.49, 0.72, 0.16, 0.47, 1.1, 1.05, 1.19, 1.53, 1.33, 1.33      Penalty multipliers estimated at conservation: 1.17, 1.2, 0.51 and abundance: 0.49, 0.72, 0.16, 0.48, 1.11, 1.06, 1.19, 1.53, 1.32, 1.32      Penalty multipliers estimated at conservation: 1.17, 1.2, 0.51 and abundance: 0.48, 0.72, 0.16, 0.48, 1.11, 1.06, 1.2, 1.53, 1.33, 1.33      Penalty multipliers estimated at conservation: 1.17, 1.21, 0.51 and abundance: 0.47, 0.72, 0.15, 0.48, 1.11, 1.06, 1.2, 1.53, 1.33, 1.33      Penalty multipliers estimated at conservation: 1.16, 1.22, 0.51 and abundance: 0.47, 0.72, 0.15, 0.48, 1.12, 1.06, 1.2, 1.54, 1.33, 1.33      Penalty multipliers estimated at conservation: 1.16, 1.23, 0.52 and abundance: 0.46, 0.71, 0.15, 0.48, 1.12, 1.07, 1.2, 1.54, 1.34, 1.34      Penalty multipliers estimated at conservation: 1.16, 1.24, 0.52 and abundance: 0.46, 0.71, 0.15, 0.48, 1.12, 1.07, 1.2, 1.54, 1.34, 1.34      Penalty multipliers estimated at conservation: 1.16, 1.25, 0.52 and abundance: 0.46, 0.71, 0.14, 0.48, 1.12, 1.08, 1.2, 1.54, 1.34, 1.34      Penalty multipliers estimated at conservation: 1.16, 1.25, 0.52 and abundance: 0.46, 0.71, 0.14, 0.48, 1.13, 1.08, 1.2, 1.54, 1.34, 1.34      Penalty multipliers estimated at conservation: 1.16, 1.25, 0.52 and abundance: 0.46, 0.71, 0.14, 0.48, 1.13, 1.08, 1.2, 1.54, 1.34, 1.34      Penalty multipliers estimated at conservation: 1.16, 1.26, 0.51 and abundance: 0.46, 0.72, 0.14, 0.48, 1.13, 1.08, 1.2, 1.54, 1.34, 1.34      Penalty multipliers estimated at conservation: 1.16, 1.26, 0.51 and abundance: 0.45, 0.73, 0.14, 0.48, 1.13, 1.08, 1.2, 1.54, 1.34, 1.34      Penalty multipliers estimated at conservation: 1.16, 1.27, 0.51 and abundance: 0.45, 0.72, 0.13, 0.49, 1.13, 1.09, 1.2, 1.54, 1.34, 1.34      Penalty multipliers estimated at conservation: 1.16, 1.27, 0.51 and abundance: 0.46, 0.72, 0.13, 0.49, 1.13, 1.09, 1.2, 1.54, 1.34, 1.34      Penalty multipliers estimated at conservation: 1.16, 1.27, 0.51 and abundance: 0.47, 0.72, 0.13, 0.49, 1.13, 1.08, 1.2, 1.54, 1.34, 1.34      Penalty multipliers estimated at conservation: 1.16, 1.28, 0.51 and abundance: 0.47, 0.72, 0.13, 0.49, 1.13, 1.08, 1.2, 1.54, 1.34, 1.35      Penalty multipliers estimated at conservation: 1.16, 1.28, 0.51 and abundance: 0.47, 0.71, 0.13, 0.49, 1.13, 1.08, 1.2, 1.54, 1.34, 1.35      Penalty multipliers estimated at conservation: 1.16, 1.28, 0.51 and abundance: 0.47, 0.71, 0.13, 0.49, 1.14, 1.09, 1.2, 1.54, 1.34, 1.35      Penalty multipliers estimated at conservation: 1.16, 1.29, 0.5 and abundance: 0.47, 0.72, 0.13, 0.5, 1.14, 1.08, 1.2, 1.54, 1.34, 1.35      Penalty multipliers estimated at conservation: 1.16, 1.29, 0.5 and abundance: 0.48, 0.72, 0.13, 0.5, 1.14, 1.08, 1.2, 1.54, 1.34, 1.35      Penalty multipliers estimated at conservation: 1.16, 1.29, 0.5 and abundance: 0.48, 0.71, 0.12, 0.5, 1.14, 1.08, 1.2, 1.54, 1.34, 1.35      Penalty multipliers estimated at conservation: 1.16, 1.3, 0.5 and abundance: 0.48, 0.71, 0.12, 0.5, 1.14, 1.09, 1.2, 1.54, 1.34, 1.35      Penalty multipliers estimated at conservation: 1.16, 1.3, 0.5 and abundance: 0.48, 0.71, 0.12, 0.5, 1.14, 1.09, 1.2, 1.54, 1.34, 1.35      Penalty multipliers estimated at conservation: 1.16, 1.3, 0.5 and abundance: 0.47, 0.72, 0.12, 0.5, 1.14, 1.09, 1.2, 1.54, 1.34, 1.35      Penalty multipliers estimated at conservation: 1.16, 1.3, 0.5 and abundance: 0.47, 0.72, 0.12, 0.51, 1.15, 1.09, 1.2, 1.54, 1.34, 1.35      Penalty multipliers estimated at conservation: 1.16, 1.31, 0.5 and abundance: 0.46, 0.72, 0.12, 0.5, 1.15, 1.09, 1.2, 1.54, 1.34, 1.36      Penalty multipliers estimated at conservation: 1.16, 1.31, 0.5 and abundance: 0.47, 0.72, 0.12, 0.51, 1.15, 1.09, 1.2, 1.54, 1.34, 1.36      Penalty multipliers estimated at conservation: 1.16, 1.32, 0.5 and abundance: 0.46, 0.72, 0.12, 0.51, 1.15, 1.09, 1.2, 1.54, 1.34, 1.36      Penalty multipliers estimated at conservation: 1.16, 1.32, 0.5 and abundance: 0.46, 0.72, 0.12, 0.51, 1.15, 1.09, 1.2, 1.55, 1.35, 1.36      Penalty multipliers estimated at conservation: 1.16, 1.32, 0.5 and abundance: 0.46, 0.71, 0.12, 0.51, 1.15, 1.09, 1.2, 1.55, 1.34, 1.36      Penalty multipliers estimated at conservation: 1.16, 1.33, 0.5 and abundance: 0.46, 0.72, 0.12, 0.51, 1.15, 1.09, 1.2, 1.54, 1.34, 1.36      Penalty multipliers estimated at conservation: 1.16, 1.33, 0.5 and abundance: 0.45, 0.72, 0.11, 0.51, 1.15, 1.1, 1.2, 1.55, 1.34, 1.36      Penalty multipliers estimated at conservation: 1.16, 1.34, 0.5 and abundance: 0.45, 0.73, 0.11, 0.51, 1.15, 1.1, 1.2, 1.55, 1.34, 1.36      Penalty multipliers estimated at conservation: 1.16, 1.33, 0.5 and abundance: 0.46, 0.73, 0.11, 0.51, 1.15, 1.1, 1.2, 1.55, 1.34, 1.36      Penalty multipliers estimated at conservation: 1.16, 1.33, 0.49 and abundance: 0.46, 0.73, 0.11, 0.51, 1.15, 1.09, 1.2, 1.55, 1.34, 1.36      Penalty multipliers estimated at conservation: 1.16, 1.34, 0.49 and abundance: 0.47, 0.73, 0.11, 0.52, 1.15, 1.09, 1.2, 1.55, 1.34, 1.36      Penalty multipliers estimated at conservation: 1.16, 1.34, 0.49 and abundance: 0.47, 0.73, 0.11, 0.52, 1.15, 1.09, 1.2, 1.55, 1.34, 1.36      Penalty multipliers estimated at conservation: 1.17, 1.34, 0.49 and abundance: 0.47, 0.73, 0.11, 0.52, 1.15, 1.09, 1.2, 1.55, 1.34, 1.36      Penalty multipliers estimated at conservation: 1.17, 1.35, 0.49 and abundance: 0.48, 0.73, 0.11, 0.52, 1.15, 1.09, 1.2, 1.55, 1.34, 1.36      Penalty multipliers estimated at conservation: 1.17, 1.35, 0.48 and abundance: 0.49, 0.73, 0.11, 0.52, 1.15, 1.09, 1.2, 1.54, 1.34, 1.36      Penalty multipliers estimated at conservation: 1.17, 1.35, 0.48 and abundance: 0.49, 0.73, 0.11, 0.52, 1.15, 1.09, 1.2, 1.55, 1.33, 1.36      Penalty multipliers estimated at conservation: 1.17, 1.35, 0.48 and abundance: 0.5, 0.74, 0.11, 0.52, 1.15, 1.08, 1.19, 1.54, 1.33, 1.36      Penalty multipliers estimated at conservation: 1.17, 1.35, 0.48 and abundance: 0.49, 0.75, 0.11, 0.52, 1.15, 1.09, 1.19, 1.54, 1.33, 1.36      Penalty multipliers estimated at conservation: 1.17, 1.35, 0.48 and abundance: 0.5, 0.75, 0.11, 0.53, 1.15, 1.09, 1.19, 1.54, 1.33, 1.36      Penalty multipliers estimated at conservation: 1.17, 1.35, 0.47 and abundance: 0.51, 0.74, 0.11, 0.53, 1.15, 1.08, 1.19, 1.54, 1.33, 1.36      Penalty multipliers estimated at conservation: 1.17, 1.35, 0.47 and abundance: 0.51, 0.74, 0.11, 0.53, 1.15, 1.08, 1.19, 1.54, 1.33, 1.36      Penalty multipliers estimated at conservation: 1.18, 1.35, 0.47 and abundance: 0.52, 0.75, 0.11, 0.53, 1.15, 1.08, 1.19, 1.54, 1.33, 1.36      Penalty multipliers estimated at conservation: 1.18, 1.36, 0.47 and abundance: 0.52, 0.75, 0.11, 0.53, 1.15, 1.08, 1.19, 1.54, 1.33, 1.36      Penalty multipliers estimated at conservation: 1.18, 1.36, 0.47 and abundance: 0.53, 0.75, 0.11, 0.53, 1.15, 1.08, 1.19, 1.54, 1.33, 1.36      Penalty multipliers estimated at conservation: 1.18, 1.36, 0.47 and abundance: 0.53, 0.75, 0.11, 0.54, 1.15, 1.08, 1.19, 1.54, 1.33, 1.36      Penalty multipliers estimated at conservation: 1.18, 1.36, 0.47 and abundance: 0.53, 0.75, 0.11, 0.53, 1.14, 1.08, 1.19, 1.54, 1.33, 1.36      Penalty multipliers estimated at conservation: 1.18, 1.36, 0.47 and abundance: 0.53, 0.75, 0.11, 0.53, 1.14, 1.08, 1.19, 1.54, 1.33, 1.36      Penalty multipliers estimated at conservation: 1.18, 1.37, 0.47 and abundance: 0.52, 0.75, 0.1, 0.53, 1.14, 1.08, 1.19, 1.54, 1.33, 1.36      Penalty multipliers estimated at conservation: 1.18, 1.37, 0.47 and abundance: 0.52, 0.75, 0.1, 0.54, 1.14, 1.08, 1.19, 1.54, 1.33, 1.36      Penalty multipliers estimated at conservation: 1.18, 1.37, 0.47 and abundance: 0.52, 0.75, 0.1, 0.54, 1.14, 1.09, 1.19, 1.54, 1.33, 1.36      Penalty multipliers estimated at conservation: 1.18, 1.37, 0.47 and abundance: 0.52, 0.75, 0.1, 0.54, 1.13, 1.09, 1.19, 1.55, 1.33, 1.37      Penalty multipliers estimated at conservation: 1.18, 1.37, 0.47 and abundance: 0.53, 0.75, 0.1, 0.54, 1.13, 1.08, 1.19, 1.55, 1.33, 1.37      Penalty multipliers estimated at conservation: 1.18, 1.37, 0.47 and abundance: 0.53, 0.75, 0.1, 0.54, 1.13, 1.08, 1.19, 1.54, 1.33, 1.37      Penalty multipliers estimated at conservation: 1.18, 1.37, 0.47 and abundance: 0.53, 0.75, 0.1, 0.54, 1.13, 1.08, 1.19, 1.55, 1.33, 1.37      Penalty multipliers estimated at conservation: 1.18, 1.37, 0.47 and abundance: 0.53, 0.75, 0.1, 0.54, 1.13, 1.08, 1.18, 1.54, 1.33, 1.37      Penalty multipliers estimated at conservation: 1.18, 1.38, 0.46 and abundance: 0.53, 0.74, 0.1, 0.54, 1.13, 1.08, 1.18, 1.54, 1.33, 1.37      Penalty multipliers estimated at conservation: 1.18, 1.38, 0.46 and abundance: 0.53, 0.74, 0.1, 0.54, 1.13, 1.08, 1.18, 1.54, 1.33, 1.37      Penalty multipliers estimated at conservation: 1.18, 1.38, 0.46 and abundance: 0.53, 0.74, 0.1, 0.54, 1.13, 1.08, 1.18, 1.55, 1.33, 1.37      Penalty multipliers estimated at conservation: 1.18, 1.38, 0.46 and abundance: 0.53, 0.74, 0.1, 0.54, 1.13, 1.08, 1.18, 1.54, 1.33, 1.37      Penalty multipliers estimated at conservation: 1.18, 1.38, 0.46 and abundance: 0.53, 0.74, 0.1, 0.54, 1.13, 1.08, 1.18, 1.54, 1.33, 1.38      Penalty multipliers estimated at conservation: 1.18, 1.38, 0.46 and abundance: 0.53, 0.74, 0.1, 0.54, 1.13, 1.08, 1.18, 1.54, 1.33, 1.38      Penalty multipliers estimated at conservation: 1.18, 1.38, 0.46 and abundance: 0.53, 0.73, 0.1, 0.55, 1.13, 1.08, 1.18, 1.54, 1.33, 1.38      Penalty multipliers estimated at conservation: 1.18, 1.39, 0.46 and abundance: 0.53, 0.73, 0.1, 0.54, 1.13, 1.08, 1.18, 1.54, 1.33, 1.38      Penalty multipliers estimated at conservation: 1.18, 1.39, 0.46 and abundance: 0.53, 0.73, 0.1, 0.54, 1.13, 1.08, 1.18, 1.54, 1.33, 1.38      Penalty multipliers estimated at conservation: 1.18, 1.39, 0.46 and abundance: 0.54, 0.73, 0.1, 0.54, 1.13, 1.08, 1.18, 1.55, 1.33, 1.38      Penalty multipliers estimated at conservation: 1.18, 1.39, 0.46 and abundance: 0.54, 0.73, 0.1, 0.54, 1.13, 1.08, 1.18, 1.55, 1.33, 1.38      Penalty multipliers estimated at conservation: 1.18, 1.39, 0.46 and abundance: 0.54, 0.73, 0.1, 0.54, 1.13, 1.08, 1.17, 1.55, 1.33, 1.38      Penalty multipliers estimated at conservation: 1.18, 1.39, 0.46 and abundance: 0.54, 0.73, 0.1, 0.54, 1.13, 1.08, 1.17, 1.55, 1.33, 1.38      Penalty multipliers estimated at conservation: 1.18, 1.4, 0.46 and abundance: 0.53, 0.72, 0.1, 0.55, 1.13, 1.08, 1.17, 1.55, 1.33, 1.38      Penalty multipliers estimated at conservation: 1.18, 1.4, 0.46 and abundance: 0.53, 0.72, 0.1, 0.55, 1.13, 1.08, 1.17, 1.55, 1.34, 1.39      Penalty multipliers estimated at conservation: 1.18, 1.4, 0.46 and abundance: 0.54, 0.72, 0.1, 0.55, 1.13, 1.08, 1.17, 1.55, 1.33, 1.39      Penalty multipliers estimated at conservation: 1.18, 1.4, 0.46 and abundance: 0.54, 0.72, 0.1, 0.55, 1.13, 1.08, 1.17, 1.55, 1.33, 1.38      Penalty multipliers estimated at conservation: 1.18, 1.4, 0.46 and abundance: 0.54, 0.73, 0.1, 0.55, 1.12, 1.08, 1.17, 1.55, 1.34, 1.39      Penalty multipliers estimated at conservation: 1.18, 1.4, 0.46 and abundance: 0.54, 0.73, 0.1, 0.55, 1.12, 1.08, 1.17, 1.55, 1.34, 1.39      Penalty multipliers estimated at conservation: 1.18, 1.4, 0.46 and abundance: 0.54, 0.73, 0.1, 0.55, 1.12, 1.08, 1.17, 1.55, 1.34, 1.39      Penalty multipliers estimated at conservation: 1.18, 1.41, 0.46 and abundance: 0.54, 0.73, 0.1, 0.55, 1.12, 1.07, 1.17, 1.55, 1.34, 1.39      Penalty multipliers estimated at conservation: 1.18, 1.41, 0.46 and abundance: 0.54, 0.73, 0.1, 0.55, 1.12, 1.07, 1.17, 1.55, 1.34, 1.39      Penalty multipliers estimated at conservation: 1.18, 1.41, 0.46 and abundance: 0.54, 0.73, 0.1, 0.55, 1.12, 1.07, 1.17, 1.55, 1.34, 1.39      Penalty multipliers estimated at conservation: 1.18, 1.41, 0.46 and abundance: 0.54, 0.73, 0.1, 0.55, 1.12, 1.07, 1.16, 1.55, 1.34, 1.39      Penalty multipliers estimated at conservation: 1.18, 1.41, 0.46 and abundance: 0.54, 0.73, 0.1, 0.55, 1.12, 1.07, 1.16, 1.55, 1.34, 1.39      Penalty multipliers estimated at conservation: 1.18, 1.41, 0.46 and abundance: 0.54, 0.73, 0.1, 0.55, 1.12, 1.07, 1.16, 1.55, 1.34, 1.39      Penalty multipliers estimated at conservation: 1.18, 1.42, 0.46 and abundance: 0.54, 0.73, 0.1, 0.55, 1.12, 1.07, 1.16, 1.55, 1.34, 1.39      Penalty multipliers estimated at conservation: 1.18, 1.42, 0.46 and abundance: 0.54, 0.73, 0.1, 0.55, 1.12, 1.07, 1.16, 1.55, 1.34, 1.39      Penalty multipliers estimated at conservation: 1.18, 1.42, 0.46 and abundance: 0.54, 0.74, 0.1, 0.55, 1.12, 1.07, 1.16, 1.56, 1.34, 1.39      Penalty multipliers estimated at conservation: 1.18, 1.42, 0.46 and abundance: 0.54, 0.74, 0.1, 0.55, 1.12, 1.07, 1.16, 1.56, 1.34, 1.39      Penalty multipliers estimated at conservation: 1.18, 1.42, 0.46 and abundance: 0.54, 0.74, 0.1, 0.55, 1.11, 1.07, 1.16, 1.56, 1.34, 1.4      Penalty multipliers estimated at conservation: 1.18, 1.42, 0.46 and abundance: 0.54, 0.74, 0.1, 0.55, 1.11, 1.07, 1.16, 1.56, 1.34, 1.39      Penalty multipliers estimated at conservation: 1.18, 1.43, 0.46 and abundance: 0.54, 0.74, 0.1, 0.55, 1.11, 1.07, 1.16, 1.56, 1.34, 1.4      Penalty multipliers estimated at conservation: 1.18, 1.43, 0.46 and abundance: 0.54, 0.74, 0.1, 0.55, 1.11, 1.07, 1.16, 1.56, 1.34, 1.4      Penalty multipliers estimated at conservation: 1.18, 1.43, 0.46 and abundance: 0.54, 0.74, 0.1, 0.55, 1.11, 1.07, 1.16, 1.56, 1.35, 1.4      Penalty multipliers estimated at conservation: 1.18, 1.43, 0.46 and abundance: 0.54, 0.74, 0.1, 0.55, 1.11, 1.07, 1.16, 1.56, 1.35, 1.4      Penalty multipliers estimated at conservation: 1.18, 1.43, 0.46 and abundance: 0.54, 0.74, 0.1, 0.55, 1.11, 1.07, 1.16, 1.56, 1.35, 1.4      Penalty multipliers estimated at conservation: 1.18, 1.44, 0.46 and abundance: 0.54, 0.74, 0.1, 0.55, 1.11, 1.07, 1.16, 1.56, 1.35, 1.4      Penalty multipliers estimated at conservation: 1.18, 1.44, 0.46 and abundance: 0.54, 0.74, 0.1, 0.55, 1.11, 1.07, 1.16, 1.56, 1.35, 1.4      Penalty multipliers estimated at conservation: 1.18, 1.44, 0.46 and abundance: 0.53, 0.74, 0.1, 0.55, 1.11, 1.07, 1.16, 1.56, 1.35, 1.4      Penalty multipliers estimated at conservation: 1.18, 1.44, 0.45 and abundance: 0.53, 0.74, 0.1, 0.55, 1.11, 1.07, 1.16, 1.56, 1.35, 1.4      Penalty multipliers estimated at conservation: 1.18, 1.44, 0.45 and abundance: 0.53, 0.74, 0.09, 0.55, 1.11, 1.07, 1.16, 1.56, 1.35, 1.4      Penalty multipliers estimated at conservation: 1.18, 1.44, 0.45 and abundance: 0.53, 0.74, 0.09, 0.55, 1.11, 1.07, 1.16, 1.56, 1.35, 1.4      Penalty multipliers estimated at conservation: 1.18, 1.44, 0.45 and abundance: 0.53, 0.74, 0.09, 0.55, 1.11, 1.07, 1.16, 1.56, 1.35, 1.4      Penalty multipliers estimated at conservation: 1.18, 1.44, 0.45 and abundance: 0.53, 0.74, 0.09, 0.55, 1.11, 1.07, 1.16, 1.56, 1.35, 1.4      Penalty multipliers estimated at conservation: 1.18, 1.45, 0.45 and abundance: 0.53, 0.74, 0.09, 0.55, 1.11, 1.07, 1.16, 1.57, 1.35, 1.4      Penalty multipliers estimated at conservation: 1.18, 1.45, 0.45 and abundance: 0.53, 0.75, 0.09, 0.55, 1.11, 1.07, 1.16, 1.57, 1.35, 1.4      Penalty multipliers estimated at conservation: 1.18, 1.45, 0.45 and abundance: 0.53, 0.75, 0.09, 0.55, 1.1, 1.06, 1.16, 1.57, 1.35, 1.4      Penalty multipliers estimated at conservation: 1.18, 1.45, 0.45 and abundance: 0.53, 0.75, 0.09, 0.55, 1.1, 1.06, 1.16, 1.57, 1.35, 1.4      Penalty multipliers estimated at conservation: 1.18, 1.45, 0.45 and abundance: 0.53, 0.75, 0.09, 0.55, 1.1, 1.06, 1.16, 1.57, 1.35, 1.41      Penalty multipliers estimated at conservation: 1.18, 1.45, 0.45 and abundance: 0.53, 0.75, 0.09, 0.55, 1.1, 1.06, 1.16, 1.57, 1.35, 1.41      Penalty multipliers estimated at conservation: 1.18, 1.45, 0.45 and abundance: 0.53, 0.75, 0.09, 0.55, 1.1, 1.06, 1.16, 1.57, 1.35, 1.41      Penalty multipliers estimated at conservation: 1.18, 1.45, 0.45 and abundance: 0.53, 0.75, 0.09, 0.55, 1.1, 1.06, 1.16, 1.57, 1.35, 1.41      Penalty multipliers estimated at conservation: 1.18, 1.46, 0.45 and abundance: 0.53, 0.75, 0.09, 0.55, 1.1, 1.06, 1.16, 1.57, 1.35, 1.41      Penalty multipliers estimated at conservation: 1.18, 1.46, 0.45 and abundance: 0.53, 0.75, 0.09, 0.55, 1.1, 1.06, 1.16, 1.57, 1.35, 1.41 in 739.39 seconds # nonzero coefficients: 773# nonzero coefficients: 67          # nonzero coefficients: 71          # nonzero coefficients: 70          # nonzero coefficients: 69          # nonzero coefficients: 68          # nonzero coefficients: 67          # nonzero coefficients: 66          # nonzero coefficients: 65          # nonzero coefficients: 64          # nonzero coefficients: 63          # nonzero coefficients: 62          # nonzero coefficients: 61          # nonzero coefficients: 60          # nonzero coefficients: 59          # nonzero coefficients: 58          # nonzero coefficients: 57          # nonzero coefficients: 56          # nonzero coefficients: 55          # nonzero coefficients: 54          # nonzero coefficients: 53          # nonzero coefficients: 52          # nonzero coefficients: 51          # nonzero coefficients: 50          # nonzero coefficients: 49          # nonzero coefficients: 48          # nonzero coefficients: 47          # nonzero coefficients: 46          # nonzero coefficients: 45          # nonzero coefficients: 44          # nonzero coefficients: 43          # nonzero coefficients: 42          # nonzero coefficients: 41          # nonzero coefficients: 40          # nonzero coefficients: 39          # nonzero coefficients: 38          # nonzero coefficients: 37          # nonzero coefficients: 36          # nonzero coefficients: 35          # nonzero coefficients: 34          # nonzero coefficients: 33          # nonzero coefficients: 32          # nonzero coefficients: 31          # nonzero coefficients: 30          # nonzero coefficients: 29          # nonzero coefficients: 28          # nonzero coefficients: 27          # nonzero coefficients: 26          # nonzero coefficients: 25          # nonzero coefficients: 24          # nonzero coefficients: 23          # nonzero coefficients: 22          # nonzero coefficients: 21          # nonzero coefficients: 21          # nonzero coefficients: 20          # nonzero coefficients: 19          # nonzero coefficients: 18          # nonzero coefficients: 17          # nonzero coefficients: 16          # nonzero coefficients: 15          # nonzero coefficients: 14          # nonzero coefficients: 13          # nonzero coefficients: 12          # nonzero coefficients: 13          # nonzero coefficients: 13          # nonzero coefficients: 13          # nonzero coefficients: 13          # nonzero coefficients: 12          # nonzero coefficients: 12          # nonzero coefficients: 12          # nonzero coefficients: 12          # nonzero coefficients: 12          # nonzero coefficients: 12          # nonzero coefficients: 12          
+[1] "Summary of group sizes:"
+  1   2   3 
+552  72 148 
+[1] "Summary of group sizes:"
+  1   2   3   4   5   6   7   8   9  10 
+ 29  36  43  52  62  74  89 106 128 153 
+[1] "Grouping 1 contains mutually exclusive groups"
+[1] "Grouping 2 contains mutually exclusive groups"
+[1] "Binary response, executing logistic ridge regression"
+12345
+[1] -31.00101
+[1] -31.00101
+[1] "Relative error: 0.104002995036679"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 1.3391197 0.7949500 0.5497421
+[1] -28.9214
+12345
+[1] "Partition conservation improved results"
+[1] "Relative error: 0.17809306937945"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+ [1] 0.7466804 0.8482019 0.5577107 0.6183746 1.0363833 0.9989312 1.0591996
+ [8] 1.4804682 1.2309618 1.1248730
+[1] -27.52058
+12345
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.102819556671233"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 1.2631754 0.8422837 0.5931289
+[1] -25.86261
+123456
+[1] "Partition conservation improved results"
+[1] "Relative error: 0.177937974630638"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+ [1] 0.8270722 0.8748492 0.5682175 0.6891116 1.1405331 1.0195599 1.0229742
+ [8] 1.4718144 1.1229798 1.0573062
+[1] -24.69481
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.114635732353659"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 1.2020082 0.8783179 0.6412654
+[1] -23.7693
+123456
+[1] "Partition conservation improved results"
+[1] "Relative error: 0.191644398453179"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+ [1] 0.9195151 0.9103238 0.6164303 0.7673811 1.1936206 1.0003101 0.9787641
+ [8] 1.4176156 1.0530423 1.0185131
+[1] -23.31223
+123456
+[1] "Partition abundance improved results"
+[1] "Relative error: 0.107380355687789"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+[1] 1.1600571 0.8889150 0.6878483
+[1] -23.08872
+[1] "Partition conservation CONVERGED after 4 iterations"
+[1] "Relative error: 0.180014096339246"
+[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
+[1] "Shrink Factor coefficient matrix 1"
+[1] "exactstable"
+ [1] 0.9158261 0.8986139 0.6627336 0.8096921 1.1854689 0.9914112 0.9473997
+ [8] 1.3555031 1.0396061 1.0271043
+[1] -23.28683
+[1] "Partition abundance CONVERGED after 4 iterations"
+[1] "All partitions CONVERGED after 4 iterations"
+[1] "Computation time for adaptive weigthing: 5.827"
+[1] "Variable selection by elastic net started..."
+[1] "Final lambda multipliers (summary):"
+$conservation
+        1         2         3 
+2.0332488 0.5880984 0.2090961 
+
+$abundance
+        1         2         3         4         5         6         7         8 
+0.5678545 0.6755046 0.1953474 0.3270034 1.4108946 1.0187860 1.0605240 3.0889482 
+        9        10 
+1.4556681 1.2113534 
+
+[1] "CVLs -31.0010108947501" "CVLs -23.3122298236088"
+[1] "Total computation time: 6.46500000000003"
+Error in cbind2(1, newx) %*% nbeta : 
+  Cholmod error 'X and/or Y have wrong dimensions' at file ../MatrixOps/cholmod_sdmult.c, line 90
+Calls: predict ... NextMethod -> predict.glmnet -> as.matrix -> %*% -> %*% -> .Call
+Execution halted
