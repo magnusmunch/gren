@@ -1,50 +1,35 @@
 Introduction
-	Start with introduction of a real data problem that off the shelf methods in literature are not able to solve it, so we came up with our own method.
-	Emphasise that only input is current data and the grouping, everything else is estimated from data and adaptive (no prior weights or parameter specifications necessary).
-	Contrast with group lasso, especially the different philosophies. Specifically explain why the group lasso cannot solve this type of problem (less flexible, no adaption to groups, not sensible for large groups because it can only select whole group, etc). Sparse group lasso might solve the large group problem, but is still not flexible.
-	Add references to grouped testing methods and optionally suggestions by first reviewer.
-	Reference to Zhang, Xu, and Zhang (2018).
+	- Optionally add references to suggestions by first reviewer
 
-Methods
-	Move extensions to supplementary.
 Simulations
-	Add extra methods
-		Group lasso, grpreg package, only groups
-		group MCP (minimax concave penalty), grpreg package, only groups
-		group SCAD (smoothly clipped absolute deviation), grpreg package, only groups
-		composite MCP, grpreg package
-		group exponential lasso, grpreg package
-		Latent group lasso (overlapping groups), grpregOverlap, needs multiple partitions
-		Sparse group lasso, SGL package, not possible with unpenalized covariates
-		Adaptive group lasso, grpreg with group.multiplier, only groups
-		wPAM and wPLS, not implemented
-		Check literature for more (Rockova and Lesaffre, 2014, and Liquet, Mengersen, Pettitt, and Sutton, 2017) 
-	More simulations
-		Many small groups
-		Same effect over groups, but strong correlations within groups
-		Find setting in which gren doesn't work (or is worse than other methods)
-		Investigate why it works: plot of predicted probabilities, check characteristics of selected features, etc.
+	- Add latent group lasso (multiple partitions), grpregOverlap package
+	- Investigate: plot predicted probabilities, characteristics of selected features
+	- choose two fixed number of selected features and compare the methods
+	- remove GRridge with selection (leave without selection in)
+	- move full scenario descriptions to supplement
+	- auc and brier in manuscript, rest of performance measures in supplement
 
 Data
-	Find data with less user input (no preliminary experiment), possibly cervical cancer and conservation status data.
+	- check alzheimer proteomics met platform groepen en selectie van e4yes
+	- Find data with less user input (no preliminary experiment), options: 
 		metabolomics array, alzheimer, quality control
 		sequenced microRNAs, colorectal cancer, previous study
 		sequenced microRNAs, cervical pre-cancer, conservation status
 		methylation array, cervical pre-cancer, CpG island annotation
-		Arcene cancer data (https://archive.ics.uci.edu/ml/datasets/Arcene, used in Jianyu, Liu, Guan, Yu, Yufeng, Liu; 2018)
-	Move colon cancer section to supplementary material
-	Investigate why it works in this particular data: predicted probabilities, selected feature checks
-	add extra methods (see simulations)
-	emphasise stability selection
+		Arcene cancer data (https://archive.ics.uci.edu/ml/datasets/Arcene)
+	- Investigate: predicted probabilities, characteristics of selected feature
+	- emphasise stability selection
 
 Discussion
-	Reiterate the minimal input of the user and added value of new method.
-	Give timings of the method, compared to other methods.
+	- Reiterate the minimal input of the user and added value of new method
+	- possibly remove group lasso part (already in introduction)
+	- Give timings of the method, compared to other methods
+	- remove double EM part
 
 
 
 
-
+editor:
 Dear Dr. van de Wiel,
 
 I appreciate you reaching out to us with your request. It is indeed important to us at Biostatistics that we provide you appropriate and timely feedback on your work. 
@@ -63,15 +48,9 @@ Jeff Leek
 co-Editor Biostatistics
 
 
-
-
-
-
-Reviewer: 1
-
+Reviewer 1
 Comments to the Author
 In this paper the authors have developed a Empirical Bayes Elastic net model, where the elastic net penalty are assigned on predetermined separate groups. The paper is written in full details. However, in my opinion the scientific contribution and novelty of the methodology is just incremental. Elastic net itself is designed to do the grouping. So, I am not sure why putting group penalty elastic net will be better than other group penalty methods like group lasso. Also Bayesian logistic regression can be formulated based on Polya-Gamma latent variables (Polson et al.)  and that need to be incorporated in your modeling strategy. Why no comparison between the proposed method and at least the group lasso which assigns the group penalty. The model contains several tuning/prior parameters. Sensitivity analysis need to be provided for that. How much your model is scalable? EM is notoriously slow. The authors have also missed several relevant references and should put some more focus on the literature review.
-
 •	https://projecteuclid.org/euclid.ba/1473276258
 •	https://www.tandfonline.com/doi/abs/10.1080/01621459.2013.829001 
 •	https://www.sciencedirect.com/science/article/pii/S0167947317300440 
@@ -80,7 +59,7 @@ In this paper the authors have developed a Empirical Bayes Elastic net model, wh
 
 
 
-Reviewer 2:
+Reviewer 2
 General comments 
 This paper considered a group-regularized (logistic) elastic net regression method. The method uses the Bayesian formulation of logistic elastic net regression to estimate both the model and penalty parameters in an approximate empirical-variational Bayes framework. Simulation studies are conducted and a real data analysis is made for illustration. 
 The paper is interesting and has certain merits but I have some concerns as follows. 

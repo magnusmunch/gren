@@ -43,3 +43,4 @@
 *.xlsx
 data/
 
+.Rproj.user

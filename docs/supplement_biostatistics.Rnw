@@ -1,0 +1,586 @@
+\documentclass[a4paper,hidelinks]{article}
+\usepackage{bm,amsmath,amssymb,amsthm,amsfonts,graphics,graphicx,epsfig,rotating,caption,subcaption,natbib,appendix,titlesec,multicol,hyperref,verbatim,bbm,algorithm,algpseudocode,pgfplotstable,threeparttable, booktabs,mathtools,dsfont}
+
+% vectors and matrices
+\newcommand{\bbeta}{\bm{\beta}}
+\newcommand{\btau}{\bm{\tau}}
+\newcommand{\balpha}{\bm{\alpha}}
+\newcommand{\bomega}{\bm{\omega}}
+\newcommand{\bOmega}{\bm{\Omega}}
+\newcommand{\bSigma}{\bm{\Sigma}}
+\newcommand{\bkappa}{\bm{\kappa}}
+\newcommand{\btheta}{\bm{\theta}}
+\newcommand{\bmu}{\bm{\mu}}
+\newcommand{\bpsi}{\bm{\psi}}
+\newcommand{\blambda}{\bm{\lambda}}
+\newcommand{\bLambda}{\bm{\Lambda}}
+\newcommand{\bphi}{\bm{\phi}}
+\newcommand{\Y}{\mathbf{Y}}
+\newcommand{\y}{\mathbf{y}}
+\newcommand{\X}{\mathbf{X}}
+\newcommand{\x}{\mathbf{x}}
+\newcommand{\I}{\mathbf{I}}
+\newcommand{\T}{\mathbf{T}}
+\newcommand{\Z}{\mathbf{Z}}
+\newcommand{\W}{\mathbf{W}}
+\renewcommand{\O}{\mathbf{O}}
+\newcommand{\B}{\mathbf{B}}
+\renewcommand{\H}{\mathbf{H}}
+\newcommand{\U}{\mathbf{U}}
+\newcommand{\D}{\mathbf{D}}
+\newcommand{\Vm}{\mathbf{V}}
+\newcommand{\rv}{\mathbf{r}}
+\newcommand{\A}{\mathbf{A}}
+\newcommand{\Q}{\mathbf{Q}}
+\newcommand{\Sm}{\mathbf{S}}
+\newcommand{\0}{\bm{0}}
+\newcommand{\tx}{\tilde{\mathbf{x}}}
+\newcommand{\hy}{\hat{y}}
+\newcommand{\tm}{\tilde{m}}
+\newcommand{\tkappa}{\tilde{\kappa}}
+\newcommand{\m}{\mathbf{m}}
+\newcommand{\C}{\mathbf{C}}
+\renewcommand{\v}{\mathbf{v}}
+\newcommand{\g}{\mathbf{g}}
+\newcommand{\s}{\mathbf{s}}
+\renewcommand{\c}{\mathbf{c}}
+\newcommand{\ones}{\mathbf{1}}
+
+% functions and operators
+\renewcommand{\L}{\mathcal{L}}
+\newcommand{\G}{\mathcal{G}}
+\renewcommand{\P}{\mathcal{P}}
+\newcommand{\argmax}{\text{argmax} \,}
+\newcommand{\expit}{\text{expit}}
+\newcommand{\erfc}{\text{erfc}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\V}{\mathbb{V}}
+\newcommand{\tr}{^{\text{T}}}
+\newcommand{\diag}{\text{diag}}
+\newcommand{\KL}{D_{\text{KL}}}
+\newcommand{\trace}{\text{tr}}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
+\newcommand{\appropto}{\mathrel{\vcenter{
+  \offinterlineskip\halign{\hfil$##$\cr
+    \propto\cr\noalign{\kern2pt}\sim\cr\noalign{\kern-2pt}}}}}
+\newcommand{\card}[1]{\text{card} \left( #1 \right)}
+\makeatletter
+\newcommand*{\defeq}{\mathrel{\rlap{%
+			\raisebox{0.3ex}{$\m@th\cdot$}}%
+		\raisebox{-0.3ex}{$\m@th\cdot$}}%
+	=}
+\makeatother
+
+% distributions
+\newcommand{\N}{\text{N}}
+\newcommand{\TG}{\text{TG}}
+\newcommand{\Bi}{\text{Binom}}
+\newcommand{\PG}{\text{PG}}
+\newcommand{\Mu}{\text{Multi}}
+\newcommand{\GIG}{\text{GIG}}
+\newcommand{\IGauss}{\text{IGauss}}
+\newcommand{\Un}{\text{U}}
+
+% syntax and readability
+\newcommand{\para}{\bigskip\noindent}
+\renewcommand{\(}{\left(}
+\renewcommand{\)}{\right)}
+\renewcommand{\[}{\left[}
+\renewcommand{\]}{\right]}
+\renewcommand*{\thefootnote}{\fnsymbol{footnote}}
+\newcommand{\pkg}[1]{{\fontseries{b}\selectfont #1}} 
+\renewcommand{\algorithmicrequire}{\textbf{Input:}}
+\renewcommand{\algorithmicensure}{\textbf{Output:}}
+
+% settings
+\graphicspath{{/Users/magnusmunch/Documents/OneDrive/PhD/EBEN/graphs/}}
+\setlength{\evensidemargin}{.5cm} \setlength{\oddsidemargin}{.5cm}
+\setlength{\textwidth}{15cm}
+\setlength{\parindent}{0pt}
+\title{Adaptive group-regularized logistic elastic net regression Supplementary material}
+\date{}
+\author{Magnus M. M\"unch$^{1,2}$\footnote{Correspondence to: \href{mailto:m.munch@vumc.nl}{m.munch@vumc.nl}}, Carel F.W. Peeters$^{1}$, Aad W. van der Vaart$^{2}$ \\ and Mark A. van de Wiel$^{1,3}$}
+
+\begin{document}
+\maketitle
+\noindent
+1. Department of Epidemiology \& Biostatistics, Amsterdam Public Health research institute, VU University Medical Center, PO Box 7057, 1007 MB
+Amsterdam, The Netherlands\\
+2. Mathematical Institute, Leiden University, Leiden, The Netherlands \\
+3. Department of Mathematics, VU University, Amsterdam, The Netherlands
+
+\para
+\textbf{Keywords}: Empirical Bayes; High-dimensional data; Prediction; Variational Bayes \\
+
+\para
+\textbf{Software available from}: \url{https://github.com/magnusmunch/gren/}\\
+
+\section{Introduction}
+This document contains supplementary material to the paper `Adaptive group-regularized logistic elastic net regression'. Section \ref{sec:enetprior} contains extra details on the elastic net prior distribution. Section \ref{sec:objectivefunction} gives the objective function that is maximised in the variational Bayes procedure introduced in Section 3 of the Main Document. Section \ref{sec:polyagamma} gives details on the P{\'o}lya-Gamma parametrisation introduced in Section 3 of the Main Document. The derivations of the variational posterior used in the Main Document are shown in Section \ref{sec:variationaldistributions}. Section \ref{sec:computationalcomplexity} shows how we may reduce the computational complexity of our variational Bayes procedure. Section \ref{sec:expectedloglikelihood} elaborates on the Variational Bayes expected joint log likelihood that is maximised to estimate the penalty multipliers as explained in Section 3 of the Main Document. The full procedure of the proposed method is shown in Section \ref{sec:fullestimationprocedure}. We give some extra results on the microRNA in colorectal cancer data application in the Main Document in Section \ref{sec:extra} \cite[]{neerincx_combination_2018}. Finally, we introduce the ridge and lasso versions of the proposed method in Section \ref{sec:evbridgelasso}. 
+
+\section{The elastic net prior}\label{sec:enetprior}
+\subsection{Density function}
+The density function of $\beta$, drawn from an elastic net prior distribution, is given by:
+
+$$
+f(\beta) = g(\lambda_1,\lambda_2) \exp\[-\frac{1}{2} (\lambda_1 |\beta| + \lambda_2 \beta^2)\].
+$$
+
+The normalizing constant here is calculated as:
+
+$$
+g(\lambda_1,\lambda_2) =\left\{ \int_{-\infty}^{\infty} \exp\[-\frac{1}{2} (\lambda_1 |\beta| + \lambda_2 \beta^2)\] d\beta \right\}^{-1}= \frac{\sqrt{\lambda_2}}{2} \phi \( \frac{\lambda_1}{2 \sqrt{\lambda_2}} \) \Phi \(\frac{-\lambda_1}{2 \sqrt{\lambda_2}} \)^{-1},
+$$
+
+with $\phi(x)$ and $\Phi(x)$ the standard normal density and distribution functions of $x$, respectively. 
+
+\subsection{Expectation and variance}
+The expectation and variance of $\beta$ are:
+
+\begin{align*}
+\E[\beta] &= g(\lambda_1,\lambda_2) \int_{-\infty}^{\infty} \beta \cdot \exp\[-\frac{1}{2} (\lambda_1 |\beta| + \lambda_2 \beta^2)\] d\beta=0, \\
+\V[\beta] &= g(\lambda_1,\lambda_2) \int_{-\infty}^{\infty} \beta^2 \cdot \exp\[-\frac{1}{2} (\lambda_1 |\beta| + \lambda_2 \beta^2)\] d\beta - \E[\beta]^2\\ &= \frac{\lambda_1^2}{4 \lambda_2^2} + \frac{1}{\lambda_2} - \frac{\lambda_1}{2 \lambda_2^{3/2}} \phi \( \frac{\lambda_1}{2 \sqrt{\lambda_2}} \) \Phi \(\frac{-\lambda_1}{2 \sqrt{\lambda_2}} \)^{-1}.
+\end{align*}
+
+\subsection{Simulation}
+Generating samples from the elastic net prior is not straightforward. \cite{li_bayesian_2010} show that the elastic net prior may be written as a scale mixture of normals, with mixing parameter $\btau = \begin{bmatrix} \tau_1 & \cdots & \tau_p \end{bmatrix} \tr$: 
+
+\begin{align*}
+\beta | \tau & \sim \mathcal{N} \left(0,\frac{1}{\lambda_2} \frac{\tau - 1}{\tau} \right), \\
+\tau & \sim \mathcal{TG} \left( \frac{1}{2},\frac{8 \lambda_2}{\lambda_1^2}, \left(1,\infty \right) \right),
+\end{align*}
+
+where $\mathcal{TG} \( k,\theta,\( x_l,x_u\) \)$ denotes the truncated gamma distribution with shape $k$, scale $\theta$, and domain $\(x_l,x_u\)$. So with an efficient truncated gamma sampler available we may sample from the prior using any standard software package that includes a Gaussian sampling routine. More specifically, we require a a sample from the $\mathcal{TG} \left( \frac{1}{2},8 \lambda2/\lambda_1^2, \left(1,\infty \right) \right)$ distribution. The CDF of this distribution is given by:
+
+$$
+F_{T}(\tau) =	
+\begin{dcases}
+0, & \text{if }\tau < 1 \\
+1 - \frac{\Phi\(-\frac{\lambda_1}{2} \sqrt{\frac{\tau}{\lambda_2}} \)}{\Phi\(-\frac{\lambda_1}{2 \sqrt{\lambda_2}} \)}, & \text{if } \tau \geq 1.
+\end{dcases}
+$$
+
+Since $F_{T}(\tau)$ is continuous and strictly monotonically increasing for $\tau \geq 1$, the quantile function may be written as a function of the probability $p \in (0,1)$:
+
+$$
+Q_{T}(p) =	F^{-1}_{T}(p) = \frac{4 \lambda_2}{\lambda_1^2} \Phi^{-1} \[ (1 - p) \Phi\(-\frac{\lambda_1}{2 \sqrt{\lambda_2}} \)\]^2,
+$$
+
+where $\Phi^{-1}(p)$ is the quantile function of the standard normal distribution, i.e, the probit function. Employing inverse transform sampling for the truncated gamma distribution, an elastic net prior sampling scheme is now: \\
+
+\begin{algorithmic}
+	\State{Generate $U \sim \mathcal{U} (0,1)$}
+	\State{Set $\tau = \frac{4 \lambda_2}{\lambda_1^2} \Phi^{-1} \[ (1 - u) \Phi\(-\frac{\lambda_1}{2 \sqrt{\lambda_2}} \)\]^2$}
+	\State{Set $\nu^2= \frac{\tau - 1}{\tau \lambda_2}$}
+	\State{Generate $\beta \sim \mathcal{N}(0,\nu^2)$}
+	\State{\Return{$\beta$}}
+\end{algorithmic}
+
+\section{Objective function}\label{sec:objectivefunction}
+
+The lower bound on the marginal likelihood, or evidence lower bound (ELBO), at iteration $t$ is given by:
+
+\begin{subequations}
+	\begin{align}
+	\text{ELBO} (Q^{(t)}) & = \E_{Q^{(t)}} [\log \L (\y, \bomega, \bbeta, \btau)] - \E_{Q^{(t)}} [\log Q (\bomega, \bbeta, \btau)] \\
+	& = \E_{Q^{(t)}} [\log \L (\y ; \bbeta)] + \E_{Q^{(t)}} [\log \pi(\bomega | \bbeta)] - \E_{Q^{(t)}} [\log q(\bomega)] \label{eq:elboomega} \\
+	& \,\,\,\,\, + \E_{Q^{(t)}} [\log \pi(\bbeta|\btau)] - \E_{Q^{(t)}} [\log q(\bbeta)] \label{eq:elbobeta}\\
+	& \,\,\,\,\, + \E_{Q^{(t)}} [\log \pi(\btau)] - \E_{Q^{(t)}} [\log q(\btau)] \label{eq:elbotau}.
+	\end{align}
+\end{subequations}
+
+We start with the computation of (\ref{eq:elboomega}). To this end we define:
+
+$$
+h(m_i, \omega_i) := \sum_{k=0}^{\infty} (-1)^k \frac{\Gamma(k+m_i}{k + 1}\frac{2k +m_i}{\sqrt{2 \pi \omega_i^3}}\exp\[-\frac{(2k + m_i)^2}{8 \omega_i} \].
+$$
+
+Let $\c = \begin{bmatrix} c_1 & \cdots & c_n \end{bmatrix} \tr$. Furthermore, in the following, all expectations and variances are with respect to $Q^{(t)}$. Next we write out the three terms in (\ref{eq:elboomega}):
+
+\begin{subequations} \label{eq:elboomega2}
+	\begin{align}
+	\E [\log \L (\y ; \bbeta)] & = \sum_{i=1}^n \log \binom{m_i}{y_i} + \y \tr \X \E [\bbeta] - \m \tr \E \left\{ \log [1 + \exp(\x_i \tr \bbeta)] \right\}, \\
+	\E [\log \pi(\bomega | \bbeta)] & = \m \tr \E \left\{ \log [1 + \exp(\x_i \tr \bbeta)] \right\} - n \log 2 - \frac{1}{2} \m \tr \X \E [\bbeta] \\
+	& \,\,\,\,\, - \sum_{i=1}^n \log \Gamma (m_i) - \frac{1}{2} \sum_{i=1}^n [ ( \x_i \tr \E [\bbeta] )^2 + \x_i \tr \V [\bbeta] \x_i \tr] \E [\omega_i] \\
+	& \,\,\,\,\,+ \sum_{i=1}^n \E \left\{ \log [ h(m_i, \omega_i) ] \right\}, \\
+	\E [\log q(\bomega)] & =  \m \tr \log [1 + \exp(\c)] - n \log 2 - \frac{1}{2} \m \tr \c - \sum_{i=1}^n \log \Gamma (m_i) - \frac{1}{2} \sum_{i=1}^n c_i^2 \E [\omega_i] \\
+	& \,\,\,\,\, + \sum_{i=1}^n \E \left\{ \log [ h(m_i, \omega_i) ] \right\},
+	\end{align}
+\end{subequations}
+
+where all mathematical operations on vectors and matrices are element wise. After combining the terms in (\ref{eq:elboomega2}) and substituting the expectations and variances given in the Main Document, several terms cancel to give:
+
+\begin{subequations} \label{eq:elboomega3}
+	\begin{align}
+	\E_{Q^{(t)}} & [\log \L (\y ; \bbeta)] + \E_{Q^{(t)}} [\log \pi(\bomega | \bbeta)] - \E_{Q^{(t)}} [\log q(\bomega)] \\ & = \sum_{i=1}^n \log \binom{m_i}{y_i} + ( \y - \frac{1}{2} \m) \tr \X \bmu^{(t)} + \m \tr \left\{ \frac{1}{2} \c^{(t)} - \log [1 + \exp(\c^{(t)})] \right\} \label{eq:elboomega4}\\
+	& \,\,\,\,\, + \frac{1}{4} \sum_{i=1}^n \frac{m_i}{c_i^{(t)}} \tanh \(\frac{c_i^{(t)}}{2} \)\left\{ (c_i^{(t)})^2 - ( \x_i \tr \bmu^{(t)} )^2 - \x_i \tr \bSigma^{(t)} \x_i \tr \right\}.
+	\end{align}
+\end{subequations}
+
+Inspection of the updating equations in the Main Document, learns us that the last term in the right-hand side of (\ref{eq:elboomega3}) equals zero, so that we are left with just (\ref{eq:elboomega4}). After a change of variables $\psi_j = \tau_j - 1$, the two terms in (\ref{eq:elbobeta}) are as follows:
+
+\begin{subequations} \label{eq:elbobeta2}
+	\begin{align}
+	\E [\log \pi (\bbeta | \btau)] & = \frac{1}{2}\sum_{g=1}^G |\mathcal{G}(g)| \log \lambda'_g + \frac{p}{2} \log \lambda_2 - \frac{p}{2} \log (2 \pi) \\
+	& \,\,\,\,\, - \frac{\lambda_2}{2} \sum_{g=1}^G \lambda'_g \sum_{j \in \mathcal{G}(g)} \(1 + \frac{\lambda_1}{2 \sqrt{\lambda_2 \chi_j}}\) (\bmu_j^2 + \bSigma_{jj}) \\
+	& \,\,\,\,\, - \frac{1}{2} \sum_{j=1}^p \E [\log \psi_j] + \frac{1}{2} \sum_{j=1}^p \E [ \log(\psi_j + 1)], \\
+	\E [\log q (\bbeta )] & = -\frac{p}{2} - \frac{p}{2}\log (2 \pi) - \frac{p}{2} \log |\bSigma| .
+	\end{align}
+\end{subequations}
+
+We combine the terms in (\ref{eq:elbobeta2}) and arrive at the following for (\ref{eq:elbobeta}):
+
+\begin{subequations} \label{eq:elbobeta3}
+	\begin{align}
+	\E_{Q^{(t)}} & [\log \pi (\bbeta | \btau)] - \E_{Q^{(t)}} [\log q (\bbeta )] \\ 
+	& = \frac{1}{2}\sum_{g=1}^G |\mathcal{G}(g)| \log \lambda'^{(t)}_g + \frac{p}{2} \log \lambda_2 + \frac{p}{2} \log |\bSigma^{(t)}| + \frac{p}{2} \\
+	& \,\,\,\,\, - \frac{\lambda_2}{2} \sum_{g=1}^G \lambda'^{(t)}_g \sum_{j \in \mathcal{G}(g)} \(1 + \frac{\lambda_1}{2 \sqrt{\lambda_2 \chi_j^{(t)} } }\) \((\bmu^{(t)}_j)^2 + \bSigma_{jj}^{(t)}\) \\
+	& \,\,\,\,\, - \frac{1}{2} \sum_{j=1}^p \E_{Q^{(t)}} [\log \psi_j] + \frac{1}{2} \sum_{j=1}^p \E_{Q^{(t)}} [ \log(\psi_j + 1)].
+	\end{align}
+\end{subequations}
+
+Repeating the same exercise for (\ref{eq:elbotau}) gives:
+
+\begin{subequations} \label{eq:elbotau2}
+	\begin{align}
+	\E [\log \pi (\btau)] & = p \log \lambda_1 - \frac{p}{2} \log \lambda_2 - \frac{5 p }{2} \log 2 - \frac{p}{2} \log \pi - \frac{p}{2} - \frac{p \lambda_1^2}{8 \lambda_2} \\
+	& \,\,\,\,\, - p \log \Phi \( \frac{-\lambda_1}{2 \sqrt{ \lambda_2}} \) - \frac{\lambda_1}{4 \sqrt{\lambda_2}} \sum_{j=1}^p \chi_j^{1/2} - \frac{1}{2} \sum_{j=1}^p \E [\log ( \psi_j + 1)], \\
+	\E [\log q (\btau)] & = p \log \lambda_1 - \frac{p}{2} \log \lambda_2 - \frac{3p}{2} \log 2 -\frac{p}{2} \log \pi -\frac{p}{2} - \frac{\lambda_1}{2 \sqrt{\lambda_2}} \sum_{j=1}^p \chi_j^{1/2} \\
+	& \,\,\,\,\, + \frac{1}{4} \sum_{j=1}^p \log \chi_j - \frac{1}{2} \sum_{j=1}^p \E [\log \psi_j].
+	\end{align}
+\end{subequations}
+
+Again, we combine the terms in (\ref{eq:elbotau2}) to get:
+
+\begin{subequations} \label{eq:elbotau3}
+	\begin{align}
+	\E_{Q^{(t)}} & [\log \pi (\btau)] - \E_{Q^{(t)}} [\log q (\btau)] 
+	\\ & = p \log 2 - \frac{p \lambda_1^2}{8 \lambda_2} - p \log \Phi \( \frac{-\lambda_1}{2 \sqrt{ \lambda_2}} \) + \frac{\lambda_1}{4 \sqrt{\lambda_2}} \sum_{j=1}^p \sqrt{\chi_j^{(t)}} - \frac{1}{4} \sum_{j=1}^p \log \chi_j^{(t)} \\
+	& \,\,\,\,\, + \frac{1}{2} \sum_{j=1}^p \E_{Q^{(t)}} [\log \psi_j] - \frac{1}{2} \sum_{j=1}^p \E_{Q^{(t)}} [\log ( \psi_j + 1)].
+	\end{align}
+\end{subequations}
+
+Adding up the terms in (\ref{eq:elboomega3}), (\ref{eq:elbobeta3}), and (\ref{eq:elbotau3}) gives the ELBO, at iteration $t$:
+
+\begin{align*}
+\text{ELBO} (Q^{(t)}) & \propto (\y - \frac{1}{2} \m ) \tr \X \bmu^{(t)} + \m \tr \{ \frac{1}{2} \c^{(t)} - \log [ \exp(\c^{(t)}) + 1 ]\} + \frac{1}{2} \sum_{g=1}^G |\G(g)| \log \lambda'^{(t)}_g \\ 
+& + \frac{1}{2}\log |\bSigma^{(t)}| - \frac{\lambda_2}{2} \sum_{g=1}^G \lambda'^{(t)}_g \sum_{j \in \mathcal{G}(g)} \(1 + \frac{\lambda_1}{2 \sqrt{\lambda_2 \chi_j^{(t)} } }\) \((\bmu^{(t)}_j)^2 + \bSigma_{jj}^{(t)}\) \\
+& + \frac{\lambda_1}{4 \sqrt{\lambda_2}} \sum_{j=1}^p \sqrt{\chi_j^{(t)}} - \frac{1}{4} \sum_{j=1}^p \log \chi_j^{(t)}.
+\end{align*}
+
+Here, proportionality is with respect to the variational and penalty parameters. 
+
+\section{The P\'{o}lya-Gamma parametrisation}\label{sec:polyagamma}
+In Section 3 of the Main Document latent P\'{o}lya-Gamma distributed variables are introduced. Likewise, in \cite{polson_bayesian_2013}, P\'{o}lya-Gamma variables are introduced into the logistic regression model under a Gaussian prior. Here, we explain how introduction of these latent variables simplifies the variational Bayes calculations. 
+
+\para
+In \cite{polson_bayesian_2013}, the central identity for this parametrisation is given in their Theorem 1:
+
+\begin{equation}\label{eq:intid}
+\frac{\exp(\psi)^{a}}{[1 + \exp(\psi)]^{b}} = 2^{-b} \exp(\kappa \psi) \int_0^{\infty} \exp(-\omega \psi^2 /2) \pi(\omega) d \omega,
+\end{equation}
+
+where $\kappa=a - b/2$ and $\omega$ is $\mathcal{PG}\(b,0\)$ distributed. This holds for all $b > 0$ and $a \in \mathbb{R}$. After setting $a=y_i$, $b=m_i$, and $\psi=\x_i \tr \bbeta$, we may consider the right-hand side of (\ref{eq:intid}) as an un-normalised joint density in $(\bbeta, \omega)$. The likelihood contribution of observation $i$ for $\bbeta$ conditional on $\omega_i$ may now be written as:
+
+$$
+\L_i(\bbeta | \omega_i) \propto \exp[\kappa_i \x_i \tr \bbeta - \omega_i (\x_i \tr \bbeta)^2/2].
+$$
+
+This allows the conditional posterior of $\bbeta$ to be written as:
+
+$$
+p(\bbeta | \bomega, \y) \propto \pi(\bbeta) \prod_{i=1}^n \L_i(\bbeta | \omega_i) = \pi(\bbeta) \exp \[-\frac{1}{2}(\bOmega^{-1} \bkappa - \X \bbeta) \tr \bOmega (\bOmega^{-1} \bkappa - \X \bbeta)\],
+$$
+
+ where $\bOmega = \diag (\omega_i)$, for $i=1, \dots, n$. Consequently, with $\pi(\bbeta)$ a Gaussian prior, $p(\bbeta | \bomega, \y)$ is also in the Gaussian family.
+
+\para
+Furthermore, by treating the integrand in (\ref{eq:intid}) as an un-normalized density over $(\psi, \phi)$, we find the distribution of $\omega$ conditional on $\bbeta$,
+
+$$
+p(\omega | \psi) = \frac{\exp(-\omega \psi^2/2) \pi(\omega)}{\int_0^{\infty} \exp(-\omega \psi^2/2) \pi(\omega) d\omega},
+$$
+
+distributed as $\omega | \psi \sim \mathcal{PG}(b,\psi)$ \cite[]{polson_bayesian_2013}, with expectation $\E[ \omega ] = \frac{b}{2\psi} \tanh (\psi/2)$. We substitute again $b=m_i$ and $\psi=\x_i \tr \bbeta$, and set the prior $\pi(\bbeta)$ to a Gaussian with mean $\m$ and covariance $\Vm$ to arrive at the following conditional posteriors:
+
+\begin{subequations}\label{eq:gibbssampler}
+	\begin{align}
+	\omega_i | \bbeta & \sim \mathcal{PG}(m_i, \x_i \tr \bbeta) \\
+	\bbeta | \y, \bomega & \sim \N(\bmu, \bSigma),
+	\end{align}
+\end{subequations}
+
+where
+
+\begin{align*}
+\bSigma & = (\X \tr \bOmega \X + \Vm^{-1})^{-1}, \\
+\bmu & = \Vm (\X \tr \bkappa + \Vm^{-1} \m),
+\end{align*}
+
+with $\bkappa = \begin{bmatrix} \kappa_1 \dots \kappa_n \end{bmatrix} \tr$. Equations (\ref{eq:gibbssampler}) constitute the Gibbs sampler used in \cite{polson_bayesian_2013}. However, from the corresponding variational Bayes derivations in Section \ref{sec:variationaldistributions}, it is obvious that the parametrisation above is also useful in the variational Bayes approximation to the posterior distribution.
+
+\section{Variational posterior}\label{sec:variationaldistributions}
+The optimal distributions in our variational Bayes implementation are:
+
+\begin{align}
+q^*_{\bbeta} (\bbeta) & {\propto} \exp \{ \E_{\bomega, \btau} [\log p (\bbeta, \bomega, \btau, \y)]\} {\propto} \exp \{\log \L (\y ; \bbeta) + \E_{\bomega} [\log \pi (\bomega | \bbeta)] + \E_{\btau} [ \log \pi (\bbeta | \btau)] \}, \label{eq:qbeta} \\
+q^*_{\bomega} (\bomega) & {\propto} \exp \{ \E_{\bbeta, \btau} [\log p (\bbeta, \bomega, \btau, \y)] \} {\propto} \exp \{ \E_{\bbeta} [\log \pi (\bomega | \bbeta)] \},\label{eq:qomega} \\
+q^*_{\tau} (\btau) & {\propto} \exp \{ \E_{\bbeta, \bomega} [\log p (\bbeta, \bomega, \btau, \y)] \} {\propto} \exp \{ \E_{\bbeta} [\log \pi ( \bbeta | \btau)] + \log \pi (\btau) \}. \label{eq:qtau}
+\end{align}
+
+For convenience we work on the log-scale and occasionally do a change of variables $\psi_j = \tau_j - 1$. Starting with $\bbeta$ we have for the three terms on the right-hand side of (\ref{eq:qbeta}):
+
+\begin{align*}
+\log \L (\y ; \bbeta) & = \sum_{i=1}^n \log f (y_i ; \bbeta) \propto \sum_{i=1}^n \log \left\{ \frac{\exp(\x_i \tr \bbeta)^{y_i}}{[1 + \exp(\x_i \tr \bbeta)]^{m_i}} \right\} \\
+& = \y \tr \X \bbeta - \sum_{i=1}^n m_i \log [1 + \exp(\x_i \tr \bbeta)], \\
+\E_{\bomega} [\log \pi (\bomega | \bbeta)] & \propto \sum_{i=1}^n \E_{\omega_i} [\log \pi (\omega_i | \bbeta)] \\ & \propto \sum_{i=1}^n \E_{\omega_i} \( \log \left\{ \cosh\( \frac{\x_i \tr \bbeta}{2}\)^{m_i} \exp \[-\frac{(\x_i \tr \bbeta)^2}{2} \omega_i \]\right\} \) \\
+& \propto \sum_{i=1}^n m_i \log \cosh \( \frac{\x_i \tr \bbeta }{2} \) - \frac{1}{2} \bbeta \tr \X \tr \bOmega \X \bbeta \\ & \propto \sum_{i=1}^n m_i \log [1 + \exp(\x_i \tr \bbeta)] - \frac{1}{2} \m \tr \X \bbeta - \frac{1}{2} \bbeta \tr \X \tr \bOmega \X \bbeta, \\
+\E_{\btau} [ \log \pi (\bbeta | \btau)] & = \sum_{j=1}^p \E_{\tau_j} [ \log \pi (\beta_j | \tau_j)] \propto \frac{\lambda_2}{2} \sum_{j=1}^p \beta_j^2 \lambda'_{g(j)} \E \( \frac{\tau_j}{\tau_j - 1} \) \\
+& = \sum_{j=1}^p \beta_j^2 \lambda'_{g(j)} [1 + \E ( \psi_j^{-1} )] = - \frac{1}{2} \lambda_2 \bbeta \tr \bLambda' (\I + \Z) \bbeta,
+\end{align*}
+
+where proportionality is with respect to $\bbeta$. Furthermore, $\bOmega = \diag [\E(\omega_i)]]$, $\Z = \diag [ \E (\psi_j^{-1})]$, and $\bLambda' = \diag (\lambda'_{g(j)})$. 
+Since the difficult $\sum_{i=1}^n m_i \log[1 + \exp(\x_i \tr \bbeta)]$ term appears in both the $\log \L (\y ; \bbeta)$ and $\pi (\omega_i | \bbeta)$ part, it cancels, thereby justifying the introduction of the $\omega_i$. Finally, we have: 
+
+$$
+\log q^*_{\bbeta} (\bbeta) = \bkappa \tr \X \bbeta - \frac{1}{2} \bbeta \tr (\X \tr \bOmega \X + \lambda_2 \bLambda' + \lambda_2 \bLambda' \Z) \bbeta,
+$$
+
+which is quadratic in $\bbeta$ and thus recognised as the log-kernel of a Gaussian distribution with covariance $\bSigma = (\X \tr \bOmega \X + \lambda_2 \bLambda' + \lambda_2 \bLambda' \Z)^{-1}$ and mean $\bmu=\bSigma \X \tr \bkappa$.
+
+\para
+Next we derive the variational posterior for $\bomega$ in (\ref{eq:qomega}):
+
+\begin{align*}
+\log q^*_{\bomega} (\bomega) & = \E_{\bbeta} [\log \pi (\bomega | \bbeta)] = \sum_{i=1}^n \E_{\bbeta} [\log \pi (\omega_i | \bbeta)] \\ & = \sum_{i=1}^n \E_{\bbeta} \( m_i \log \left\{ \cosh \( \frac{\x_i \tr \bbeta}{2}\) \exp\[-\frac{(\x_i \tr \bbeta)^2}{2} \omega_i\] \cdot f(\omega_i | m_i, 0) \right\} \) \\ 
+& = \sum_{i=1}^n \E_{\bbeta} \[ m_i \log \cosh \( \frac{\x_i \tr \bbeta}{2}\) \] - \frac{1}{2} \sum_{i=1}^n \omega_i \E[ (\x_i \tr \bbeta)^2] + \sum_{i=1}^n \log f(\omega_i | m_i, 0) \\ 
+& \propto \sum_{i=1}^n m_i \log \cosh \left\{ \frac{\sqrt{[\x_i \tr \E(\bbeta)]^2 + \x_i \tr \V[\bbeta]}}{2}\right\} - \frac{1}{2} \sum_{i=1}^n \omega_i \left\{ [\x_i \tr \E(\bbeta)]^2 + \x_i \tr \V[\bbeta] \right\} \\ 
+& \,\,\, + \sum_{i=1}^n \log f(\omega_i | m_i, 0),
+\end{align*}
+
+where proportionality is with respect to $\bomega$. If exponentiated, this is a product of tilted and renormalised $\mathcal{PG}(b_i, c_i)$ variables \cite[]{polson_bayesian_2013}, with $b_i=m_i$ and $c_i = \sqrt{[\x_i \tr \E(\bbeta)]^2 + \x_i \tr \V[\bbeta]}$. 
+
+\para
+The variational posterior terms of $\btau$ in (\ref{eq:qtau}) are calculated as:
+
+\begin{align*}
+\E_{\bbeta} [\log \pi ( \bbeta | \btau)] & = \sum_{j=1}^p \E_{\bbeta_j} [\log \pi(\beta_j | \tau_j )] \propto \frac{1}{2} \sum_{j=1}^p \log \(\frac{\tau_j}{\tau_j - 1} \) - \frac{1}{2} \sum_{j=1}^p \E (\beta_j^2) \lambda_2 \lambda'_{g(j)} \frac{\tau_j}{\tau_j - 1}, \\
+\log \pi (\btau) & = \sum_{j=1}^p \log \pi (\tau_j) \propto - \frac{1}{2} \sum_{j=1}^p \log \tau_j - \sum_{j=1}^p \frac{\lambda_1^2}{8 \lambda_2} \tau_j. 
+\end{align*}
+
+Combining the terms we find the log-kernel of the variational posterior as:
+
+\begin{align*}
+\log q^*_{\tau} (\btau) & \propto \frac{1}{2} \sum_{j=1}^p \log \(\frac{\tau_j}{\tau_j - 1} \) - \frac{1}{2} \sum_{j=1}^p \E (\beta_j^2) \lambda_2 \lambda'_{g(j)} \frac{\tau_j}{\tau_j - 1}  - \frac{1}{2} \sum_{j=1}^p \log \tau_j - \sum_{j=1}^p \frac{\lambda_1^2}{8 \lambda_2} \tau_j \\
+& = \frac{1}{2} \sum_{j=1}^p \log [(\tau_j - 1)^{-1}] - \frac{1}{2} \sum_{j=1}^p \(\frac{\lambda_1^2}{4 \lambda_2}\tau_j + [\E (\beta_j)^2 + \V(\beta_j)] \lambda_2 \lambda'_{g(j)} \frac{\tau_j}{\tau_j - 1}\),
+\end{align*}
+
+where proportionality is with respect to $\btau$. Again applying the change of variables $\psi_j = \tau_j - 1$, we have:
+
+$$
+\log q^*_{\psi} (\psi) \propto \frac{1}{2} \sum_{j=1}^p \log \psi_j^{-1} - \frac{1}{2} \sum_{j=1}^p \(\frac{\lambda_1^2}{4 \lambda_2} \psi_j + [\E (\beta_j)^2 + \V(\beta_j)] \lambda_2 \lambda'_{g(j)} \psi_j^{-1}\),
+$$
+
+which is the log-kernel of a $\GIG(1/2, \lambda_1^2/(4 \lambda_2), \chi_j)$ random variable with $\chi_j=\lambda_2 \lambda'_{g(j)} [\E (\beta_j)^2 + \V(\beta_j)]$.
+
+\section{Computational complexity}\label{sec:computationalcomplexity}
+Calculation of $\bSigma$ involves the inversion of a $(p \times p)$-dimensional matrix, which occurs at every iteration of the algorithm. If naively done, every inversion is of computational complexity $\mathcal{O}(p^3)$. With $p$ large, this is a serious computational bottleneck of the algorithm, especially with possibly many iterations. However, inspection of the updating equations in (3.9) in the main document, reveals that we only require the inner products $\x_i \tr \bSigma \x_i$, $\x_i \tr \bmu$, and $\bmu$, plus the diagonal of $\bSigma$ to directly update the $c_i$ and $\chi_j$. In Section 2.2 of the main document we show that for the EM updates of $\blambda'$, we only require the $c_i$, the $\chi_j$, $\bmu$, and the diagonal of $\bSigma$. Here we provide details on how to compute these with complexity $\mathcal{O}(n^2 p)$, thereby considerably reducing the computational cost of the algorithm. If necessary, we may calculate the full $\bSigma$ once after the algorithm has converged.
+
+\para
+In the following we slightly change notation and let $\diag(\A)$, with $\A$ a $p \times p$ square matrix, be the operator that extracts the diagonal of $\A$ to a $p$-dimensional column vector, e.g., $\diag(\A) = \begin{bmatrix} \A_{11} & \cdots & \A_{pp} \end{bmatrix} \tr$. We start by calculating the complexity of $\diag(\bSigma)$. To this end, let $\H = \lambda_2 \bLambda' + \lambda_2 \bLambda' \Z$. Now, by the Woodbury identity, we may decompose $\diag(\bSigma)$ as:
+
+\begin{subequations}\label{eq:diagsigma}
+	\begin{align}
+	\diag(\bSigma) ~& = \diag(\H^{-1}) - \diag[\H^{-1} \X \tr \bOmega (\I + \X \H^{-1} \X \tr \bOmega)^{-1} \X  \H^{-1}] \\
+	& = \diag(\H^{-1}) - [(\H^{-1} \X \tr \bOmega (\I + \X \H^{-1} \X \tr \bOmega)^{-1}) \circ \H^{-1} \X \tr] \cdot \ones_{n \times 1},
+	\end{align}
+\end{subequations}
+
+where $\circ$ denotes the Hadamard matrix product and $\ones_{p \times n}$ is a $p \times n$-dimensional matrix of ones. By recognising that $\H$ is a diagonal matrix, we can post-multiply it by a $p \times n$-dimensional matrix with computational complexity $\mathcal{O}(np)$, which leads to a total complexity of $\mathcal{O}(n^2p)$ for $\diag(\bSigma)$. Next we consider the calculation of $\bmu$. Again using the Woodbury identity, we may write $\bmu$ as:
+
+\begin{align}\label{eq:mu}
+\bmu = \bSigma \X \tr \bkappa = [\H^{-1} \X \tr - \H^{-1} \X \tr \bOmega (\I + \X \H^{-1} \X \tr \bOmega)^{-1} \X  \H^{-1} \X \tr] \bkappa,
+\end{align}
+
+which is, by a similar argument as before, again an operation of complexity $\mathcal{O}(n^2p)$.
+
+\para
+Now we rewrite the calculation of $\c = \begin{bmatrix} c_1 & \cdots & c_n \end{bmatrix} \tr$ as:
+
+\begin{align*}
+\c & = \begin{bmatrix} \sqrt{\x_1 \bSigma \x_1 + (\x_1 \tr \bmu)^2} & \cdots & \sqrt{\x_n \bSigma \x_n + (\x_n \tr \bmu)^2} \end{bmatrix} \tr \\
+& = \sqrt{\diag \[\X \bSigma \X \tr\] +  \diag \[\X \bmu \bmu \tr \X \tr\]} \\
+& = \sqrt{ [(\X \bSigma) \circ \X ] \cdot \ones_{p \times 1} + (\X \bmu) \circ (\X \bmu)}.
+\end{align*}
+
+The calculation requires matrix products of complexity $\mathcal{O}(n^2 p)$, Hadamard products of $\mathcal{O}(np)$ and matrix inversions of $\mathcal{O}(n^3)$, such that the total complexity is of $\mathcal{O}(n^2p)$.
+
+\para
+The parameters $\bm{\chi} = \begin{bmatrix} \chi_1 & \cdots & \chi_p \end{bmatrix} \tr$ are rewritten as:
+
+\begin{subequations}\label{eq:chicomp}
+	\begin{align}
+	\bm{\chi} & = \begin{bmatrix} \lambda'_{g(1)} \lambda_2 (\bSigma_{11} + \bmu_1^2) & \cdots & \lambda'_{g(p)} \lambda_2 (\bSigma_{pp} + \bmu_p^2) \end{bmatrix} \tr\\
+	& = \lambda_2 \bLambda' \[ \diag (\bSigma ) + \diag (\bmu \bmu \tr )\] \\
+	& = \lambda_2 \blambda' \circ \[ \diag (\bSigma) + \bmu \circ \bmu \].
+	\end{align}
+\end{subequations}
+
+ By inserting (\ref{eq:diagsigma}) and (\ref{eq:mu}) into (\ref{eq:chicomp}) we see that the computation of $\bm{\chi}$ consists of one matrix diagonal of $\mathcal{O}(n^2p)$, matrix products of complexity $\mathcal{O}(n^2p)$ and two Hadamard products of $\mathcal{O}(p)$. Computation of $\bm{\chi}$ is therefore of complexity of $\mathcal{O}(n^2p)$.
+
+\section{Variational Bayes expected joint log likelihood}\label{sec:expectedloglikelihood}
+Here, let $\propto$ denote proportionality with respect to $\blambda'$. Then the variational Bayes expected joint log likelihood is derived as follows:
+
+\begin{align*}
+\E_{Q} [ \log \L_{\blambda'}(\y, \bomega, \bbeta, \btau) | \blambda'^{(k)} ] &\propto \E_Q [\log \pi_{\blambda'}(\bbeta | \btau) | \blambda'^{(k)}] \propto \sum_{g=1}^G \sum_{j \in \mathcal{G}(g)} \E_Q [\log \pi_{\blambda'}(\beta_j | \tau_j) | \blambda'^{(k)}] \\
+& \propto \frac{1}{2} \sum_{g=1}^G \sum_{j \in \mathcal{G}(g)}  \log \lambda'_g - \frac{(1 - \alpha) \lambda}{4} \sum_{g=1}^G \sum_{j \in \mathcal{G}(g)} \lambda'_g \E_Q \( \frac{\tau_j}{\tau_j - 1} \beta_j^2 | \blambda'^{(k)} \) \\ 
+& \propto \frac{1}{2} \sum_{g=1}^G |\G(g)|  \log \lambda'_g - \frac{(1 - \alpha) \lambda}{4} \sum_{g=1}^G \lambda'_g d_g^{(k)},
+\end{align*}
+
+with the coefficients $d_g^{(k)}$ calculated as:
+
+\begin{align*}
+d_g^{(k)} & = \sum_{j \in \mathcal{G}(g)} \E_Q \( \frac{\tau_j}{\tau_j - 1} \beta_j^2 | \blambda'^{(k)} \) \\
+& = \sum_{j \in \mathcal{G}(g)} \[1 + \E_{q_{\psi_j}} ( \psi_j^{-1} | \blambda'^{(k)} ) \]  \[ \E_{q_{\beta_j}} ( \beta_j | \blambda'^{(k)} )^2 + \V_{q_{\beta_j}} ( \beta_j | \blambda'^{(k)} ) \] \\
+& = \sum_{j \in \mathcal{G}(g)} \[\bSigma^{(k)}_{jj} + (\bmu^{(k)}_j)^2\]\(1 + \alpha \lambda^{1.5} \sqrt{\frac{1 - \alpha}{8 \chi_j^{(k)}}}\).
+\end{align*}
+
+\section{Full estimation procedure}\label{sec:fullestimationprocedure}
+
+The expectation and maximisation steps introduced in the Main Document result in a procedure as outlined in Algorithm \ref{alg:summaryalg}:
+\begin{algorithm}
+	\caption{Group-regularized empirical Bayes elastic net}\label{alg:summaryalg}
+	\begin{algorithmic}[h]
+		\Require $\X, \y, \G, \alpha, \epsilon_1, \epsilon_2$
+		\Ensure $\lambda, \blambda', \bSigma, \bmu$
+		\State{Estimate $\lambda$ by cross-validation of the regular elastic net model}
+		\While{$|\frac{\blambda'^{(k + 1)} - \blambda'^{(k)}}{\blambda'^{(k)}}| > \epsilon_1$}
+		\While{$\underset{ij}{\max} \, |\frac{\bSigma_{ij}^{(k+1)} - \bSigma_{ij}^{(k)}}{\bSigma_{ij}^{(k)}}| > \epsilon_2$ or $\underset{i}{\max} \, |\frac{\bmu_{i}^{(k+1)} - \bmu_{i}^{(k)}}{\bmu_{i}^{(k)}}| > \epsilon_2$}
+		\State{Update $\bSigma$, $\bmu$, $c_i$ for $i=1, \dots, n$ and $\chi_j$ for $j=1, \dots, p$ using (3.9) in the Main Document}
+		\EndWhile
+		\State{Update $\blambda'$ by (3.10) in the Main Document}
+		\EndWhile
+	\end{algorithmic}
+\end{algorithm}
+
+\section{Extra results for microRNA data}\label{sec:extra}
+\subsection{Stability of selection}
+
+One common criticism on the elastic net, and especially the lasso, is the instability of feature selection. That is, different data sets yield different sets of selected features. To investigate the stability of feature selection by \texttt{gren} we created 50 stratified bootstrap samples from the microRNA data used in Section 6 of the Main Document \cite[]{neerincx_combination_2018}, where we stratified by treatment response. For each of these bootstrap samples we estimated the regular elastic net and \texttt{gren} for $\alpha \in \{0.05, 0.5, 0.95 \}$, where we selected 25 features (including the 5 unpenalized covariates). We calculated the size of all ${50}\choose{2}$ intersections of selected features and present the results in Figure \ref{fig:bootstrap}. From this figure it can be seen that stability of feature selection in \texttt{gren} is higher than in the regular elastic net for all three $\alpha$'s.
+
+\begin{figure}[!h]
+	\centering
+	\includegraphics[width=0.9\linewidth]{../figs/gren_mirseq_Maarten_overlap.png}
+	\caption{Overlap between stratified bootstrap samples for the elastic net models with (a) $\alpha=0.05$, (b) $\alpha=0.5$, and (c) $\alpha=0.95$.}
+	\label{fig:bootstrap}
+\end{figure}
+
+\subsection{Penalty multipliers under random groups}
+
+Figure \ref{fig:random} presents the estimated penalty multipliers for 100 random splits of the microRNA features into 10 evenly sized groups for \texttt{GRridge} and \texttt{gren} with $\alpha \in \{ 0.05, 0.5, 0.95 \}$. Since we created the groups at random, we expect that the penalty multipliers are estimated as one, to reflect the non-informativeness of the groups. From the Figure we see that \texttt{GRridge} shows more variation around one then the other models. In addition, the median penalty multipliers for the three \texttt{gren} models are all between 0.99 and 1.02, while the \texttt{GRridge} median estimates range from 1.04 to 1.09. This indicates that \texttt{GRridge} suffers from a slight bias in the estimation, while the \texttt{gren} estimates appear to be unbiased.
+
+\begin{figure}[!h]
+	\centering
+	\includegraphics[width=0.9\linewidth]{../figs/grEBEN_mirseq_Maarten_res8_boxplot.png}
+	\caption{Estimated penalty multipliers of the group-regularized methods for 100 repeats of 10 random groups in colorectal miRNA data.}
+	\label{fig:random}
+\end{figure}
+
+\section{Empirical-variational Bayes for the ridge and lasso}\label{sec:evbridgelasso}
+\subsection{Ridge regression}
+Ridge regression is a special case of the elastic net, that does not include an $L_1$-norm on the parameters. Its estimator is given by:
+
+$$
+\hat{\bbeta} := \underset{\bbeta}{\argmax} \ell(\y ; \bbeta) - \frac{\lambda_2}{2} \norm{\bbeta}_2.
+$$
+
+The Bayesian version of ridge regression is regression under a Gaussian prior. The generalised version of this prior is:
+
+$$
+\bbeta \sim \prod_{g=1}^G \prod_{j \in \G(g)} \N(0,(\lambda_2 \lambda'_g)^{-1}).
+$$
+
+Although the posterior is analytically calculated in the linear case, in the logistic case we must approximate it iteratively. The variational distributions in this case are:
+
+\begin{align*}
+q^*_{\bbeta} (\bbeta) & \sim \mathcal{N} (\bmu, \bSigma), \\ 
+q^*_{\bomega} (\bomega) & \sim \prod_{i=1}^n \mathcal{PG} (m_i, c_i). \\
+\end{align*}
+
+The parameters $c_i$ and $\bmu$ remain unchanged compared to the elastic net and are updated, together with $\bSigma$, until convergence:
+
+$$
+\bSigma^{t+1} = (\X \tr \bOmega^{(t)} \X + \lambda_2 \bLambda')^{-1}\text{, with } \bOmega^{(t)} = \diag \[ \frac{m_i}{2 c^{(t)}_i} \tanh \( \frac{c^{(t)}_i}{2} \) \].
+$$
+
+Updating the penalty parameters is done by solving the following (convex) constraint optimisation problem:
+
+\begin{align*}
+\blambda'^{(k+1)} & = \underset{\blambda'}{\argmax} \frac{1}{2} \sum_{g=1}^G |\G(g)| \log (\lambda'_g) - \frac{\lambda_2}{2} \sum_{g=1}^G \lambda'_g d^{(k)}_g \\
+& \text{subject to } \prod_{g=1}^G (\lambda'_g)^{|\G(g)|} = 1,
+\end{align*}
+
+with the terms $d^{(k)}_g$ given by:
+
+$$
+d^{(k)}_g = \sum_{j \in \G(g)} ((\bmu^{(k)}_j)^2 + \bSigma^{(k)}_{jj}).
+$$ 
+
+\subsection{Lasso regression}
+In lasso regression, another special case of the elastic net, we have the following estimator:
+
+$$
+\hat{\bbeta} := \underset{\bbeta}{\argmax} \ell(\y ; \bbeta) - \frac{\lambda_1}{2} \norm{\bbeta}_1.
+$$
+
+The Bayesian counterpart is regression under a Laplace prior on the model parameters. The generalised Bayesian prior may decomposed as:
+
+\begin{align*}
+\bbeta | \btau & \sim \prod_{j=1}^p \mathcal{N} \left(0,\tau_j \right), \\
+\btau & \sim \prod_{g=1}^G \prod_{j \in \G(g)} \text{Exp} \left( \frac{\sqrt{\lambda'_g}\lambda_1^2}{8} \right).
+\end{align*}
+
+The variational distributions are similar as in the elastic net, except that we do not re-parametrise the $\tau_j$:
+
+\begin{align*}
+q^*_{\bbeta} (\bbeta) & \sim \mathcal{N} (\bmu, \bSigma), \\ 
+q^*_{\bomega} (\bomega) & \sim \prod_{i=1}^n \mathcal{PG} (m_i, c_i), \\
+q^*_{\btau}(\btau) & \sim \prod_{g=1}^G \prod_{j \in \G(g)} \mathcal{GIG} \(\frac{1}{2}, \phi_g, \chi_j\).
+\end{align*}
+
+The parameters $c_i$ and $\bmu$ and remain unchanged compared to the elastic net, while the $\phi_g$ are given by:
+
+$$
+\phi_g = \lambda_{g} \frac{\lambda_1^2}{4}.
+$$
+
+The following parameters are updated, together with the unchanged $c_i$ and $\bmu$, until convergence:
+
+\begin{align*}
+\bSigma^{(t + 1)} &= ( \X \tr \bOmega^{(t)} \X + \Z^{(t)})^{-1}, \\ & \text{with } \bOmega^{(t)} = \diag\[ \(\frac{m_i}{2 c_i^{(t)}}\) \tanh \( \frac{c_i^{(t)}}{2} \)\] \text{ and } \Z^{(t)}=\diag\(\sqrt{\frac{\phi_g(j)}{\chi_j^{(t)}}}\), \\
+\chi_j^{(t + 1)} &= \bSigma^{(t + 1)}_{jj} + (\bmu^{(t + 1)}_j)^2 \text{, for } j=1, \dots, p.
+\end{align*}
+
+Updating the penalty parameters is done by solving the following (convex) constraint problem:
+
+\begin{align*}
+\blambda'^{(k+1)} & = \underset{\blambda'}{\argmax} \sum_{g=1}^G |\G(g)| \log (\lambda'_g) - \frac{\lambda_1^2}{8} \sum_{g=1}^G \lambda'_g d^{(k)}_g \\
+& \text{subject to } \prod_{g=1}^G (\lambda'_g)^{|\G(g)|} = 1,
+\end{align*}
+
+with the terms $d^{(k)}_g$ given by:
+
+$$
+d^{(k)}_g = \sum_{j \in \G(g)} \( \frac{1}{\phi_g^{(k)}} + \frac{\chi^{(k)}_j}{\phi_g^{(k)}} \).
+$$ 
+
+Note that the $\phi_g$ are updated after every penalty multiplier update iteration as well, in contrast to the elastic net.
+
+\bibliographystyle{biorefs.bst} 
+\bibliography{refs}
+
+\end{document}
+
+
+
+
