@@ -77,7 +77,9 @@ fit1.gel1 <- cv.grpreg(x, y, part, penalty="gel", family="binomial", alpha=0.05)
 fit1.gel2 <- cv.grpreg(x, y, part, penalty="gel", family="binomial", alpha=0.5)
 fit1.gel3 <- cv.grpreg(x, y, part, penalty="gel", family="binomial", alpha=0.95)
 
-save(fit1.gren1, file="results/metabolomics_alzheimer_fit1.Rdata")
+save(fit1.grridge, fit1.gren1, fit1.gren2, fit1.gren3, fit1.sgl1, fit1.sgl2,
+     fit1.sgl3, fit1.cmcp1, fit1.cmcp2, fit1.cmcp3, fit1.gel1, fit1.gel2,
+     fit1.gel3, file="results/metabolomics_alzheimer_fit1.Rdata")
 
 ### cross-validation of performance
 nfolds <- 10
