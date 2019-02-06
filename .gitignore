@@ -1,5 +1,3 @@
-
-
 *.acn
 *.acr
 *.alg
@@ -41,6 +39,10 @@
 *.tex
 *.toc
 *.xlsx
-data/
 
-.Rproj.user
+
+!data/
+
+rpackage/data/
+data/*
+!data/ESetMbolCSFPR2.Rdata
