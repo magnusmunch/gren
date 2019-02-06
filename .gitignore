@@ -43,6 +43,5 @@
 
 !data/
 
-rpackage/data/
 data/*
 !data/ESetMbolCSFPR2.Rdata
