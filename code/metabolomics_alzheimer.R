@@ -50,12 +50,12 @@ alzheim.apoe <- as.numeric(pheno.apoe$D_diag_name) - 1
 metabol.apoe.scaled <- scale(metabol.apoe)
 
 ### fitting the models
+set.seed(2018)
 y <- alzheim.apoe
 x <- metabol.apoe.scaled
 part <- platformcode
 n <- nrow(x)
 p <- ncol(x)
-set.seed(2018)
 
 fit1.gren1 <- gren(x, y, partitions=list(part=part), alpha=0.05)
 fit1.gren2 <- gren(x, y, partitions=list(part=part), alpha=0.5)
@@ -82,6 +82,7 @@ save(fit1.grridge, fit1.gren1, fit1.gren2, fit1.gren3, fit1.sgl1, fit1.sgl2,
      fit1.gel3, file="results/metabolomics_alzheimer_fit1.Rdata")
 
 ### cross-validation of performance
+set.seed(2018)
 nfolds <- 10
 rest <- n %% nfolds
 foldid <- sample(rep(1:nfolds, times=round(c(rep(
@@ -183,6 +184,7 @@ for(k in 1:nfolds) {
   write.table(res1, file="results/metabolomics_alzheimer_res1.csv")
   
 }
+
 
 # 
 # 
