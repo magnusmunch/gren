@@ -1,3 +1,13 @@
+#!/usr/bin/env Rscript
+
+### installation of packages
+# if(!("devtools" %in% installed.packages())) {
+#   install.packages("devtools")
+# }
+# library(devtools)
+# install_github("magnusmunch/gren/rpackage", local=FALSE,
+#                auth_token=Sys.getenv("GITHUB_PAT"))
+
 ### libraries
 library(gren)
 library(GRridge)
@@ -39,19 +49,42 @@ sds.apoe <- rep(c(1:3), sapply(part.sds.apoe, length))[unlist(part.sds.apoe)]
 alzheim.apoe <- as.numeric(pheno.apoe$D_diag_name) - 1
 metabol.apoe.scaled <- scale(metabol.apoe)
 
-### cross-validation of performance
+### fitting the models
 y <- alzheim.apoe
 x <- metabol.apoe.scaled
 part <- platformcode
 n <- nrow(x)
 p <- ncol(x)
 set.seed(2018)
+
+fit1.gren1 <- gren(x, y, partitions=list(part=part), alpha=0.05)
+fit1.gren2 <- gren(x, y, partitions=list(part=part), alpha=0.5)
+fit1.gren3 <- gren(x, y, partitions=list(part=part), alpha=0.95)
+
+fit1.grridge <- grridge(t(x), y, list(part=split(1:p, part)))
+fit1.sgl1 <- cvSGL(list(x=x, y=y), part, type="logit", alpha=0.05)
+fit1.sgl2 <- cvSGL(list(x=x, y=y), part, type="logit", alpha=0.5)
+fit1.sgl3 <- cvSGL(list(x=x, y=y), part, type="logit", alpha=0.95)
+
+fit1.cmcp1 <- cv.grpreg(x, y, part, penalty="cMCP", family="binomial", 
+                        alpha=0.05)
+fit1.cmcp2 <- cv.grpreg(x, y, part, penalty="cMCP", family="binomial", 
+                        alpha=0.5)
+fit1.cmcp3 <- cv.grpreg(x, y, part, penalty="cMCP", family="binomial", 
+                        alpha=0.95)
+
+fit1.gel1 <- cv.grpreg(x, y, part, penalty="gel", family="binomial", alpha=0.05)
+fit1.gel2 <- cv.grpreg(x, y, part, penalty="gel", family="binomial", alpha=0.5)
+fit1.gel3 <- cv.grpreg(x, y, part, penalty="gel", family="binomial", alpha=0.95)
+
+save(fit1.gren1, file="results/metabolomics_alzheimer_fit1.Rdata")
+
+### cross-validation of performance
 nfolds <- 10
 rest <- n %% nfolds
 foldid <- sample(rep(1:nfolds, times=round(c(rep(
   n %/% nfolds + as.numeric(rest!=0), times=rest),
   rep(n %/% nfolds, times=nfolds - rest)))))
-
 pred1 <- data.frame(ridge=rep(NA, n), grridge=rep(NA, n),
                     gren1=rep(NA, n), gren2=rep(NA, n), gren3=rep(NA, n),
                     enet1=rep(NA, n), enet2=rep(NA, n), enet3=rep(NA, n),
@@ -149,426 +182,106 @@ for(k in 1:nfolds) {
   
 }
 
-lab.platformcode <- c(unique(as.character(feat$Platform))[-c(4, 5)], 
-                      "Oxidative Stress")
-data.frame(family=lab.platformcode, lambdag=cv1.gren1$lambdag$platform, 
-           size=rle(platformcode2)$lengths)
-
-
-
-# 
-# fit1.gren1 <- gren(xtrain, ytrain, partitions=list(platform=part1), alpha=0.05)
-# fit1.gren2 <- gren(xtrain, ytrain, partitions=list(platform=part1), alpha=0.5)
-# fit1.gren3 <- gren(xtrain, ytrain, partitions=list(platform=part1), alpha=0.95)
-# 
-# pred1.gren1 <- predict(fit1.gren1, xtest, type="groupreg",
-#                        s=fit1.gren1$freq.model$groupreg$lambda)
-# pred1.gren2 <- predict(fit1.gren2, xtest, type="groupreg",
-#                        s=fit1.gren2$freq.model$groupreg$lambda)
-# pred1.gren3 <- predict(fit1.gren3, xtest, type="groupreg",
-#                        s=fit1.gren3$freq.model$groupreg$lambda)
-# 
-# pred1.enet1 <- predict(fit1.gren1, xtest, type="regular",
-#                        s=fit1.gren1$freq.model$regular$lambda)
-# pred1.enet2 <- predict(fit1.gren2, xtest, type="regular",
-#                        s=fit1.gren2$freq.model$regular$lambda)
-# pred1.enet3 <- predict(fit1.gren3, xtest, type="regular",
-#                        s=fit1.gren3$freq.model$regular$lambda)
 # 
 # 
 # 
-# psel1.gren1 <- fit1.gren1$freq.model$groupreg$df
-# psel1.gren2 <- fit1.gren2$freq.model$groupreg$df
-# psel1.gren3 <- fit1.gren3$freq.model$groupreg$df
+# path.res <- ifelse(as.character(Sys.info()[1])!="Darwin", "~/EBEN/results/",
+#                    "/Users/magnusmunch/Documents/OneDrive/PhD/EBEN/results/")
+# path.graph <- "/Users/magnusmunch/Documents/OneDrive/PhD/EBEN/graphs/"
+# path.data <- as.character(ifelse(Sys.info()[1]=="Darwin", "/Users/magnusmunch/Documents/OneDrive/PhD/EBEN/data/" , "~/EBEN/data/"))
 # 
-# psel1.enet1 <- fit1.gren1$freq.model$regular$df
-# psel1.enet2 <- fit1.gren2$freq.model$regular$df
-# psel1.enet3 <- fit1.gren3$freq.model$regular$df
+# library(sp)
 # 
-# auc1.gren1 <- apply(pred1.gren1, 2, function(pred) {pROC::roc(ytest, pred)$auc})
-# auc1.gren2 <- apply(pred1.gren2, 2, function(pred) {pROC::roc(ytest, pred)$auc})
-# auc1.gren3 <- apply(pred1.gren3, 2, function(pred) {pROC::roc(ytest, pred)$auc})
+# load(paste(path.res, "gren_metabol_alzheimer_res1.Rdata", sep=""))
+# load(paste(path.data, "ESetMbolCSFPR2.Rdata", sep=""))
+# y <- as.numeric(pData(ESetMbolCSFPR2)$D_diag_name) - 1
 # 
-# auc1.enet1 <- apply(pred1.enet1, 2, function(pred) {pROC::roc(ytest, pred)$auc})
-# auc1.enet2 <- apply(pred1.enet2, 2, function(pred) {pROC::roc(ytest, pred)$auc})
-# auc1.enet3 <- apply(pred1.enet3, 2, function(pred) {pROC::roc(ytest, pred)$auc})
+# auc3.ridge <- pROC::auc(y, results3$pred$ridge)
+# auc3.grridge <- apply(results3$pred$grridge, 2, function(s) {pROC::auc(y, s)})
+# auc3.gren1 <- apply(results3$pred$gren1, 2, function(s) {pROC::auc(y, s)})
+# auc3.gren2 <- apply(results3$pred$gren2, 2, function(s) {pROC::auc(y, s)})
+# auc3.gren3 <- apply(results3$pred$gren3, 2, function(s) {pROC::auc(y, s)})
+# auc3.enet1 <- apply(results3$pred$enet1, 2, function(s) {pROC::auc(y, s)})
+# auc3.enet2 <- apply(results3$pred$enet2, 2, function(s) {pROC::auc(y, s)})
+# auc3.enet3 <- apply(results3$pred$enet3, 2, function(s) {pROC::auc(y, s)})
 # 
-# results1 <- list(idtrain=idtrain,
-#                  pred=list(enet1=pred1.enet1, enet2=pred1.enet2, 
-#                            enet3=pred1.enet3, gren1=pred1.gren1, 
-#                            gren2=pred1.gren2, gren3=pred1.gren3),
-#                  psel=list(enet1=psel1.enet1, enet2=psel1.enet2, 
-#                            enet3=psel1.enet3, gren1=psel1.gren1, 
-#                            gren2=psel1.gren2, gren3=psel1.gren3),
-#                  auc=list(enet1=auc1.enet1, enet2=auc1.enet2, enet3=auc1.enet3, 
-#                           gren1=auc1.gren1, gren2=auc1.gren2, gren3=auc1.gren3))
+# const <- sum((y - mean(y))^2)
+# briers3.ridge <- 1 - sum((y - results3$pred$ridge)^2)/const
+# briers3.grridge <- apply(results3$pred$grridge, 2, function(s) {
+#   1 - sum((y - s)^2)/const})
+# briers3.gren1 <- apply(results3$pred$gren1, 2, function(s) {
+#   1 - sum((y - s)^2)/const})
+# briers3.gren2 <- apply(results3$pred$gren2, 2, function(s) {
+#   1 - sum((y - s)^2)/const})
+# briers3.gren3 <- apply(results3$pred$gren3, 2, function(s) {
+#   1 - sum((y - s)^2)/const})
+# briers3.enet1 <- apply(results3$pred$enet1, 2, function(s) {
+#   1 - sum((y - s)^2)/const})
+# briers3.enet2 <- apply(results3$pred$enet2, 2, function(s) {
+#   1 - sum((y - s)^2)/const})
+# briers3.enet3 <- apply(results3$pred$enet3, 2, function(s) {
+#   1 - sum((y - s)^2)/const})
 # 
-# plot(sort(results1$psel$enet1), results1$auc$enet1[order(results1$psel$enet1)], 
-#      type="l", xlim=range(results1$psel), ylim=range(results1$auc), lty=2,
-#      col=colors[1])
-# lines(sort(results1$psel$enet2), results1$auc$enet2[order(results1$psel$enet2)],
-#       lty=2, col=colors[2])
-# lines(sort(results1$psel$enet3), results1$auc$enet3[order(results1$psel$enet2)],
-#       lty=2, col=colors[3])
+# psel3.grridge <- colMeans(results3$psel$grridge)
+# psel3.gren1 <- colMeans(results3$psel$gren1)
+# psel3.gren2 <- colMeans(results3$psel$gren2)
+# psel3.gren3 <- colMeans(results3$psel$gren3)
+# psel3.enet1 <- colMeans(results3$psel$enet1)
+# psel3.enet2 <- colMeans(results3$psel$enet2)
+# psel3.enet3 <- colMeans(results3$psel$enet3)
 # 
-# lines(sort(results1$psel$gren1), results1$auc$gren1[order(results1$psel$gren1)],
-#      lty=1, col=colors[1])
-# lines(sort(results1$psel$gren2), results1$auc$gren2[order(results1$psel$gren2)],
-#       lty=1, col=colors[2])
-# lines(sort(results1$psel$gren3), results1$auc$gren3[order(results1$psel$gren3)],
-#       lty=1, col=colors[3])
+# colors <- bpy.colors(6)[-c(1, 6)]
+# png(paste(path.graph, "gren_metabol_alzheimer_res1_performance1.png", sep=""),
+#     units="in", width=14, height=6, res=120)
+# par(mfrow=c(1, 2), mar=c(5.1, 5.1, 4.1, 2.1))
 # 
+# # auc
+# ylim <- range(auc3.grridge, auc3.ridge, auc3.gren1, auc3.enet1, auc3.gren2, 
+#               auc3.enet2, auc3.gren3, auc3.enet3)
+# xlim <- range(psel3.grridge, psel3.gren1, psel3.enet1, psel3.gren2, psel3.enet2, 
+#               psel3.gren2, psel3.enet2)
+# plot(psel3.gren1, auc3.gren1, ylim=ylim, xlim=xlim, 
+#      main="a)", xlab="Number of selected features", ylab="AUC", 
+#      cex.axis=1.5, cex.lab=2, cex.main=2, lwd=1.5, col=colors[1], type="l")
+# lines(psel3.enet1, auc3.enet1, lwd=1.5, col=colors[1], lty=2)
 # 
-# #####
-# fit2.gren1 <- gren(xtrain, ytrain, partitions=list(platform=part2), alpha=0.05)
-# fit2.gren2 <- gren(xtrain, ytrain, partitions=list(platform=part2), alpha=0.5)
-# fit2.gren3 <- gren(xtrain, ytrain, partitions=list(platform=part2), alpha=0.95)
+# lines(psel3.gren2, auc3.gren2, lwd=1.5, col=colors[2], lty=1)
+# lines(psel3.enet2, auc3.enet2, lwd=1.5, col=colors[2], lty=2)
 # 
-# pred2.gren1 <- predict(fit2.gren1, xtest, type="groupreg",
-#                        s=fit2.gren1$freq.model$groupreg$lambda)
-# pred2.gren2 <- predict(fit2.gren2, xtest, type="groupreg",
-#                        s=fit2.gren2$freq.model$groupreg$lambda)
-# pred2.gren3 <- predict(fit2.gren3, xtest, type="groupreg",
-#                        s=fit2.gren3$freq.model$groupreg$lambda)
+# lines(psel3.gren3, auc3.gren3, lwd=1.5, col=colors[3], lty=1)
+# lines(psel3.enet3, auc3.enet3, lwd=1.5, col=colors[3], lty=2)
 # 
-# pred2.enet1 <- predict(fit2.gren1, xtest, type="regular",
-#                        s=fit2.gren1$freq.model$regular$lambda)
-# pred2.enet2 <- predict(fit2.gren2, xtest, type="regular",
-#                        s=fit2.gren2$freq.model$regular$lambda)
-# pred2.enet3 <- predict(fit2.gren3, xtest, type="regular",
-#                        s=fit2.gren3$freq.model$regular$lambda)
+# lines(psel3.grridge, auc3.grridge, lwd=1.5, col=colors[4], lty=1)
+# abline(h=auc3.ridge, lwd=1.5, col=colors[4], lty=2)
 # 
-# psel2.gren1 <- fit2.gren1$freq.model$groupreg$df
-# psel2.gren2 <- fit2.gren2$freq.model$groupreg$df
-# psel2.gren3 <- fit2.gren3$freq.model$groupreg$df
+# # Briers
+# ylim <- range(briers3.grridge, briers3.ridge, briers3.gren1, briers3.enet1, 
+#               briers3.gren2, briers3.enet2, briers3.gren3, briers3.enet3)
+# xlim <- range(psel3.grridge, psel3.gren1, psel3.enet1, psel3.gren2, psel3.enet2, 
+#               psel3.gren2, psel3.enet2)
+# plot(psel3.gren1, briers3.gren1, ylim=ylim, xlim=xlim, 
+#      main="b)", xlab="Number of selected features", ylab="Brier skill score", 
+#      cex.axis=1.5, cex.lab=2, cex.main=2, lwd=1.5, col=colors[1], type="l")
+# lines(psel3.enet1, briers3.enet1, lwd=1.5, col=colors[1], lty=2)
 # 
-# psel2.enet1 <- fit2.gren1$freq.model$regular$df
-# psel2.enet2 <- fit2.gren2$freq.model$regular$df
-# psel2.enet3 <- fit2.gren3$freq.model$regular$df
+# lines(psel3.gren2, briers3.gren2, lwd=1.5, col=colors[2], lty=1)
+# lines(psel3.enet2, briers3.enet2, lwd=1.5, col=colors[2], lty=2)
 # 
-# auc2.gren1 <- apply(pred2.gren1, 2, function(pred) {pROC::roc(ytest, pred)$auc})
-# auc2.gren2 <- apply(pred2.gren2, 2, function(pred) {pROC::roc(ytest, pred)$auc})
-# auc2.gren3 <- apply(pred2.gren3, 2, function(pred) {pROC::roc(ytest, pred)$auc})
+# lines(psel3.gren3, briers3.gren3, lwd=1.5, col=colors[3], lty=1)
+# lines(psel3.enet3, briers3.enet3, lwd=1.5, col=colors[3], lty=2)
 # 
-# auc2.enet1 <- apply(pred2.enet1, 2, function(pred) {pROC::roc(ytest, pred)$auc})
-# auc2.enet2 <- apply(pred2.enet2, 2, function(pred) {pROC::roc(ytest, pred)$auc})
-# auc2.enet3 <- apply(pred2.enet3, 2, function(pred) {pROC::roc(ytest, pred)$auc})
+# lines(psel3.grridge, briers3.grridge, lwd=1.5, col=colors[4], lty=1)
+# abline(h=briers3.ridge, lwd=1.5, col=colors[4], lty=2)
 # 
-# results2 <- list(idtrain=idtrain,
-#                  pred=list(enet1=pred2.enet1, enet2=pred2.enet2, 
-#                            enet3=pred2.enet3, gren1=pred2.gren1, 
-#                            gren2=pred2.gren2, gren3=pred2.gren3),
-#                  psel=list(enet1=psel2.enet1, enet2=psel2.enet2, 
-#                            enet3=psel2.enet3, gren1=psel2.gren1, 
-#                            gren2=psel2.gren2, gren3=psel2.gren3),
-#                  auc=list(enet1=auc2.enet1, enet2=auc2.enet2, enet3=auc2.enet3, 
-#                           gren1=auc2.gren1, gren2=auc2.gren2, gren3=auc2.gren3))
-# 
-# plot(sort(results2$psel$enet1), results2$auc$enet1[order(results2$psel$enet1)], 
-#      type="l", xlim=range(results2$psel), ylim=range(results2$auc), lty=2,
-#      col=colors[1])
-# lines(sort(results2$psel$enet2), results2$auc$enet2[order(results2$psel$enet2)],
-#       lty=2, col=colors[2])
-# lines(sort(results2$psel$enet3), results2$auc$enet3[order(results2$psel$enet2)],
-#       lty=2, col=colors[3])
-# 
-# lines(sort(results2$psel$gren1), results2$auc$gren1[order(results2$psel$gren1)],
-#       lty=1, col=colors[1])
-# lines(sort(results2$psel$gren2), results2$auc$gren2[order(results2$psel$gren2)],
-#       lty=1, col=colors[2])
-# lines(sort(results2$psel$gren3), results2$auc$gren3[order(results2$psel$gren3)],
-#       lty=1, col=colors[3])
-
-
-
-
-
-# ####
-# fit3.gren1 <- gren(xtrain, ytrain, partitions=list(RSDqc=part3), alpha=0.05)
-# fit3.gren2 <- gren(xtrain, ytrain, partitions=list(RSDqc=part3), alpha=0.5)
-# fit3.gren3 <- gren(xtrain, ytrain, partitions=list(RSDqc=part3), alpha=0.95)
-# 
-
-
-psel <- c(seq(1, 5, 1), seq(7, 15, 2), seq(20, 40, 5), seq(50, 90, 10), seq(110, 150, 20))
-
-
-set.seed(2018)
-fit3.ridge <- cv.glmnet(x, y, alpha=0, standardize=FALSE)
-invisible(capture.output(fit3.grridge <- grridge(t(x), y, partitions=list(
-  RSDqc=CreatePartition(as.factor(part3))), trace=FALSE, standardizeX=FALSE)))
-fit3.gren1 <- gren(x, y, partitions=list(RSDqc=part3), alpha=0.05, psel=psel,
-                   trace=FALSE)
-fit3.gren2 <- gren(x, y, partitions=list(RSDqc=part3), alpha=0.5, psel=psel,
-                   trace=FALSE)
-fit3.gren3 <- gren(x, y, partitions=list(RSDqc=part3), alpha=0.95, psel=psel,
-                   trace=FALSE)
-fit3.sglasso1 <- SGL(list(x=x, y=y), part3, type="logit", alpha=0.05, 
-                     standardize=FALSE, nlam=length(psel))
-fit3.sglasso2 <- SGL(list(x=x, y=y), part3, type="logit", alpha=0.5, 
-                     standardize=FALSE, nlam=length(psel))
-fit3.sglasso3 <- SGL(list(x=x, y=y), part3, type="logit", alpha=0.95, 
-                     standardize=FALSE, nlam=length(psel))
-fit3.cmcp1 <- grpreg(x, y, part3, penalty="cMCP", alpha=0.05, 
-                     nlambda=length(psel))
-fit3.cmcp2 <- grpreg(x, y, part3, penalty="cMCP", alpha=0.5, 
-                     nlambda=length(psel))
-fit3.cmcp3 <- grpreg(x, y, part3, penalty="cMCP", alpha=0.95, 
-                     nlambda=length(psel))
-
-nfolds <- n
-rest <- n %% nfolds
-foldid <- sample(rep(1:nfolds, times=round(c(rep(
-  n %/% nfolds + as.numeric(rest!=0), times=rest),
-  rep(n %/% nfolds, times=nfolds - rest)))))
-
-pred3 <- list(ridge=numeric(n),
-              grridge=matrix(NA, nrow=n, ncol=length(psel)),
-              enet1=matrix(NA, nrow=n, ncol=length(psel)),
-              enet2=matrix(NA, nrow=n, ncol=length(psel)),
-              enet3=matrix(NA, nrow=n, ncol=length(psel)),
-              gren1=matrix(NA, nrow=n, ncol=length(psel)),
-              gren2=matrix(NA, nrow=n, ncol=length(psel)),
-              gren3=matrix(NA, nrow=n, ncol=length(psel)),
-              sglasso1=vector("list", n),
-              sglasso2=vector("list", n),
-              sglasso3=vector("list", n),
-              cmcp1=vector("list", n),
-              cmcp2=vector("list", n),
-              cmcp3=vector("list", n),
-              gelasso2=vector("list", n),
-              gelasso1=vector("list", n),
-              gelasso3=vector("list", n))
-psel3 <- list(grridge=matrix(NA, nrow=n, ncol=length(psel)),
-              enet1=matrix(NA, nrow=n, ncol=length(psel)),
-              enet2=matrix(NA, nrow=n, ncol=length(psel)),
-              gren1=matrix(NA, nrow=n, ncol=length(psel)),
-              enet3=matrix(NA, nrow=n, ncol=length(psel)),
-              gren2=matrix(NA, nrow=n, ncol=length(psel)),
-              gren3=matrix(NA, nrow=n, ncol=length(psel)),
-              sglasso1=vector("list", n),
-              sglasso2=vector("list", n),
-              sglasso3=vector("list", n),
-              cmcp1=vector("list", n),
-              cmcp2=vector("list", n),
-              cmcp3=vector("list", n),
-              gelasso1=vector("list", n),
-              gelasso2=vector("list", n),
-              gelasso3=vector("list", n))
-
-
-for(k in 1:nfolds) {
-  cat(paste("Fold ", k, "\n"))
-  
-  xtrain <- scale(x[foldid!=k, ])
-  xtest <- scale(matrix(x[foldid==k, ], ncol=p, byrow=TRUE))
-  ytrain <- y[foldid!=k]
-  
-  cv3.ridge <- cv.glmnet(xtrain, ytrain, alpha=0, standardize=FALSE)
-  
-  cv3.grridge <- vector("list", length(psel))
-  invisible(capture.output(
-    cv3.grridge[[1]] <- grridge(t(xtrain), ytrain, partitions=list(
-      RSDqc=CreatePartition(as.factor(part3))), selection=TRUE, maxsel=psel[1],
-      trace=FALSE, standardizeX=FALSE)))
-  for(s in 2:length(psel)) {
-    invisible(capture.output(
-      cv3.grridge[[s]] <- grridge(t(xtrain), ytrain, partitions=list(
-        RSDqc=CreatePartition(as.factor(part3))), selection=TRUE,
-        maxsel=psel[s], optl=cv3.grridge[[1]]$optl, trace=FALSE,
-        standardizeX=FALSE)))
-  }
-  
-  cv3.gren1 <- gren(xtrain, ytrain, partitions=list(RSDqc=part3), alpha=0.05,
-                     psel=psel, trace=FALSE)
-  cv3.gren2 <- gren(xtrain, ytrain, partitions=list(RSDqc=part3), alpha=0.5,
-                     psel=psel, trace=FALSE)
-  cv3.gren3 <- gren(xtrain, ytrain, partitions=list(RSDqc=part3), alpha=0.95,
-                     psel=psel, trace=FALSE)
-  
-  cv3.sglasso1 <- SGL(list(x=xtrain, y=ytrain), part3, type="logit", 
-                       alpha=0.05, standardize=FALSE, nlam=100)
-  cv3.sglasso2 <- SGL(list(x=xtrain, y=ytrain), part3, type="logit", alpha=0.5,
-                       standardize=FALSE, nlam=100)
-  cv3.sglasso3 <- SGL(list(x=xtrain, y=ytrain), part3, type="logit", 
-                       alpha=0.95, standardize=FALSE, nlam=100)
-  
-  cv3.cmcp1 <- grpreg(xtrain, ytrain, part3, penalty="cMCP", alpha=0.05)
-  cv3.cmcp2 <- grpreg(xtrain, ytrain, part3, penalty="cMCP", alpha=0.5)
-  cv3.cmcp3 <- grpreg(xtrain, ytrain, part3, penalty="cMCP", alpha=0.95)
-  
-  cv3.gelasso1 <- grpreg(xtrain, ytrain, part3, penalty="gel", alpha=0.05)
-  cv3.gelasso2 <- grpreg(xtrain, ytrain, part3, penalty="gel", alpha=0.5)
-  cv3.gelasso3 <- grpreg(xtrain, ytrain, part3, penalty="gel", alpha=0.95)
-  
-  # predictions
-  pred3$ridge[foldid==k] <- as.numeric(predict(cv3.ridge, xtest, "lambda.min"))
-  
-  pred3$grridge[foldid==k, ] <- sapply(cv3.grridge, function(s) {
-    predict.grridge(s, t(xtest))[, 3]})
-  
-  pred3$gren1[foldid==k, ] <- predict(cv3.gren1, xtest, type="groupreg",
-                                      s=cv3.gren1$freq.model$groupreg$lambda)
-  pred3$gren2[foldid==k, ] <- predict(cv3.gren2, xtest, type="groupreg",
-                                      s=cv3.gren2$freq.model$groupreg$lambda)
-  pred3$gren3[foldid==k, ] <- predict(cv3.gren3, xtest, type="groupreg",
-                                      s=cv3.gren3$freq.model$groupreg$lambda)
-  
-  pred3$enet1[foldid==k, ] <- predict(cv3.gren1, xtest, type="regular",
-                                      s=cv3.gren1$freq.model$regular$lambda)
-  pred3$enet2[foldid==k, ] <- predict(cv3.gren2, xtest, type="regular",
-                                      s=cv3.gren2$freq.model$regular$lambda)
-  pred3$enet3[foldid==k, ] <- predict(cv3.gren3, xtest, type="regular",
-                                      s=cv3.gren3$freq.model$regular$lambda)
-  
-  pred3$sglasso1[[which(foldid==k)]] <- predictSGL(cv3.sglasso1, xtest)
-  pred3$sglasso2[[which(foldid==k)]] <- predictSGL(cv3.sglasso2, xtest)
-  pred3$sglasso3[[which(foldid==k)]] <- predictSGL(cv3.sglasso3, xtest)
-  
-  pred3$cmcp1[[which(foldid==k)]] <- predict(cv3.cmcp1, xtest)
-  pred3$cmcp2[[which(foldid==k)]] <- predict(cv3.cmcp2, xtest)
-  pred3$cmcp3[[which(foldid==k)]] <- predict(cv3.cmcp3, xtest)
-  
-  pred3$gelasso1[[which(foldid==k)]] <- predict(cv3.gelasso1, xtest)
-  pred3$gelasso2[[which(foldid==k)]] <- predict(cv3.gelasso2, xtest)
-  pred3$gelasso3[[which(foldid==k)]] <- predict(cv3.gelasso3, xtest)
-  
-  # number of selected variables
-  psel3$grridge[foldid==k, ] <- sapply(cv3.grridge, function(s) {
-    length(s$resEN$whichEN)})
-  
-  psel3$gren1[foldid==k, ] <- cv3.gren1$freq.model$groupreg$df
-  psel3$gren2[foldid==k, ] <- cv3.gren2$freq.model$groupreg$df
-  psel3$gren3[foldid==k, ] <- cv3.gren3$freq.model$groupreg$df
-  
-  psel3$enet1[foldid==k, ] <- cv3.gren1$freq.model$regular$df
-  psel3$enet2[foldid==k, ] <- cv3.gren2$freq.model$regular$df
-  psel3$enet3[foldid==k, ] <- cv3.gren3$freq.model$regular$df
-  
-  psel3$sglasso1[[which(foldid==k)]] <- apply(
-    cv3.sglasso1$beta, 2, function(b) {sum(b!=0)})
-  psel3$sglasso2[[which(foldid==k)]] <- apply(
-    cv3.sglasso2$beta, 2, function(b) {sum(b!=0)})
-  psel3$sglasso3[[which(foldid==k)]] <- apply(
-    cv3.sglasso3$beta, 2, function(b) {sum(b!=0)})
-  
-  psel3$cmcp1[[which(foldid==k)]] <- apply(
-    cv3.cmcp1$beta, 2, function(b) {sum(b!=0)})
-  psel3$cmcp2[[which(foldid==k)]] <- apply(
-    cv3.cmcp2$beta, 2, function(b) {sum(b!=0)})
-  psel3$cmcp3[[which(foldid==k)]] <- apply(
-    cv3.cmcp3$beta, 2, function(b) {sum(b!=0)})
-  
-  psel3$gelasso1[[which(foldid==k)]] <- apply(
-    cv3.gelasso1$beta, 2, function(b) {sum(b!=0)})
-  psel3$gelasso2[[which(foldid==k)]] <- apply(
-    cv3.gelasso2$beta, 2, function(b) {sum(b!=0)})
-  psel3$gelasso3[[which(foldid==k)]] <- apply(
-    cv3.gelasso3$beta, 2, function(b) {sum(b!=0)})
-  
-  results3 <- list(pred=pred3, psel=psel3)
-  save(results3, file=paste(path.res, "gren_metabol_alzheimer_res1.Rdata", sep=""))
-}
-
-
-
-path.res <- ifelse(as.character(Sys.info()[1])!="Darwin", "~/EBEN/results/",
-                   "/Users/magnusmunch/Documents/OneDrive/PhD/EBEN/results/")
-path.graph <- "/Users/magnusmunch/Documents/OneDrive/PhD/EBEN/graphs/"
-path.data <- as.character(ifelse(Sys.info()[1]=="Darwin", "/Users/magnusmunch/Documents/OneDrive/PhD/EBEN/data/" , "~/EBEN/data/"))
-
-library(sp)
-
-load(paste(path.res, "gren_metabol_alzheimer_res1.Rdata", sep=""))
-load(paste(path.data, "ESetMbolCSFPR2.Rdata", sep=""))
-y <- as.numeric(pData(ESetMbolCSFPR2)$D_diag_name) - 1
-
-auc3.ridge <- pROC::auc(y, results3$pred$ridge)
-auc3.grridge <- apply(results3$pred$grridge, 2, function(s) {pROC::auc(y, s)})
-auc3.gren1 <- apply(results3$pred$gren1, 2, function(s) {pROC::auc(y, s)})
-auc3.gren2 <- apply(results3$pred$gren2, 2, function(s) {pROC::auc(y, s)})
-auc3.gren3 <- apply(results3$pred$gren3, 2, function(s) {pROC::auc(y, s)})
-auc3.enet1 <- apply(results3$pred$enet1, 2, function(s) {pROC::auc(y, s)})
-auc3.enet2 <- apply(results3$pred$enet2, 2, function(s) {pROC::auc(y, s)})
-auc3.enet3 <- apply(results3$pred$enet3, 2, function(s) {pROC::auc(y, s)})
-
-const <- sum((y - mean(y))^2)
-briers3.ridge <- 1 - sum((y - results3$pred$ridge)^2)/const
-briers3.grridge <- apply(results3$pred$grridge, 2, function(s) {
-  1 - sum((y - s)^2)/const})
-briers3.gren1 <- apply(results3$pred$gren1, 2, function(s) {
-  1 - sum((y - s)^2)/const})
-briers3.gren2 <- apply(results3$pred$gren2, 2, function(s) {
-  1 - sum((y - s)^2)/const})
-briers3.gren3 <- apply(results3$pred$gren3, 2, function(s) {
-  1 - sum((y - s)^2)/const})
-briers3.enet1 <- apply(results3$pred$enet1, 2, function(s) {
-  1 - sum((y - s)^2)/const})
-briers3.enet2 <- apply(results3$pred$enet2, 2, function(s) {
-  1 - sum((y - s)^2)/const})
-briers3.enet3 <- apply(results3$pred$enet3, 2, function(s) {
-  1 - sum((y - s)^2)/const})
-
-psel3.grridge <- colMeans(results3$psel$grridge)
-psel3.gren1 <- colMeans(results3$psel$gren1)
-psel3.gren2 <- colMeans(results3$psel$gren2)
-psel3.gren3 <- colMeans(results3$psel$gren3)
-psel3.enet1 <- colMeans(results3$psel$enet1)
-psel3.enet2 <- colMeans(results3$psel$enet2)
-psel3.enet3 <- colMeans(results3$psel$enet3)
-
-colors <- bpy.colors(6)[-c(1, 6)]
-png(paste(path.graph, "gren_metabol_alzheimer_res1_performance1.png", sep=""),
-    units="in", width=14, height=6, res=120)
-par(mfrow=c(1, 2), mar=c(5.1, 5.1, 4.1, 2.1))
-
-# auc
-ylim <- range(auc3.grridge, auc3.ridge, auc3.gren1, auc3.enet1, auc3.gren2, 
-              auc3.enet2, auc3.gren3, auc3.enet3)
-xlim <- range(psel3.grridge, psel3.gren1, psel3.enet1, psel3.gren2, psel3.enet2, 
-              psel3.gren2, psel3.enet2)
-plot(psel3.gren1, auc3.gren1, ylim=ylim, xlim=xlim, 
-     main="a)", xlab="Number of selected features", ylab="AUC", 
-     cex.axis=1.5, cex.lab=2, cex.main=2, lwd=1.5, col=colors[1], type="l")
-lines(psel3.enet1, auc3.enet1, lwd=1.5, col=colors[1], lty=2)
-
-lines(psel3.gren2, auc3.gren2, lwd=1.5, col=colors[2], lty=1)
-lines(psel3.enet2, auc3.enet2, lwd=1.5, col=colors[2], lty=2)
-
-lines(psel3.gren3, auc3.gren3, lwd=1.5, col=colors[3], lty=1)
-lines(psel3.enet3, auc3.enet3, lwd=1.5, col=colors[3], lty=2)
-
-lines(psel3.grridge, auc3.grridge, lwd=1.5, col=colors[4], lty=1)
-abline(h=auc3.ridge, lwd=1.5, col=colors[4], lty=2)
-
-# Briers
-ylim <- range(briers3.grridge, briers3.ridge, briers3.gren1, briers3.enet1, 
-              briers3.gren2, briers3.enet2, briers3.gren3, briers3.enet3)
-xlim <- range(psel3.grridge, psel3.gren1, psel3.enet1, psel3.gren2, psel3.enet2, 
-              psel3.gren2, psel3.enet2)
-plot(psel3.gren1, briers3.gren1, ylim=ylim, xlim=xlim, 
-     main="b)", xlab="Number of selected features", ylab="Brier skill score", 
-     cex.axis=1.5, cex.lab=2, cex.main=2, lwd=1.5, col=colors[1], type="l")
-lines(psel3.enet1, briers3.enet1, lwd=1.5, col=colors[1], lty=2)
-
-lines(psel3.gren2, briers3.gren2, lwd=1.5, col=colors[2], lty=1)
-lines(psel3.enet2, briers3.enet2, lwd=1.5, col=colors[2], lty=2)
-
-lines(psel3.gren3, briers3.gren3, lwd=1.5, col=colors[3], lty=1)
-lines(psel3.enet3, briers3.enet3, lwd=1.5, col=colors[3], lty=2)
-
-lines(psel3.grridge, briers3.grridge, lwd=1.5, col=colors[4], lty=1)
-abline(h=briers3.ridge, lwd=1.5, col=colors[4], lty=2)
-
-# legend
-leglabels <- c(expression(paste("enet, ", alpha==0.05)),
-               expression(paste("enet, ", alpha==0.5)),
-               expression(paste("enet, ", alpha==0.95)), "ridge",
-               "group-regularized", "not group-regularized")
-legend("bottomleft", legend=leglabels, fill=c(colors, 0, 0),
-       lty=c(rep(NA, 4), 1, 2), lwd=c(rep(NA, 4), 1.5, 1.5),
-       border=c(rep(1, 4), 0, 0), merge=TRUE, seg.len=1, cex=1.3)
-dev.off()
+# # legend
+# leglabels <- c(expression(paste("enet, ", alpha==0.05)),
+#                expression(paste("enet, ", alpha==0.5)),
+#                expression(paste("enet, ", alpha==0.95)), "ridge",
+#                "group-regularized", "not group-regularized")
+# legend("bottomleft", legend=leglabels, fill=c(colors, 0, 0),
+#        lty=c(rep(NA, 4), 1, 2), lwd=c(rep(NA, 4), 1.5, 1.5),
+#        border=c(rep(1, 4), 0, 0), merge=TRUE, seg.len=1, cex=1.3)
+# dev.off()
 
 
 # str(results3$pred$sglasso1)
