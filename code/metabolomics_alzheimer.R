@@ -105,6 +105,9 @@ psel1 <- data.frame(ridge=rep(p, nfolds), grridge=rep(p, nfolds),
                     gel1=rep(NA, nfolds), gel2=rep(NA, nfolds), 
                     gel3=rep(NA, nfolds))
 for(k in 1:nfolds) {
+  set.seed(2018 + k)
+  cat(paste("Fold ", k, "\n"))
+  
   xtrain <- matrix(x[foldid!=k, ], ncol=p)
   xtest <- matrix(x[foldid==k, ], ncol=p)
   ytrain <- y[foldid!=k]
@@ -243,6 +246,9 @@ psel2 <- data.frame(ridge=rep(p, nfolds), grridge=rep(p, nfolds),
                     gel1=rep(NA, nfolds), gel2=rep(NA, nfolds), 
                     gel3=rep(NA, nfolds))
 for(k in 1:nfolds) {
+  set.seed(2018 + k)
+  cat(paste("Fold ", k, "\n"))
+  
   xtrain <- matrix(x[foldid!=k, ], ncol=p)
   xtest <- matrix(x[foldid==k, ], ncol=p)
   ytrain <- y[foldid!=k]
