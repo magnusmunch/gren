@@ -45,3 +45,4 @@
 
 data/*
 !data/ESetMbolCSFPR2.Rdata
+.Rproj.user

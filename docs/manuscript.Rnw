@@ -1,5 +1,5 @@
 \documentclass[a4paper,hidelinks]{article}
-\usepackage{url,bm,algorithm,algpseudocode,mathtools,bbm,pgfplotstable,bm,amsmath,amssymb,amsthm,amsfonts,graphics,graphicx,epsfig,rotating,caption,subcaption,natbib,appendix,titlesec,multicol,hyperref,verbatim,bbm,algorithm,algpseudocode,pgfplotstable,threeparttable, booktabs,mathtools,dsfont,parskip}
+\usepackage{url,bm,algorithm,algpseudocode,bbm,bm,amsmath,amssymb,amsthm,amsfonts,graphics,graphicx,epsfig,rotating,caption,subcaption,natbib,appendix,titlesec,multicol,hyperref,verbatim,bbm,algorithm,algpseudocode,threeparttable, booktabs,dsfont,parskip}
 
 % Add history information for the article if required
 %\history{Received August 1, 2010;
@@ -51,40 +51,40 @@
 \begin{document}
 	
 	\maketitle
-	
+
 	\noindent
-	1. Department of Epidemiology \& Biostatistics, Amsterdam Public Health research institute, VU University Medical Center, PO Box 7057, 1007 MB
-	Amsterdam, The Netherlands\\
-	2. Mathematical Institute, Leiden University, Leiden, The Netherlands \\
-	3. MRC Biostatistics Unit, Cambridge, United Kingdom \\
-	
+	1. Department of Epidemiology \& Biostatistics, Amsterdam Public Health research institute, Amsterdam University medical centers, PO Box 7057, 1007 MB
+	Amsterdam, The Netherlands \\*
+	2. Mathematical Institute, Leiden University, Leiden, The Netherlands \\*
+	3. MRC Biostatistics Unit, Cambridge University, Cambridge, United Kingdom
+
 	\begin{abstract}
 		{In high-dimensional data settings, additional information on the features is often available. Examples of such external information in omics research are: (a) $p$-values from a previous study, (b) a summary of prior information, and (c) omics annotation. The inclusion of this information in the analysis may enhance classification performance and feature selection, but is not straightforward in the standard regression setting. As a solution to this problem, we propose a group-regularized (logistic) elastic net regression method, where each penalty parameter corresponds to a group of features based on the external information. The method, termed \texttt{gren}, makes use of the Bayesian formulation of logistic elastic net regression to estimate both the model and penalty parameters in an approximate empirical-variational Bayes framework. Simulations and an application to a colon cancer microRNA study show that, if the partitioning of the features is informative, classification performance and feature selection are indeed enhanced.}
 	\end{abstract}
 
-	\noindent\textbf{Keywords}: Empirical Bayes; High-dimensional data; Prediction; Variational Bayes 
-	
+	\noindent\textbf{Keywords}: Empirical Bayes; High-dimensional data; Prediction; Variational Bayes
+
 	\noindent\textbf{Software available from}: \url{https://CRAN.R-project.org/package=gren}
-	
+
 	\section{Introduction}
 	Prediction from high-dimensional data is a challenge common to many fields of research. Examples of such high-dimensional prediction problems arise in computer vision, stock market prediction and disease diagnosis from omics data. In this paper, we specifically focus on the latter setting. High dimensionality of data introduces several issues in the estimation of prediction models, especially: (a) unidentifiable models, (b) highly correlated predictor variables and (c) non-trivial variable selection.
-	
+
 	Attempts to tackle one or more of these issues have lead to the development of many prediction methods \cite[]{fan_selective_2010}. Here we will focus on the penalization approach. A well-known and popular penalization method is elastic net regression \cite[]{zou_regularization_2005}, with its special cases ridge regression \cite[]{hoerl_ridge_1970} and lasso regression \cite[]{tibshirani_regression_1996}. The elastic net approach takes issues (a)-(c) into account and has yielded many successful extensions. Recent work on elastic net regression (and its special cases) has focussed on increasing prediction accuracy by the inclusion of prior knowledge on the variables \cite[]{lee_variable_2017,van_de_wiel_better_2016,tai_incorporating_2007}.
-	
-	In omics research, sources of such prior knowledge on the variables are often available. The information can, for example, come in the form of (a) results on the same molecular features obtained in a previous study (e.g. $p$-values), (b) information from a publicly available database that summarizes the prior information on the molecular features involved (e.g., the Cancer Gene Census \cite[]{futreal_census_2004}), and (c) omics annotation (e.g. the location of a gene on the chromosome). Although this information can rarely be directly included in the statistical analysis, it may still be useful and informative for the study at hand. 
-	
-	An example of such a study with extra information available is investigated in Section \ref{sec:app}. INTRODUCE DATA. This problem is not straightforward to solve with the standard methods available in literature. At first sight, such an \textit{a priori} grouping of the features suggests the group lasso \cite[]{meier_group_2008, yuan_model_2006} (or one of its extensions), which penalises and selects features at the group level. There are two limitations to the group lasso: (a) it selects groups as a whole instead of single features and (b) it is not adaptive: the amount of penalization a group receives depends on a `global' penalty parameter common to all groups. Extensions such as the sparse group lasso \cite[]{simon_sparse-group_2013} partly deal with (a), but do not address (b). 
-	
-	A natural way to deal with (b) is through differential penalization: that is, each group of variables receives its own penalty parameter. An apparent issue with this differential penalization is the estimation of the penalty parameters. Naive estimation may be done by cross-validation. However, cross-validation requires re-estimation of the model over a grid of penalty parameters. The size of this grid increases exponentially with the number of penalty parameters. Consequently, it quickly becomes computationally infeasible. We therefore propose an efficient alternative: empirical Bayes estimation of the penalty parameters, which corresponds to hyperparameter estimation in the Bayesian prior framework. Because of the ubiquity of binary outcome data in omics research, we focus on the logistic elastic net. Recently, \cite{zhang_novel_2018} introduced VBVS, a method similar to ours in spirit. Nevertheless, one clear advantage of our method over VBVS is the possibility of adaptive inclusion of external information on the features to aid in prediction and feature selection.
-	
+
+	In omics research, sources of such prior knowledge on the variables are often available. The information can, for example, come in the form of (a) results on the same molecular features obtained in a previous study (e.g. $p$-values), (b) information from a publicly available database that summarizes the prior information on the molecular features involved (e.g., the Cancer Gene Census \cite[]{futreal_census_2004}), and (c) omics annotation (e.g. the location of a gene on the chromosome). Although this information can rarely be directly included in the statistical analysis, it may still be useful and informative for the study at hand.
+
+	An example of such a study with extra information available is investigated in Section \ref{sec:app}. INTRODUCE DATA. This problem is not straightforward to solve with the standard methods available in literature. At first sight, such an \textit{a priori} grouping of the features suggests the group lasso \cite[]{meier_group_2008, yuan_model_2006} (or one of its extensions), which penalises and selects features at the group level. There are two limitations to the group lasso: (a) it selects groups as a whole instead of single features and (b) it is not adaptive: the amount of penalization a group receives depends on a `global' penalty parameter common to all groups. Extensions such as the sparse group lasso \cite[]{simon_sparse-group_2013} partly deal with (a), but do not address (b).
+
+	A natural way to deal with (b) is through differential penalization: that is, each group of variables receives its own penalty parameter. An apparent issue with this differential penalization is the estimation of the penalty parameters. Naive estimation may be done by cross-validation. However, cross-validation requires re-estimation of the model over a grid of penalty parameters. The size of this grid increases exponentially with the number of penalty parameters. Consequently, it quickly becomes computationally infeasible. We therefore propose an efficient alternative: empirical Bayes estimation of the penalty parameters, which corresponds to hyperparameter estimation in the Bayesian prior framework. Because of the ubiquity of binary outcome data in omics research, we focus on the logistic elastic net. Recently, \cite{zhang_novel_2018} introduced VBVS, a method similar to ours in spirit. Nevertheless, one clear advantage of our method over VBVS is the possibility of adaptive inclusion of external information on the features to aid in prediction and feature selection. We would like to emphasize that our method is different from recent developments in grouped penalized regression such as \cite{dondelinger_joint_nodate}, where the grouping is over the observations as opposed to the features 
+
 	In line with the above, our proposed method is (a) subjective: the few remaining tuning parameters may be cross-validated, (b) adaptive: prior information is automatically and subjectively weighed with respect to its informativeness, (c) fast compared to full Bayesian analysis or cross-validation, and (d) requires minimal input by the user: only the data and grouping of the features is required.
-	
+
 	We introduce the Bayesian logistic (generalised) elastic net model in Section \ref{sec:model}. In Section \ref{seq:estimation} we derive a variational approximation to this model and use this novel approximation in the empirical Bayes estimation of multiple, group-specific penalty parameters. In Sections \ref{sec:simulations}, and \ref{sec:app}, we demonstrate the approach in a simulation study and a real data example, respectively. In Section \ref{sec:discussion} we conclude by both discussing some differences and parallels between the proposed method, termed \texttt{gren}, and other methods in the literature.
-	
+
 	\section{Model}\label{sec:model}
 	\subsection{Logistic elastic net regression}\label{sec:logitmodel}
 	In logistic regression the outcome variables are assumed to be binary or sums of $m_i$ disjoint binary Bernoulli trials ($y_i = \sum_{l=1}^{m_i} k_l, k_l \in \{0,1\}$ for $i=1, \dots, n$). The binomial logistic model relates the responses to the $p$-dimensional covariate vectors $\x_i = \begin{bmatrix} x_{i1} & \cdots & x_{ip}\end{bmatrix} \tr$ through $y_i \sim \mathcal{B} \( m_i, \expit ( \x_i\tr \bbeta ) \)$, where $\mathcal{B} (m,\upsilon)$ is the binomial distribution with number of trials $m$ and probability $\upsilon$, and $\expit \( \x_i\tr \bbeta \) = \exp(\x\tr_i \bbeta)/[1 + \exp(\x\tr_i \bbeta)]$. Note that if $m_i=1$ for $i=1, \dots, n$, the model reduces to a binary logistic regression model. Throughout the rest of the paper we assume that the model matrix $\X = \begin{bmatrix} \x_1 & \cdots & \x_n \end{bmatrix}\tr$ is standardized such that $\frac{1}{n}\sum_{i=1}^n x_{ij}=0$ and $\frac{1}{n}\sum_{i=1}^n x_{ij}^2=1$ for $j=1, \dots, p$.
-	
+
 	In elastic net regression, the penalised likelihood is maximised to yield parameter estimates:
 	$$
 	\hat{\bbeta} := \underset{\bbeta}{\argmax} \ell(\y ; \bbeta) - \frac{\lambda_1}{2} \norm{\bbeta}_1 - \frac{\lambda_2}{2} \norm{\bbeta}_2^2,
@@ -93,16 +93,16 @@
 	\begin{equation}\label{eq:elasticnetprior}
 	\beta_j \sim g(\lambda_1,\lambda_2) \cdot \exp\[-\frac{1}{2} (\lambda_1 |\beta_j| + \lambda_2 \beta_j^2)\].
 	\end{equation}
-	Here, $g(\lambda_1,\lambda_2)$ denotes a normalizing constant that is dependent on $\lambda_1$ and $\lambda_2$ (given in Section 2 of the Supplementary Material (SM), along with further details on the elastic net prior). The elastic net combines $L_1$ and $L_2$-norm penalisation such that the model parameters are shrunken towards zero. The $L_1$-norm may set some of the estimates exactly to zero, thus automatically selecting features. The $L_2$-norm ensures that correlated features behave similarly, as one would generally require. We extend the elastic net model to the generalised elastic net to allow for different penalty parameters per group of features. 
-	
+	Here, $g(\lambda_1,\lambda_2)$ denotes a normalizing constant that is dependent on $\lambda_1$ and $\lambda_2$ (given in Section 2 of the Supplementary Material (SM), along with further details on the elastic net prior). The elastic net combines $L_1$ and $L_2$-norm penalisation such that the model parameters are shrunken towards zero. The $L_1$-norm may set some of the estimates exactly to zero, thus automatically selecting features. The $L_2$-norm ensures that correlated features behave similarly, as one would generally require. We extend the elastic net model to the generalised elastic net to allow for different penalty parameters per group of features.
+
 	\subsection{The generalised elastic net}\label{sec:genen}
 	Assume we have a partitioning of the features in $G$ groups, such that each feature belongs to one group. Let $\G(g)$ be the feature index set of group $g$ for $g=1, \dots, G$. To apply differential penalisation we include a group-specific weight $w_g \in \mathbb{R}_{>0}$. The model parameters are now estimated by:
 	\begin{align}
-	\hat{\bbeta} & := \underset{\bbeta}{\argmax} \ell(\y ; \bbeta) - \frac{\lambda_1}{2} \sum_{g=1}^G \sum_{j \in \G(g)} |w_g \cdot \beta_j| - \frac{\lambda_2}{2} \sum_{g=1}^G \sum_{j \in \G(g)}\( w_g \cdot \beta_j\)^2 \label{eq:weightedlik}\\ 
+	\hat{\bbeta} & := \underset{\bbeta}{\argmax} \ell(\y ; \bbeta) - \frac{\lambda_1}{2} \sum_{g=1}^G \sum_{j \in \G(g)} |w_g \cdot \beta_j| - \frac{\lambda_2}{2} \sum_{g=1}^G \sum_{j \in \G(g)}\( w_g \cdot \beta_j\)^2 \label{eq:weightedlik}\\
 	& = \underset{\bbeta}{\argmax} \ell(\y ; \bbeta) -  \frac{\lambda_1}{2} \sum_{g=1}^G \sqrt{\lambda'_g} \sum_{j \in \G(g)} | \beta_j| - \frac{\lambda_2}{2} \sum_{g=1}^G \lambda'_g \sum_{j \in \G(g)} \beta_j^2, \nonumber
 	\end{align}
-	where we wrote $w^2_g = \lambda'_g$ to emphasise that these group-specific weights may be interpreted as penalty multipliers. Throughout the following we assume that the geometric mean of the multipliers, weighted by their respective group sizes, is one, such that the average shrinkage of the model parameters is determined by the `global' $\lambda_1$ and $\lambda_2$. That is, we calibrate the $\lambda'_g$ such that $\prod_{g=1}^G (\lambda'_g)^{|\G(g)|}=1$. The multiplier appears in square root form in the $L_1$-norm term to ensure that penalisation on the parameter level is the same for the $L_1$ and $L_2$-norm terms, as can be seen from the parametrisation in (\ref{eq:weightedlik}). 
-	
+	where we wrote $w^2_g = \lambda'_g$ to emphasise that these group-specific weights may be interpreted as penalty multipliers. Throughout the following we assume that the geometric mean of the multipliers, weighted by their respective group sizes, is one, such that the average shrinkage of the model parameters is determined by the `global' $\lambda_1$ and $\lambda_2$. That is, we calibrate the $\lambda'_g$ such that $\prod_{g=1}^G (\lambda'_g)^{|\G(g)|}=1$. The multiplier appears in square root form in the $L_1$-norm term to ensure that penalisation on the parameter level is the same for the $L_1$ and $L_2$-norm terms, as can be seen from the parametrisation in (\ref{eq:weightedlik}).
+
 	\cite{li_bayesian_2010} show that (\ref{eq:elasticnetprior}) may be written as a computationally more convenient scale mixture of normals, with mixing parameter $\btau = \begin{bmatrix} \tau_1 & \cdots & \tau_p \end{bmatrix} \tr$. Using this result, we write the generalised elastic net model in its Bayesian form as:
 	\begin{subequations}\label{eq:enmodel2}
 		\begin{align}
@@ -111,16 +111,16 @@
 		\btau & \sim \prod_{j=1}^p \mathcal{TG} \left( \frac{1}{2},\frac{8 \lambda_2}{\lambda_1^2}, \left(1,\infty \right) \right).
 		\end{align}
 	\end{subequations}
-	Here, $\mathcal{TG} \( k,\theta,\( x_l,x_u\) \)$ denotes the truncated gamma distribution with shape $k$, scale $\theta$, and domain $\(x_l,x_u\)$. In this Bayesian formulation the penalty parameters in $\blambda = \begin{bmatrix} \lambda_1 & \lambda_2 & \lambda'_1 & \cdots & \lambda'_G \end{bmatrix} \tr$ play the role of the hyperparameters in a Bayesian hierarchical model.
-	
+	Here, $\mathcal{TG} \( k,\theta,\( x_l,x_u\) \)$ denotes the truncated gamma distribution with shape $k$, scale $\theta$, and domain $\(x_l,x_u\)$. In this Bayesian formulation the penalty parameters $\blambda = \begin{bmatrix} \lambda_1 & \lambda_2 & \lambda'_1 & \cdots & \lambda'_G \end{bmatrix} \tr$ play the role of the hyperparameters in a Bayesian hierarchical model.
+
 	\section{Estimation}\label{seq:estimation}
 	\subsection{Empirical Bayes}\label{seq:empiricalbayes}
-	If the penalty parameters are known, estimation of the frequentist elastic net model parameters or finding the posterior of the generalized elastic net model is feasible with small adjustments of the available algorithms \cite[]{friedman_regularization_2010,zou_regularization_2005} or MCMC samplers \cite[]{li_bayesian_2010}. Determining these penalty parameters, however, is not straightforward. 
-	
-	In the frequentist elastic net without group-wise penalisation, two main strategies are used: (i) estimate both $\lambda_1$ and $\lambda_2$ by cross-validation over a two-dimensional grid of values or (ii) re-parametrise the problem in terms of penalty parameters $\alpha= \frac{\lambda_1}{2 \lambda_2 + \lambda_1}$ and $\lambda = 2 \lambda_2 + \lambda_1$, fix the proportion of $L_1$-norm penalty $\alpha$ and cross-validate the global penalty parameter $\lambda$. Strategy (i) is advised by \cite{waldron_optimized_2011}, while (ii) is proposed by \cite{friedman_regularization_2010}. In the generalised elastic net setting, strategies (i) and (ii) imply $2 + G$ and $1 + G$ penalty parameters, respectively. $K$-fold cross validation over $D$ values then results in $K \cdot D^{2 + G}$ and $K \cdot D^{1 + G}$ models to estimate. Typically $K$ is set to 5, 10, or to the number of samples $n$, while $D$ is in the order of $100$, so that even for small $G$, the number of models to estimate is prohibitively large. 
-	
+	If the penalty parameters are known, estimation of the frequentist elastic net model parameters or finding the posterior of the generalized elastic net model is feasible with small adjustments of the available algorithms \cite[]{friedman_regularization_2010,zou_regularization_2005} or MCMC samplers \cite[]{li_bayesian_2010}. Determining these penalty parameters, however, is not straightforward.
+
+	In the frequentist elastic net without group-wise penalisation, two main strategies are used: (i) estimate both $\lambda_1$ and $\lambda_2$ by cross-validation over a two-dimensional grid of values or (ii) re-parametrise the problem in terms of penalty parameters $\alpha= \frac{\lambda_1}{2 \lambda_2 + \lambda_1}$ and $\lambda = 2 \lambda_2 + \lambda_1$, fix the proportion of $L_1$-norm penalty $\alpha$ and cross-validate the global penalty parameter $\lambda$. Strategy (i) is advised by \cite{waldron_optimized_2011}, while (ii) is proposed by \cite{friedman_regularization_2010}. In the generalised elastic net setting, strategies (i) and (ii) imply $2 + G$ and $1 + G$ penalty parameters, respectively. $K$-fold cross validation over $D$ values then results in $K \cdot D^{2 + G}$ and $K \cdot D^{1 + G}$ models to estimate. Typically $K$ is set to 5, 10, or to the number of samples $n$, while $D$ is in the order of $100$, so that even for small $G$, the number of models to estimate is prohibitively large.
+
 	In the Bayesian framework, estimation of penalty parameters may be avoided by the addition of a hyperprior to the model hierarchy. The hyperprior takes the uncertainty in the penalty parameters into account by integrating over them. This approach introduces two issues. Firstly, the choice of hyperprior is not straightforward. Many authors suggest a hyperprior from the gamma family of distributions \cite[]{alhamzawi_bayesian_2017,mallick_bayesian_2013,kyung_penalized_2010}, but the precise parametrisation of this gamma prior is not so obvious. A second issue is the loss of correspondence between the  Bayesian and frequentist elastic net. If the ultimate goal is feature selection, this correspondence may be exploited through the automatic feature selection property of the frequentist elastic net. Endowing the penalty parameters with a hyperprior obstructs their point estimation and, consequently, impedes automatic feature selection. Therefore, to circumvent the problem of hyperprior choice and allow for feature selection by the frequentist elastic net, we propose to estimate the penalty parameters by empirical Bayes.
-	
+
 	Many forms of empirical Bayes exist, the most formal one being maximisation of the marginal likelihood with respect to the hyperparameters. The resulting hyperparameter estimates are then plugged into the prior. The marginal likelihood is often introduced as a measure of model evidence given the observed data and is computed by integrating the product of likelihood and prior with respect to the model parameters. In the case of the elastic net introduced in (\ref{eq:enmodel2}) this results in the following marginal empirical Bayes posterior for $\bbeta$:
 	\begin{align}
 	p_{\hat{\blambda}}(\bbeta | \y) & = \frac{\L (\y ; \bbeta) \pi_{\hat{\blambda}} (\bbeta) }{p_{\hat{\blambda}}(\y)} = \frac{\int_{\btau} \L (\y ; \bbeta) \pi_{\hat{\blambda}}(\bbeta | \btau) \pi_{\hat{\blambda}}(\btau) \, d\btau}{p_{\hat{\blambda}}(\y)}, \nonumber \\
@@ -132,10 +132,10 @@
 	\blambda^{(k + 1)} = \underset{\blambda}{\argmax} \E_{\bbeta, \btau | \y} \[ \log \L_{\blambda}(\y, \bbeta, \btau) | \blambda^{(k)} \]
 	\end{equation}
 	converges to a local maximum of the marginal likelihood. The difficulty herein is in the calculation of the expected joint log likelihood. \cite{casella_empirical_2001} suggests to approximate the expectation by its Monte Carlo expectation. Although elegant and simple, this method requires a converged MCMC sample from the posterior for every iteration: a computationally intensive procedure. \cite{roy_selection_2017} introduce generalised importance sampling for the Bayesian elastic net, such that we just need a limited, pre-specified number of MCMC chains. However, this still requires several converged chains, so is not feasible in many high-dimensional omics settings. We propose to tackle this problem by approximating the expectation in (\ref{eq:ebEM}) using variational Bayes.
-	
+
 	\subsection{Variational Bayes}\label{sec:variationalbayes}
 	Variational Bayes is a widely used method to approximate Bayesian posteriors. It has successfully been applied in a wide range of applications, including genetic association studies \cite[]{carbonetto_scalable_2012} and gene network reconstruction \cite[]{leday_gene_2017}. In variational Bayes, the posterior is approximated by a tractable form and estimated by optimizing a lower bound on the marginal likelihood of this model (see Section 3 of the SM for the lower bound of the proposed model). For an extensive introduction and concise review, see \cite{beal_variational_2003} and \cite{blei_variational_2017}, respectively.
-	
+
 	To simplify the computations of our variational approximation, we follow \cite{polson_bayesian_2013} and introduce latent variables $\omega_i$, for $i=1, \dots, n$. Conditional on $\bbeta$, the $\omega_i$ are independent of the $y_i$ and P\'{o}lya-Gamma distributed (see Section 4 of the SM for more details). We augment Model (\ref{eq:enmodel2}) with:
 	\begin{equation}\label{eq:logmodel}
 	\bomega | \bbeta \sim \prod_{i=1}^n \mathcal{PG}\(m_i, |\x_i \tr \bbeta| \).
@@ -145,25 +145,25 @@
 	p (\bomega, \bbeta, \btau | \y) \approx Q(\bomega, \bbeta, \btau) = q_{\bomega} (\bomega) q_{\bbeta} (\bbeta) q_{\btau} (\btau).
 	\end{equation}
 	Writing $\btheta_1 = \bomega$, $\btheta_2 = \bbeta$, $\btheta_3 = \btau$, and $\btheta = \begin{bmatrix} \btheta_1 & \btheta_2 & \btheta_3 \end{bmatrix}$, calculus of variations gives the optimal distributions $q^*_{\btheta_j} (\btheta_j) \propto \exp \{\E_{\btheta \backslash \btheta_j} [\log p (\btheta | \y)]\}$, where optimality is achieved in terms of the Kullback-Leibler divergence of the posterior to the approximate distribution \cite[]{neal_view_1998}. The approximation in (\ref{eq:varbayesapproximation}) renders both the posterior parameter calculations and the expected joint log likelihood as introduced in (\ref{eq:ebEM}) tractable.
-	
+
 	After a change of variables $\psi_j = \tau_j - 1$, we find the optimal distributions in our variational Bayes implementation for the model parameters as:
 	\begin{equation}\label{eq:varbayesdistr}
-	q^*_{\bbeta} (\bbeta) \sim \mathcal{N} (\bmu, \bSigma) \text{, } q^*_{\bomega} (\bomega) \sim \prod_{i=1}^n \mathcal{PG} (m_i, c_i)\text{, and } q^*_{\bpsi}(\bpsi) \sim \prod_{j=1}^p \mathcal{GIG} \(\frac{1}{2}, \frac{\lambda_1^2}{4 \lambda_2}, \chi_j\), 
+	q^*_{\bbeta} (\bbeta) \sim \mathcal{N} (\bmu, \bSigma) \text{, } q^*_{\bomega} (\bomega) \sim \prod_{i=1}^n \mathcal{PG} (m_i, c_i)\text{, and } q^*_{\bpsi}(\bpsi) \sim \prod_{j=1}^p \mathcal{GIG} \(\frac{1}{2}, \frac{\lambda_1^2}{4 \lambda_2}, \chi_j\),
 	\end{equation}
 	where $\mathcal{GIG} (\cdot)$ denotes the generalized inverse Gaussian distribution (See SM Section 5 for the derivations). The so-called variational parameters in (\ref{eq:varbayesdistr}) contain cyclic dependencies, so we update them by:
 	\begin{subequations}\label{eq:VBupdateequations}
 		\begin{align}
 		\bSigma^{(t + 1)} &= \( \X \tr \bOmega^{(t)} \X + \lambda_2 \bLambda' + \frac{\lambda_1 \sqrt{\lambda_2}}{2} \bLambda' \Z^{(t)}\)^{-1}, \\ & \text{with } \bOmega^{(t)} = \diag\[ \(\frac{m_i}{2 c_i^{(t)}}\) \tanh \( \frac{c_i^{(t)}}{2} \)\] \text{ and } \Z^{(t)}=\diag\[(\chi_j^{(t)})^{-1/2}\], \nonumber \\
-		\bmu^{(t + 1)} &= \bSigma^{(t + 1)} \X \tr (\y - \m/2), \\ 
+		\bmu^{(t + 1)} &= \bSigma^{(t + 1)} \X \tr (\y - \m/2), \\
 		c_i^{(t + 1)} &= \sqrt{\x_i \tr \bSigma^{(t + 1)} \x_i + (\x_i \tr \bmu^{(t + 1)})^2} \text{, for } i=1, \dots, n, \\
 		\chi_j^{(t + 1)} &= \lambda'_{g(j)} \lambda_2 \[\bSigma^{(t + 1)}_{jj} + (\bmu^{(t + 1)}_j)^2 \] \text{, for } j=1, \dots, p,
 		\end{align}
 	\end{subequations}
 	until convergence. Here, $\bLambda'$ is a diagonal matrix with entries $\lambda'_g$, each repeated $|\G(g)|$ times and $\m = \begin{bmatrix} m_1 & \cdots & m_n \end{bmatrix} \tr$. Furthermore, $\mathbf{A}_{jj}$ and $\mathbf{a}_j$ denote the $j$th diagonal element of a square matrix and $j$th element of a column vector, respectively. Naive calculation of the variational parameters is computationally expensive. In Section 6 of the SM we show that informed calculation of the parameters results in a significant reduction of computational complexity.
-	
+
 	\subsection{Empirical-variational Bayes}\label{seq:empvarbayes}
 	Variational Bayes was shown to underestimate the posterior variance of the parameters, both numerically and theoretically, in several settings \cite[]{rue_approximate_2009,consonni_mean-field_2007,bishop_pattern_2006,wang_inadequacy_2005}. This coincides with our experience that the global penalty parameters $\lambda_1$ and $\lambda_2$ tend to be overestimated. To prevent overestimation we use the parametrisation of the elastic net in \cite{friedman_regularization_2010} as introduced in Section \ref{seq:empiricalbayes}: we fix $\alpha$ and estimate $\lambda$ by cross-validation of the regular elastic net model, such that the overall penalisation is determined by cross-validation of only $\lambda$. By combining cross-validation of the global penalty parameter $\lambda$ with empirical Bayes estimation of the penalty multipliers $\blambda' = \begin{bmatrix} \lambda'_1 & \cdots & \lambda'_G \end{bmatrix} \tr$, the estimation is more robust to underestimation of the variational posterior variances. The remaining issue is the choice of $\alpha$. \cite{hastie_glmnet_2016} recommend to either fix $\alpha$ \textit{a priori}, or compare the results for several choices of $\alpha$. We recommend the latter. Otherwise we note that, in our experience, the choice $\alpha=0.5$ often gives good results.
-	
+
 	For estimating the penalty multipliers, the intractable posterior expectation in (\ref{eq:ebEM}) is approximated by the variational posterior:
 	$$
 	\E_{Q} \[ \log \L_{\blambda'}(\y, \bomega, \bbeta, \btau) | \blambda'^{(k)} \] = \frac{1}{2} \sum_{g=1}^G |\G(g)| \log (\lambda'_g) - \frac{(1 - \alpha) \lambda}{4} \sum_{g=1}^G \lambda'_g d^{(k)}_g + C,
@@ -176,104 +176,58 @@
 		\end{align}
 	\end{subequations}
 	Although the solution to (\ref{eq:mmlupdateequation}) is not available in closed form, this convex problem is easily solved by a numerical optimisation routine. The full procedure is summarized in Section 8 of the SM.
-	
+
 	\subsection{Feature selection}
 	Feature selection is often desirable in high-dimensional prediction problems and omics data problems are no exception. A selection of biomarkers may lead to a large cost reduction by supporting targeted assays. Bayesian feature selection is often done by inspection of posterior credible intervals. Similarly as in frequentist hypothesis testing, we may select a feature if zero is not contained in the credible interval. However, the Bayesian lasso's credible intervals (a special case of the elastic net) are known to suffer from low frequentist coverage in sparse settings \cite[]{castillo_bayesian_2015}. We often assume sparsity of the features in omics research, so selection by credible intervals is generally inconsistent. We therefore propose to select features in the frequentist paradigm.
-	
+
 	As shortly touched upon in Section \ref{seq:empiricalbayes}, frequentist feature selection is trivial after estimation of the penalty multipliers. We simply plug the estimated penalty parameters into some frequentist elastic net algorithm that allows for differential penalization. In our own package \texttt{gren}, we use the \texttt{R}-package \texttt{glmnet} \cite[]{friedman_regularization_2010}. In the frequentist elastic net, feature selection is then done automatically. Furthermore, to select a specific number of features, we simply adjust the global $\lambda$ until we select the desired number of features.
-	
+
 	\section{Simulations}\label{sec:simulations}
 	\subsection{Setup}\label{sec:setup}
 	To assess variable selection and predictive performance we conduct a simulation study in which we compare \texttt{gren} to the regular elastic net and ridge models, \texttt{GRridge} \cite[]{van_de_wiel_better_2016}, sparse group lasso (\texttt{SGL}) \cite[]{simon_sparse-group_2013}, group mimimax concave penalty (\texttt{grMCP}) \cite[]{breheny_penalized_2009}, and the group exponential lasso (\texttt{gel}) \cite[]{breheny_group_2015}. \texttt{GRridge} is similar to \texttt{gren} in the sense that it estimates group-specific penalty multipliers. The two main differences with \texttt{gren} are (i) the absence of an $L_1$-norm penalty and (ii) the estimation procedure. The other methods are extensions of the group lasso \cite[]{meier_group_2008, yuan_model_2006} and not adaptive on the group level. In contrast to the original group lasso, all of them are able to select single features, instead of just on the group level.
-	
+
 	For the regular elastic net, \texttt{gren}, \texttt{SGL}, \texttt{grMCP}, and \texttt{gel}, we fix the proportion of $L_1$-norm penalty to three different values: $\alpha \in \{0.05, 0.5, 0.95 \}$. The first setting closely resembles the ridge setting, where $\alpha=0$, while the third setting is similar to the lasso with $\alpha=1$. For the methods that do automatic variable selection (all methods except the regular ridge and \texttt{GRridge}), we estimate the models for a range of model sizes.
-	
+
 	Predictive performance is measured by area under the receiver operator curve (AUC) and Brier skill score (BSS). AUC gives the area under the curve of sensitivity versus $1-$ specificity and equals the probability that the classifier ranks a randomly chosen case higher than a randomly chosen non-case. The BSS is a normalised version of the Brier score: $\text{BSS} = 1 - \frac{\sum_{i=1}^n (y_i - \hat{y}_i)^2}{\sum_{i=1}^n (y_i - \bar{y})^2}$,
 	where $\hat{y}_i=\expit(\x_i \tr \hat{\bbeta})$ is the prediction for observation $i$ and $\bar{y}=n^{-1} \sum_{i=1}^n y_i$. The BSS measures the fraction of Brier score improvement compared to a non-informative model. Quality of feature selection is assessed by Cohen's kappa \cite[]{cohen_coefficient_1960} and parameter estimation by mean squared error (MSE). Both are presented in SM Section 10.
-	
-	We simulated data according to five different scenarios: 
+
+	We simulated data according to five different scenarios:
 	\begin{enumerate}
 		\item differential signal between the groups and uniformly distributed model parameters,
 		\item a large number of small groups of features,
-		\item no differential signal between the groups, but strong correlations within groups of features, 
+		\item no differential signal between the groups, but strong correlations within groups of features,
 		\item differential signal between the groups and heavy-tailed distributed model parameters, and
 		\item a very sparse setting with no signal in some of the groups.
 	\end{enumerate}
-	Full descriptions of the scenarios are given in Section 10 of the SM. In the first scenario, the distribution of the model parameters is far off from the assumed ridge/elastic net/lasso distributions, so we assume that all methods will underperform. In the second scenario, we expect \texttt{gren} and \textt{GRridge} to overfit due to the large number of hyperparameters to estimate. The rest of the methods are conjectured to perform better, due to a lack of overfitting. In scenario three, we expect all methods to perform badly due to the high correlation between the features. In scenario three
-	
-	
-	
+	Full descriptions of the scenarios are given in Section 10 of the SM. In the first scenario, the distribution of the model parameters is far off from the assumed ridge/elastic net/lasso distributions, so we assume that all methods will underperform. In the second scenario, we expect \texttt{gren} and \texttt{GRridge} to overfit due to the large number of hyperparameters to estimate. The rest of the methods are conjectured to perform better, due to a lack of overfitting. In scenario three, we expect all methods to perform badly due to the high correlation between the features. In scenario three
+
 	In all scenarios we created a training set of $n=100$ samples to estimate the models and a test set of $n_{\text{test}}=1000$ samples on which we compute the performance measures. The features $\x_i$, $i=1, \dots, n$, are sampled from a $p$-dimensional Gaussian distribution centred at zero, where we set $p=1000$. We let the covariance matrix of the features vary over the scenarios. Likewise for the model parameters $\beta_j$, $j=1, \dots, p$. We simulate the outcome data $y_i$, $i=1, \dots, n$, from a binary logistic model: $y_i \sim \mathcal{B}(1, \expit (\x_i \tr \bbeta))$. To mitigate the influence of random variation in the simulations, we repeated every scenario 100 times and report estimated penalty parameters and LOESS smoothed averages of the performance measures for a range of model sizes.
 
-	 The results of this simulation are presented in Figures \ref{fig:sim1_performance1_set1}-\ref{fig:sim1_performance1_set3}.
-	\begin{figure}[!h]
-		\centering
-		\includegraphics[width=1\linewidth]{gren_sim1_res1_performance1_set1.png}
-		\caption{LOESS fit of (a) Cohen's kappa, (b) MSE, (c) AUC, and (d) BSS for ridge, \texttt{GRridge}, elastic net, \texttt{gren}, \texttt{SGL}, \texttt{grMCP}, and \texttt{gel} with $\alpha=0.05$ based on simulation scenario 1.}
-		\label{fig:sim1_performance1_set1}
-	\end{figure}
-
-	\begin{figure}[!h]
-		\centering
-		\includegraphics[width=1\linewidth]{gren_sim1_res1_performance1_set2.png}
-		\caption{LOESS fit of (a) Cohen's kappa, (b) MSE, (c) AUC, and (d) BSS for ridge, \texttt{GRridge}, elastic net, \texttt{gren}, \texttt{SGL}, \texttt{grMCP}, and \texttt{gel} with $\alpha=0.5$ based on simulation scenario 1.}
-		\label{fig:sim1_performance1_set2}
-	\end{figure}
-
-	\begin{figure}[!h]
-		\centering
-		\includegraphics[width=1\linewidth]{gren_sim1_res1_performance1_set3.png}
-		\caption{LOESS fit of (a) Cohen's kappa, (b) MSE, (c) AUC, and (d) BSS for ridge, \texttt{GRridge}, elastic net, \texttt{gren}, \texttt{SGL}, \texttt{grMCP}, and \texttt{gel} with $\alpha=0.95$ based on simulation scenario 1.}
-		\label{fig:sim1_performance1_set3}
-	\end{figure}
-	
-	The results of this simulation 1 are presented in Figures \ref{fig:sim4_performance1_set1}-\ref{fig:sim4_performance1_set3}.
-	\begin{figure}[!h]
-		\centering
-		\includegraphics[width=1\linewidth]{gren_sim4_res1_performance1_set1.png}
-		\caption{LOESS fit of (a) Cohen's kappa, (b) MSE, (c) AUC, and (d) BSS for ridge, \texttt{GRridge}, elastic net, \texttt{gren}, \texttt{SGL}, \texttt{grMCP}, and \texttt{gel} with $\alpha=0.05$ based on simulation scenario 4.}
-		\label{fig:sim4_performance1_set1}
-	\end{figure}
-	
-	\begin{figure}[!h]
-		\centering
-		\includegraphics[width=1\linewidth]{gren_sim4_res1_performance1_set2.png}
-		\caption{LOESS fit of (a) Cohen's kappa, (b) MSE, (c) AUC, and (d) BSS for ridge, \texttt{GRridge}, elastic net, \texttt{gren}, \texttt{SGL}, \texttt{grMCP}, and \texttt{gel} with $\alpha=0.5$ based on simulation scenario 4.}
-		\label{fig:sim4_performance1_set2}
-	\end{figure}
-	
-	\begin{figure}[!h]
-		\centering
-		\includegraphics[width=1\linewidth]{gren_sim4_res1_performance1_set3.png}
-		\caption{LOESS fit of (a) Cohen's kappa, (b) MSE, (c) AUC, and (d) BSS for ridge, \texttt{GRridge}, elastic net, \texttt{gren}, \texttt{SGL}, \texttt{grMCP}, and \texttt{gel} with $\alpha=0.95$ based on simulation scenario 4.}
-		\label{fig:sim4_performance1_set3}
-	\end{figure}
-	
 	\subsection{Results}\label{sec:results}
-	
+
 	\section{Application}\label{sec:app}
-	
+
 	\section{Discussion}\label{sec:discussion}
 	In a taxonomy of Bayesian methods, the proposed method may be considered a local shrinkage model, as opposed to the global-local shrinkage priors that \cite{polson_local_2012,bernardo_shrink_2011} discuss. They characterise certain desirable properties of these global-local shrinkage priors in high dimensions, which, for example, the horseshoe possesses \cite[]{carvalho_horseshoe_2010,carvalho_handling_2009}. In our case, global shrinkage would imply adding another hyperprior for the global $\lambda_1$ and $\lambda_2$ (or $\alpha$ and $\lambda$) hyperparameters. We argue however, that if the groups are informative, the empirical Bayes estimation of the (semi-)global shrinkage parameters $\lambda'_g$ may be more beneficial than full Bayes shrinkage of the global penalty parameters, because the latter does not use any known structure to model the variability in the hyperparameters. Nonetheless, an interesting direction of future research is the extension of the group-regularized elastic net to a group-regularized horseshoe model, since the horseshoe has been shown to handle sparsity well and render better coverage of credibility intervals than lasso-type priors \cite[]{van_der_pas_horseshoe_2014}.
-	
+
 	Although our method can be considered weakly adaptive, it is different from the adaptive lasso \cite[]{van_de_geer_adaptive_2011,huang_adaptive_2008,zhang_adaptive_2007,zou_adaptive_2006} and adaptive elastic net \cite[]{zou_adaptive_2009} in the sense that it adapts to external information rather than to the data. It also differs in the scale of adaptation: in the adaptive lasso and elastic net the adaptive weights are feature specific, while in our case they are estimated on the group level, rendering the adaptation more robust. As can be seen from the simulations and real data example in Sections \ref{sec:simulations} and \ref{sec:app}, adaptation to external data may be beneficial for prediction and feature selection. We believe that this is due to the `borrowing of information' effect: estimates that are believed to be similar are shrunken in the same way, yielding overall, better estimates.
-	
+
 	Another obvious comparison is to the group lasso \cite[]{meier_group_2008,yuan_model_2006}. Although it is similar in the sense that it shrinks on the group level, the group lasso is built upon an entirely different philosophy: it sets whole groups of features to zero. The intended application of such a group-wise penalty is to small interpretable groups of features, like, for example, dummies of a categorical variable. Another difference between \texttt{gren} and the group lasso is the number of penalty parameters. \texttt{gren} estimates one parameter per group, while the group lasso estimates one overall penalty parameter; it is thereby less flexible in differential shrinkage of the parameters. In addition, in the simulations and data applications of \cite{van_de_wiel_better_2016}, group lasso prediction performed inferior to \texttt{GRridge} prediction.
-	
+
 	A possible weak point of the proposed method is the double EM loop. The double loop increases the chance of ending up in a local optimum. In the application discussed above we investigated the occurrence of multiple optima, but never encountered them. This does not guarantee that local optima do not occur, but it provides some evidence that local optima are not ubiquitous. Local optima can often be avoided by an informed choice of starting values. In our experience, reasonable starting values are obtained by running a group-regularized ridge regression and using the estimated penalty multipliers as starting values for \texttt{gren}. In addition, we note that even a local optimum might give `good enough' predictions in many practical settings.
-	
+
 	\section*{Software}
 	The method is available as an \texttt{R} package from \url{https://CRAN.R-project.org/package=gren}.
-	
+
 	\section*{Supplementary Material}
 	Supplementary Material is available online from \url{http://pub.math.leidenuniv.nl/~munchmm/}.
-	
+
 	\section*{Acknowledgements}
 	\textit{Conflict of Interest}: None declared.
-	
+
 	\section*{Funding}
 	This research has received funding from the European Research Council under ERC Grant Agreement 320637.
-	
+
 	\bibliographystyle{author_short3.bst}
 	\bibliography{refs}
 	
