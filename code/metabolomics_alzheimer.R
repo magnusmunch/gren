@@ -58,9 +58,9 @@ part <- platformcode
 n <- nrow(x)
 p <- ncol(x)
 
-fit1.gren1 <- gren(x, y, partitions=list(part=part), alpha=0.05)
-fit1.gren2 <- gren(x, y, partitions=list(part=part), alpha=0.5)
-fit1.gren3 <- gren(x, y, partitions=list(part=part), alpha=0.95)
+fit1.gren1 <- gren(x, y, partitions=list(part=part), alpha=0.05, trace=FALSE)
+fit1.gren2 <- gren(x, y, partitions=list(part=part), alpha=0.5, trace=FALSE)
+fit1.gren3 <- gren(x, y, partitions=list(part=part), alpha=0.95, trace=FALSE)
 
 fit1.grridge <- grridge(t(x), y, list(part=split(1:p, part)))
 fit1.sgl1 <- cvSGL(list(x=x, y=y), part, type="logit", alpha=0.05)
@@ -114,9 +114,12 @@ for(k in 1:nfolds) {
   ytest <- y[foldid==k]
   
   ### fit methods
-  cv1.gren1 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.05)
-  cv1.gren2 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.5)
-  cv1.gren3 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.95)
+  cv1.gren1 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.05, 
+                    trace=FALSE)
+  cv1.gren2 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.5, 
+                    trace=FALSE)
+  cv1.gren3 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.95, 
+                    trace=FALSE)
   
   cv1.grridge <- grridge(t(xtrain), ytrain, list(part=split(1:p, part)))
   cv1.sgl1 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.05)
@@ -199,9 +202,9 @@ part <- quality
 n <- nrow(x)
 p <- ncol(x)
 
-fit2.gren1 <- gren(x, y, partitions=list(part=part), alpha=0.05)
-fit2.gren2 <- gren(x, y, partitions=list(part=part), alpha=0.5)
-fit2.gren3 <- gren(x, y, partitions=list(part=part), alpha=0.95)
+fit2.gren1 <- gren(x, y, partitions=list(part=part), alpha=0.05, trace=FALSE)
+fit2.gren2 <- gren(x, y, partitions=list(part=part), alpha=0.5, trace=FALSE)
+fit2.gren3 <- gren(x, y, partitions=list(part=part), alpha=0.95, trace=FALSE)
 
 fit2.grridge <- grridge(t(x), y, list(part=split(1:p, part)))
 fit2.sgl1 <- cvSGL(list(x=x, y=y), part, type="logit", alpha=0.05)
@@ -255,9 +258,12 @@ for(k in 1:nfolds) {
   ytest <- y[foldid==k]
   
   ### fit methods
-  cv2.gren1 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.05)
-  cv2.gren2 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.5)
-  cv2.gren3 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.95)
+  cv2.gren1 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.05, 
+                    trace=FALSE)
+  cv2.gren2 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.5, 
+                    trace=FALSE)
+  cv2.gren3 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.95, 
+                    trace=FALSE)
   
   cv2.grridge <- grridge(t(xtrain), ytrain, list(part=split(1:p, part)))
   cv2.sgl1 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.05)
