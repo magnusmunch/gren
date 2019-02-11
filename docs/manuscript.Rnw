@@ -1,5 +1,7 @@
 \documentclass[a4paper,hidelinks]{article}
-\usepackage{url,bm,algorithm,algpseudocode,bbm,bm,amsmath,amssymb,amsthm,amsfonts,graphics,graphicx,epsfig,rotating,caption,subcaption,natbib,appendix,titlesec,multicol,hyperref,verbatim,bbm,algorithm,algpseudocode,threeparttable, booktabs,dsfont,parskip}
+\usepackage{url,bm,algorithm,algpseudocode,bbm,amsmath,amssymb,amsthm,
+amsfonts,graphics,graphicx,epsfig,rotating,caption,subcaption,natbib,appendix,
+titlesec,multicol,hyperref,verbatim,threeparttable,booktabs,dsfont,parskip}
 
 % Add history information for the article if required
 %\history{Received August 1, 2010;
@@ -46,62 +48,193 @@
 \setlength{\textwidth}{15cm}
 \title{Adaptive group-regularized logistic elastic net regression}
 \date{}
-\author{Magnus M. M\"unch$^{1,2}$\footnote{Correspondence to: \href{mailto:m.munch@vumc.nl}{m.munch@vumc.nl}}, Carel F.W. Peeters$^{1}$, Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
+\author{Magnus M. M\"unch$^{1,2}$\footnote{Correspondence to: 
+\href{mailto:m.munch@vumc.nl}{m.munch@vumc.nl}}, Carel F.W. Peeters$^{1}$, 
+Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 
 \begin{document}
 	
 	\maketitle
 
 	\noindent
-	1. Department of Epidemiology \& Biostatistics, Amsterdam Public Health research institute, Amsterdam University medical centers, PO Box 7057, 1007 MB
+	1. Department of Epidemiology \& Biostatistics, Amsterdam Public Health
+	research institute, Amsterdam University medical centers, PO Box 7057, 1007 MB
 	Amsterdam, The Netherlands \\*
 	2. Mathematical Institute, Leiden University, Leiden, The Netherlands \\*
 	3. MRC Biostatistics Unit, Cambridge University, Cambridge, United Kingdom
 
 	\begin{abstract}
-		{In high-dimensional data settings, additional information on the features is often available. Examples of such external information in omics research are: (a) $p$-values from a previous study, (b) a summary of prior information, and (c) omics annotation. The inclusion of this information in the analysis may enhance classification performance and feature selection, but is not straightforward in the standard regression setting. As a solution to this problem, we propose a group-regularized (logistic) elastic net regression method, where each penalty parameter corresponds to a group of features based on the external information. The method, termed \texttt{gren}, makes use of the Bayesian formulation of logistic elastic net regression to estimate both the model and penalty parameters in an approximate empirical-variational Bayes framework. Simulations and an application to a colon cancer microRNA study show that, if the partitioning of the features is informative, classification performance and feature selection are indeed enhanced.}
+		{In high-dimensional data settings, additional information on the features 
+		is often available. Examples of such external information in omics research
+		are: (a) $p$-values from a previous study, (b) a summary of prior 
+		information, and (c) omics annotation. The inclusion of this information in
+		the analysis may enhance classification performance and feature selection,
+		but is not straightforward in the standard regression setting. As a solution
+		to this problem, we propose a group-regularized (logistic) elastic net
+		regression method, where each penalty parameter corresponds to a group of
+		features based on the external information. The method, termed 
+		\texttt{gren}, makes use of the Bayesian formulation of logistic elastic net
+		regression to estimate both the model and penalty parameters in an 
+		approximate empirical-variational Bayes framework. Simulations and an
+		application to a colon cancer microRNA study show that, if the partitioning
+		of the features is informative, classification performance and feature
+		selection are indeed enhanced.}
 	\end{abstract}
 
-	\noindent\textbf{Keywords}: Empirical Bayes; High-dimensional data; Prediction; Variational Bayes
+	\noindent\textbf{Keywords}: Empirical Bayes; High-dimensional data; 
+	Prediction; Variational Bayes
 
-	\noindent\textbf{Software available from}: \url{https://CRAN.R-project.org/package=gren}
+	\noindent\textbf{Software available from}: 
+	\url{https://CRAN.R-project.org/package=gren}
 
 	\section{Introduction}
-	Prediction from high-dimensional data is a challenge common to many fields of research. Examples of such high-dimensional prediction problems arise in computer vision, stock market prediction and disease diagnosis from omics data. In this paper, we specifically focus on the latter setting. High dimensionality of data introduces several issues in the estimation of prediction models, especially: (a) unidentifiable models, (b) highly correlated predictor variables and (c) non-trivial variable selection.
+	Prediction from high-dimensional data is a challenge common to many fields of
+	research. Examples of such high-dimensional prediction problems arise in
+	computer vision, stock market prediction and disease diagnosis from omics 
+	data. In this paper, we specifically focus on the latter setting. High
+	dimensionality of data introduces several issues in the estimation of 
+	prediction models, especially: (a) unidentifiable models, (b) highly 
+	correlated predictor variables and (c) non-trivial variable selection.
 
-	Attempts to tackle one or more of these issues have lead to the development of many prediction methods \cite[]{fan_selective_2010}. Here we will focus on the penalization approach. A well-known and popular penalization method is elastic net regression \cite[]{zou_regularization_2005}, with its special cases ridge regression \cite[]{hoerl_ridge_1970} and lasso regression \cite[]{tibshirani_regression_1996}. The elastic net approach takes issues (a)-(c) into account and has yielded many successful extensions. Recent work on elastic net regression (and its special cases) has focussed on increasing prediction accuracy by the inclusion of prior knowledge on the variables \cite[]{lee_variable_2017,van_de_wiel_better_2016,tai_incorporating_2007}.
+	Attempts to tackle one or more of these issues have lead to the development of
+	many prediction methods \cite[]{fan_selective_2010}. Here we will focus on the
+	penalization approach. A well-known and popular penalization method is elastic
+	net regression \cite[]{zou_regularization_2005}, with its special cases ridge
+	regression \cite[]{hoerl_ridge_1970} and lasso regression 
+	\cite[]{tibshirani_regression_1996}. The elastic net approach takes issues 
+	(a)-(c) into account and has yielded many successful extensions. Recent work 
+	on elastic net regression (and its special cases) has focussed on increasing
+	prediction accuracy by the inclusion of prior knowledge on the variables
+	\cite[]{lee_variable_2017,van_de_wiel_better_2016,tai_incorporating_2007}.
 
-	In omics research, sources of such prior knowledge on the variables are often available. The information can, for example, come in the form of (a) results on the same molecular features obtained in a previous study (e.g. $p$-values), (b) information from a publicly available database that summarizes the prior information on the molecular features involved (e.g., the Cancer Gene Census \cite[]{futreal_census_2004}), and (c) omics annotation (e.g. the location of a gene on the chromosome). Although this information can rarely be directly included in the statistical analysis, it may still be useful and informative for the study at hand.
+	In omics research, sources of such prior knowledge on the variables are often
+	available. The information can, for example, come in the form of (a) results 
+	on the same molecular features obtained in a previous study (e.g. $p$-values),
+	(b) information from a publicly available database that summarizes the prior
+	information on the molecular features involved (e.g., the Cancer Gene Census
+	\cite[]{futreal_census_2004}), and (c) omics annotation (e.g. the location of 
+	a gene on the chromosome). Although this information can rarely be directly
+	included in the statistical analysis, it may still be useful and informative
+	for the study at hand.
 
-	An example of such a study with extra information available is investigated in Section \ref{sec:app}. INTRODUCE DATA. This problem is not straightforward to solve with the standard methods available in literature. At first sight, such an \textit{a priori} grouping of the features suggests the group lasso \cite[]{meier_group_2008, yuan_model_2006} (or one of its extensions), which penalises and selects features at the group level. There are two limitations to the group lasso: (a) it selects groups as a whole instead of single features and (b) it is not adaptive: the amount of penalization a group receives depends on a `global' penalty parameter common to all groups. Extensions such as the sparse group lasso \cite[]{simon_sparse-group_2013} partly deal with (a), but do not address (b).
+	An example of such a study with extra information available is investigated in
+	Section \ref{sec:app}. INTRODUCE DATA. This problem is not straightforward to
+	solve with the standard methods available in literature. At first sight, such
+	an \textit{a priori} grouping of the features suggests the group lasso
+	\cite[]{meier_group_2008, yuan_model_2006} (or one of its extensions), which
+	penalises and selects features at the group level. There are two limitations 
+	to the group lasso: (a) it selects groups as a whole instead of single 
+	features and (b) it is not adaptive: the amount of penalization a group
+	receives depends on a `global' penalty parameter common to all groups.
+	Extensions such as the sparse group lasso \cite[]{simon_sparse-group_2013}
+	partly deal with (a), but do not address (b).
 
-	A natural way to deal with (b) is through differential penalization: that is, each group of variables receives its own penalty parameter. An apparent issue with this differential penalization is the estimation of the penalty parameters. Naive estimation may be done by cross-validation. However, cross-validation requires re-estimation of the model over a grid of penalty parameters. The size of this grid increases exponentially with the number of penalty parameters. Consequently, it quickly becomes computationally infeasible. We therefore propose an efficient alternative: empirical Bayes estimation of the penalty parameters, which corresponds to hyperparameter estimation in the Bayesian prior framework. Because of the ubiquity of binary outcome data in omics research, we focus on the logistic elastic net. Recently, \cite{zhang_novel_2018} introduced VBVS, a method similar to ours in spirit. Nevertheless, one clear advantage of our method over VBVS is the possibility of adaptive inclusion of external information on the features to aid in prediction and feature selection. We would like to emphasize that our method is different from recent developments in grouped penalized regression such as \cite{dondelinger_joint_nodate}, where the grouping is over the observations as opposed to the features 
+	A natural way to deal with (b) is through differential penalization: that is,
+	each group of variables receives its own penalty parameter. An apparent issue
+	with this differential penalization is the estimation of the penalty 
+	parameters. Naive estimation may be done by cross-validation. However, 
+	cross-validation requires re-estimation of the model over a grid of penalty
+	parameters. The size of this grid increases exponentially with the number of
+	penalty parameters. Consequently, it quickly becomes computationally 
+	infeasible. We therefore propose an efficient alternative: empirical Bayes
+	estimation of the penalty parameters, which corresponds to hyperparameter
+	estimation in the Bayesian prior framework. Because of the ubiquity of binary
+	outcome data in omics research, we focus on the logistic elastic net. 
+	Recently, \cite{zhang_novel_2018} introduced VBVS, a method similar to ours in
+	spirit. Nevertheless, one clear advantage of our method over VBVS is the
+	possibility of adaptive inclusion of external information on the features to
+	aid in prediction and feature selection. We would like to emphasize that our
+	method is different from recent developments in grouped penalized regression
+	such as \cite{dondelinger_joint_nodate}, where the grouping is over the
+	observations as opposed to the features 
 
-	In line with the above, our proposed method is (a) subjective: the few remaining tuning parameters may be cross-validated, (b) adaptive: prior information is automatically and subjectively weighed with respect to its informativeness, (c) fast compared to full Bayesian analysis or cross-validation, and (d) requires minimal input by the user: only the data and grouping of the features is required.
+	In line with the above, our proposed method is (a) subjective: the few
+	remaining tuning parameters may be cross-validated, (b) adaptive: prior
+	information is automatically and subjectively weighed with respect to its
+	informativeness, (c) fast compared to full Bayesian analysis or 
+	cross-validation, and (d) requires minimal input by the user: only the data 
+	and grouping of the features is required.
 
-	We introduce the Bayesian logistic (generalised) elastic net model in Section \ref{sec:model}. In Section \ref{seq:estimation} we derive a variational approximation to this model and use this novel approximation in the empirical Bayes estimation of multiple, group-specific penalty parameters. In Sections \ref{sec:simulations}, and \ref{sec:app}, we demonstrate the approach in a simulation study and a real data example, respectively. In Section \ref{sec:discussion} we conclude by both discussing some differences and parallels between the proposed method, termed \texttt{gren}, and other methods in the literature.
+	We introduce the Bayesian logistic (generalised) elastic net model in Section
+	\ref{sec:model}. In Section \ref{seq:estimation} we derive a variational
+	approximation to this model and use this novel approximation in the empirical
+	Bayes estimation of multiple, group-specific penalty parameters. In Sections
+	\ref{sec:simulations}, and \ref{sec:app}, we demonstrate the approach in a
+	simulation study and a real data example, respectively. In Section 
+	\ref{sec:discussion} we conclude by both discussing some differences and
+	parallels between the proposed method, termed \texttt{gren}, and other methods
+	in the literature.
 
 	\section{Model}\label{sec:model}
 	\subsection{Logistic elastic net regression}\label{sec:logitmodel}
-	In logistic regression the outcome variables are assumed to be binary or sums of $m_i$ disjoint binary Bernoulli trials ($y_i = \sum_{l=1}^{m_i} k_l, k_l \in \{0,1\}$ for $i=1, \dots, n$). The binomial logistic model relates the responses to the $p$-dimensional covariate vectors $\x_i = \begin{bmatrix} x_{i1} & \cdots & x_{ip}\end{bmatrix} \tr$ through $y_i \sim \mathcal{B} \( m_i, \expit ( \x_i\tr \bbeta ) \)$, where $\mathcal{B} (m,\upsilon)$ is the binomial distribution with number of trials $m$ and probability $\upsilon$, and $\expit \( \x_i\tr \bbeta \) = \exp(\x\tr_i \bbeta)/[1 + \exp(\x\tr_i \bbeta)]$. Note that if $m_i=1$ for $i=1, \dots, n$, the model reduces to a binary logistic regression model. Throughout the rest of the paper we assume that the model matrix $\X = \begin{bmatrix} \x_1 & \cdots & \x_n \end{bmatrix}\tr$ is standardized such that $\frac{1}{n}\sum_{i=1}^n x_{ij}=0$ and $\frac{1}{n}\sum_{i=1}^n x_{ij}^2=1$ for $j=1, \dots, p$.
+	In logistic regression the outcome variables are assumed to be binary or sums
+	of $m_i$ disjoint binary Bernoulli trials ($y_i = \sum_{l=1}^{m_i} k_l, k_l 
+	\in \{0,1\}$ for $i=1, \dots, n$). The binomial logistic model relates the
+	responses to the $p$-dimensional covariate vectors $\x_i = \begin{bmatrix}
+	x_{i1} & \cdots & x_{ip}\end{bmatrix} \tr$ through $y_i \sim \mathcal{B} 
+	\( m_i, \expit ( \x_i\tr \bbeta ) \)$, where $\mathcal{B} (m,\upsilon)$ is 
+	the binomial distribution with number of trials $m$ and probability 
+	$\upsilon$, and $\expit \( \x_i\tr \bbeta \) = \exp(\x\tr_i \bbeta)/[1 + 
+	\exp(\x\tr_i \bbeta)]$. Note that if $m_i=1$ for $i=1, \dots, n$, the model
+	reduces to a binary logistic regression model. Throughout the rest of the 
+	paper we assume that the model matrix $\X = \begin{bmatrix} \x_1 & \cdots &
+	\x_n \end{bmatrix}\tr$ is standardized such that $\frac{1}{n}\sum_{i=1}^n
+	x_{ij}=0$ and $\frac{1}{n}\sum_{i=1}^n x_{ij}^2=1$ for $j=1, \dots, p$.
 
-	In elastic net regression, the penalised likelihood is maximised to yield parameter estimates:
+	In elastic net regression, the penalised likelihood is maximised to yield
+	parameter estimates:
 	$$
-	\hat{\bbeta} := \underset{\bbeta}{\argmax} \ell(\y ; \bbeta) - \frac{\lambda_1}{2} \norm{\bbeta}_1 - \frac{\lambda_2}{2} \norm{\bbeta}_2^2,
+	\hat{\bbeta} := \underset{\bbeta}{\argmax} \ell(\y ; \bbeta) - 
+	\frac{\lambda_1}{2} \norm{\bbeta}_1 - \frac{\lambda_2}{2} \norm{\bbeta}_2^2,
 	$$
-	with $\lambda_1, \lambda_2 \in \mathbb{R}_{>0}$ and $\y = \begin{bmatrix} y_1 & \cdots & y_n \end{bmatrix} \tr$. The likelihood term is thus complemented with a penalty term consisting of the $L_1$ and $L_2$-norm of the parameters, multiplied by respective penalty parameters $\lambda_1$ and $\lambda_2$. We have scaled the penalty parameters by $\frac{1}{2}$, to make them correspond with the Bayesian version in the following. The maximiser of the penalised likelihood corresponds to the posterior mode of a Bayesian elastic model with prior \cite[]{li_bayesian_2010,zou_regularization_2005}:
+	with $\lambda_1, \lambda_2 \in \mathbb{R}_{>0}$ and $\y = \begin{bmatrix} 
+	y_1 & \cdots & y_n \end{bmatrix} \tr$. The likelihood term is thus 
+	complemented with a penalty term consisting of the $L_1$ and $L_2$-norm of the
+	parameters, multiplied by respective penalty parameters $\lambda_1$ and
+	$\lambda_2$. We have scaled the penalty parameters by $\frac{1}{2}$, to make
+	them correspond with the Bayesian version in the following. The maximiser of
+	the penalised likelihood corresponds to the posterior mode of a Bayesian
+	elastic model with prior \cite[]{li_bayesian_2010,zou_regularization_2005}:
 	\begin{equation}\label{eq:elasticnetprior}
-	\beta_j \sim g(\lambda_1,\lambda_2) \cdot \exp\[-\frac{1}{2} (\lambda_1 |\beta_j| + \lambda_2 \beta_j^2)\].
+	  \beta_j \sim g(\lambda_1,\lambda_2) \cdot \exp\[-\frac{1}{2} (\lambda_1
+	  |\beta_j| + \lambda_2 \beta_j^2)\].
 	\end{equation}
-	Here, $g(\lambda_1,\lambda_2)$ denotes a normalizing constant that is dependent on $\lambda_1$ and $\lambda_2$ (given in Section 2 of the Supplementary Material (SM), along with further details on the elastic net prior). The elastic net combines $L_1$ and $L_2$-norm penalisation such that the model parameters are shrunken towards zero. The $L_1$-norm may set some of the estimates exactly to zero, thus automatically selecting features. The $L_2$-norm ensures that correlated features behave similarly, as one would generally require. We extend the elastic net model to the generalised elastic net to allow for different penalty parameters per group of features.
+	Here, $g(\lambda_1,\lambda_2)$ denotes a normalizing constant that is 
+	dependent on $\lambda_1$ and $\lambda_2$ (given in Section 2 of the 
+	Supplementary Material (SM), along with further details on the elastic net
+	prior). The elastic net combines $L_1$ and $L_2$-norm penalisation such that
+	the model parameters are shrunken towards zero. The $L_1$-norm may set some of
+	the estimates exactly to zero, thus automatically selecting features. The 
+	$L_2$-norm ensures that correlated features behave similarly, as one would
+	generally require. We extend the elastic net model to the generalised elastic
+	net to allow for different penalty parameters per group of features.
 
 	\subsection{The generalised elastic net}\label{sec:genen}
-	Assume we have a partitioning of the features in $G$ groups, such that each feature belongs to one group. Let $\G(g)$ be the feature index set of group $g$ for $g=1, \dots, G$. To apply differential penalisation we include a group-specific weight $w_g \in \mathbb{R}_{>0}$. The model parameters are now estimated by:
+	Assume we have a partitioning of the features in $G$ groups, such that each
+	feature belongs to one group. Let $\G(g)$ be the feature index set of group 
+	$g$ for $g=1, \dots, G$. To apply differential penalisation we include a 
+	group-specific weight $w_g \in \mathbb{R}_{>0}$. The model parameters are now
+	estimated by:
 	\begin{align}
-	\hat{\bbeta} & := \underset{\bbeta}{\argmax} \ell(\y ; \bbeta) - \frac{\lambda_1}{2} \sum_{g=1}^G \sum_{j \in \G(g)} |w_g \cdot \beta_j| - \frac{\lambda_2}{2} \sum_{g=1}^G \sum_{j \in \G(g)}\( w_g \cdot \beta_j\)^2 \label{eq:weightedlik}\\
-	& = \underset{\bbeta}{\argmax} \ell(\y ; \bbeta) -  \frac{\lambda_1}{2} \sum_{g=1}^G \sqrt{\lambda'_g} \sum_{j \in \G(g)} | \beta_j| - \frac{\lambda_2}{2} \sum_{g=1}^G \lambda'_g \sum_{j \in \G(g)} \beta_j^2, \nonumber
+	  \hat{\bbeta} & := \underset{\bbeta}{\argmax} \ell(\y ; \bbeta) - 
+	  \frac{\lambda_1}{2} \sum_{g=1}^G \sum_{j \in \G(g)} |w_g \cdot \beta_j| - 
+	  \frac{\lambda_2}{2} \sum_{g=1}^G \sum_{j \in \G(g)}\( w_g \cdot \beta_j\)^2 
+	  \label{eq:weightedlik}\\
+	  & = \underset{\bbeta}{\argmax} \ell(\y ; \bbeta) -  \frac{\lambda_1}{2} 
+	  \sum_{g=1}^G \sqrt{\lambda'_g} \sum_{j \in \G(g)} | \beta_j| - 
+	  \frac{\lambda_2}{2} \sum_{g=1}^G \lambda'_g \sum_{j \in \G(g)} \beta_j^2, 
+	  \nonumber
 	\end{align}
-	where we wrote $w^2_g = \lambda'_g$ to emphasise that these group-specific weights may be interpreted as penalty multipliers. Throughout the following we assume that the geometric mean of the multipliers, weighted by their respective group sizes, is one, such that the average shrinkage of the model parameters is determined by the `global' $\lambda_1$ and $\lambda_2$. That is, we calibrate the $\lambda'_g$ such that $\prod_{g=1}^G (\lambda'_g)^{|\G(g)|}=1$. The multiplier appears in square root form in the $L_1$-norm term to ensure that penalisation on the parameter level is the same for the $L_1$ and $L_2$-norm terms, as can be seen from the parametrisation in (\ref{eq:weightedlik}).
+	where we wrote $w^2_g = \lambda'_g$ to emphasise that these group-specific
+	weights may be interpreted as penalty multipliers. Throughout the following we
+	assume that the geometric mean of the multipliers, weighted by their 
+	respective group sizes, is one, such that the average shrinkage of the model
+	parameters is determined by the `global' $\lambda_1$ and $\lambda_2$. That is,
+	we calibrate the $\lambda'_g$ such that $\prod_{g=1}^G 
+	(\lambda'_g)^{|\G(g)|}=1$. The multiplier appears in square root form in the
+	$L_1$-norm term to ensure that penalisation on the parameter level is the same
+	for the $L_1$ and $L_2$-norm terms, as can be seen from the parametrisation in
+	(\ref{eq:weightedlik}).
 
 	\cite{li_bayesian_2010} show that (\ref{eq:elasticnetprior}) may be written as a computationally more convenient scale mixture of normals, with mixing parameter $\btau = \begin{bmatrix} \tau_1 & \cdots & \tau_p \end{bmatrix} \tr$. Using this result, we write the generalised elastic net model in its Bayesian form as:
 	\begin{subequations}\label{eq:enmodel2}
