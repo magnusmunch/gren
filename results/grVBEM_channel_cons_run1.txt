@@ -1,268 +1,0 @@
-
-R version 3.2.5 (2016-04-14) -- "Very, Very Secure Dishes"
-Copyright (C) 2016 The R Foundation for Statistical Computing
-Platform: x86_64-pc-linux-gnu (64-bit)
-
-R is free software and comes with ABSOLUTELY NO WARRANTY.
-You are welcome to redistribute it under certain conditions.
-Type 'license()' or 'licence()' for distribution details.
-
-  Natural language support but running in an English locale
-
-R is a collaborative project with many contributors.
-Type 'contributors()' for more information and
-'citation()' on how to cite R or R packages in publications.
-
-Type 'demo()' for some demos, 'help()' for on-line help, or
-'help.start()' for an HTML browser interface to help.
-Type 'q()' to quit R.
-
-> ##############################  preamble  #############################
-> # grMCEM on real data                                                 #
-> # version: 01                                                         #
-> # author: Magnus M�nch                                                #
-> # created: 21-03-2017                                                 #
-> # last edited: 21-03-2017                                             #
-> #######################################################################
-> 
-> ###############################  notes  ###############################
-> # 21-03-2017: Results are used in presentation for channel meeting    #
-> #             2017                                                    #
-> #######################################################################
-> 
-> ##########################  data description  #########################
-> # A deep sequencing analysis on small non-coding ribonucleic acid     #
-> # (miRNAseq) was performed on 56 samples (24 women with high-grade    #
-> # cervical intraepithelial neoplasia (CIN3) and 32 healthy women) for #
-> # the purpose of finding relevant screening markers for cervical      #
-> # cancer screening. The next generation sequencing analysis resulted  #
-> # in 2,576 transcripts. The data was normalized and pre-processed,    #
-> # rendering 772 transcripts. More detail description of the data sets #
-> # and the preprocessing step are available on the supplementary       #
-> # material of this following publication "Better diagnostic           #
-> # signatures from RNAseq data through use of auxiliary co-data",      #
-> # Bioinformatics (2017).                                              #
-> #######################################################################
-> 
-> ### paths
-> path.rcode <- "~/EBEN/code/"
-> path.res <- "~/EBEN/results/"
-> path.data <- "~/EBEN/data/"
-> 
-> ### libraries
-> library(glmnet)
-Loading required package: Matrix
-Loading required package: foreach
-Loaded glmnet 2.0-5
-
-> library(penalized)
-Loading required package: survival
-Welcome to penalized. For extended examples, see vignette("penalized").
-> library(GRridge)
-Loading required package: Iso
-Iso 0.0-17
-Loading required package: GSEABase
-Loading required package: BiocGenerics
-Loading required package: parallel
-
-Attaching package: ‘BiocGenerics’
-
-The following objects are masked from ‘package:parallel’:
-
-    clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
-    clusterExport, clusterMap, parApply, parCapply, parLapply,
-    parLapplyLB, parRapply, parSapply, parSapplyLB
-
-The following object is masked from ‘package:penalized’:
-
-    as.data.frame
-
-The following object is masked from ‘package:Matrix’:
-
-    as.vector
-
-The following objects are masked from ‘package:stats’:
-
-    IQR, mad, xtabs
-
-The following objects are masked from ‘package:base’:
-
-    anyDuplicated, append, as.data.frame, as.vector, cbind, colnames,
-    do.call, duplicated, eval, evalq, Filter, Find, get, grep, grepl,
-    intersect, is.unsorted, lapply, lengths, Map, mapply, match, mget,
-    order, paste, pmax, pmax.int, pmin, pmin.int, Position, rank,
-    rbind, Reduce, rownames, sapply, setdiff, sort, table, tapply,
-    union, unique, unlist, unsplit
-
-Loading required package: Biobase
-Welcome to Bioconductor
-
-    Vignettes contain introductory material; view with
-    'browseVignettes()'. To cite Bioconductor, see
-    'citation("Biobase")', and for packages 'citation("pkgname")'.
-
-Loading required package: annotate
-Loading required package: AnnotationDbi
-Loading required package: stats4
-Loading required package: IRanges
-Loading required package: S4Vectors
-
-Attaching package: ‘IRanges’
-
-The following object is masked from ‘package:Matrix’:
-
-    expand
-
-Loading required package: XML
-Loading required package: graph
-
-Attaching package: ‘graph’
-
-The following object is masked from ‘package:XML’:
-
-    addNode
-
-
-Attaching package: ‘GRridge’
-
-The following object is masked from ‘package:glmnet’:
-
-    auc
-
-Warning messages:
-1: replacing previous import ‘stats::xtabs’ by ‘BiocGenerics::xtabs’ when loading ‘GRridge’ 
-2: replacing previous import ‘GSEABase::intersect’ by ‘BiocGenerics::intersect’ when loading ‘GRridge’ 
-3: replacing previous import ‘stats::mad’ by ‘BiocGenerics::mad’ when loading ‘GRridge’ 
-4: replacing previous import ‘GSEABase::setdiff’ by ‘BiocGenerics::setdiff’ when loading ‘GRridge’ 
-5: replacing previous import ‘penalized::as.data.frame’ by ‘BiocGenerics::as.data.frame’ when loading ‘GRridge’ 
-6: replacing previous import ‘stats::IQR’ by ‘BiocGenerics::IQR’ when loading ‘GRridge’ 
-> library(SGL)
-> library(e1071)
-> 
-> ### functions
-> # source grENVB functions
-> source(paste(path.rcode, "grVBEM.R", sep=""))
-> 
-> # function to cross-validate elastic net
-> cv.en <- function(x, y, intercept=intercept) {
-+   fit.pen <- cv.pen(x, y, intercept=intercept)
-+   fit.en <- glmnet(x, y, family="binomial", alpha=fit.pen$alpha[which.min(fit.pen$cvll)],
-+                    lambda=fit.pen$lambda[which.min(fit.pen$cvll)])
-+   return(fit.en)
-+ }
-> 
-> ########## using conservation status as grouping information
-> # using the group information
-> load(paste(path.data, "mirsData.RData", sep=""))
-> parCons <- CreatePartition(mirsData$conservation) # using conservation status as grouping
-[1] "Summary of group sizes:"
-  0   1   2 
-552  72 148 
-> set.seed(789)
-> groups <- rep(1:length(parCons), unlist(lapply(parCons, length)))
-> x <- apply(t(as.matrix(mirsData$transformedData))[, unlist(parCons)], 2, 
-+            function(x) {(x - mean(x))/sd(x)})       
-> y <- as.numeric(mirsData$response) - 1
-> n <- nrow(x)
-> p <- ncol(x)
-> m <- rep(1, n)
-> nfolds <- n
-> rest <- n %% nfolds
-> foldsize <- c(rep(n %/% nfolds + as.numeric(rest!=0), times=rest),
-+               rep(n %/% nfolds, times=nfolds - rest))
-> foldid <- sample(rep(1:nfolds, times=foldsize))
-> 
-> pred1.ridge <- pred1.lasso <- pred1.en <- pred1.svm <- pred1.grVBEM <- pred1.gren <- 
-+   pred.grridge <- pred1.SGL <- numeric(n)
-> for(k in 12:nfolds) {
-+   print(paste("Fold", k, sep=" "))
-+   xtrain <- x[foldid!=k, ]
-+   xtest <- x[foldid==k, ]
-+   ytrain <- y[foldid!=k]
-+   ytest <- y[foldid==k]
-+   mtrain <- m[foldid!=k]
-+   mtest <- m[foldid==k]
-+   ntrain <- length(ytrain)
-+   ntest <- length(ytest)
-+   
-+   # grVBEM
-+   fit.ridge <- cv.glmnet(xtrain, ytrain, family="binomial", alpha=0, standardize=FALSE, intercept=TRUE)
-+   fit.lasso <- cv.glmnet(xtrain, ytrain, family="binomial", alpha=1, standardize=FALSE, intercept=TRUE)
-+   fit.en <- cv.en(xtrain, ytrain, intercept=TRUE)
-+   fit.svm <- svm(xtrain, ytrain, type="C-classification", probability=TRUE)
-+   fit.grVBEM <- grVBEM(xtrain, ytrain, m=mtrain, groups=groups, lambda1=NULL, 
-+                        lambda2=NULL, intercept=TRUE, eps=0.001, maxiter=500)
-+   fit.gren <- penalized(ytrain, xtrain, unpenalized=~1, model="logistic",
-+                         lambda1=0.5*fit.grVBEM$lambda1*sqrt(rep(fit.grVBEM$lambdag[, fit.grVBEM$nouteriter + 1], times=rle(groups)$lengths)),
-+                         lambda2=0.5*fit.grVBEM$lambda2*rep(fit.grVBEM$lambdag[, fit.grVBEM$nouteriter + 1], times=rle(groups)$lengths))
-+   fit.grridge <- grridge(t(xtrain), ytrain, list(group=CreatePartition(as.factor(groups))), unpenal=~1, trace=FALSE)
-+   fit.SGL <- cvSGL(list(x=xtrain, y=ytrain), index=groups, type="logit", standardize=FALSE)
-+   
-+   pred1.ridge[foldid==k] <- predict(fit.ridge, matrix(xtest, nrow=1), type="response")
-+   pred1.lasso[foldid==k] <- predict(fit.lasso, matrix(xtest, nrow=1), type="response")
-+   pred1.en[foldid==k] <- predict(fit.en, matrix(xtest, nrow=1), type="response")
-+   pred1.svm[foldid==k] <- attributes(predict(fit.svm, matrix(xtest, nrow=1), probability=TRUE))$probabilities[2]
-+   pred1.grVBEM[foldid==k] <- as.numeric(exp(cbind(1, matrix(xtest, nrow=1)) %*% fit.grVBEM$mu)/
-+                                            (1 + exp(cbind(1, matrix(xtest, nrow=1)) %*% fit.grVBEM$mu)))
-+   pred1.gren[foldid==k] <- predict(fit.gren, matrix(xtest, nrow=1))
-+   pred1.grridge[foldid==k] <- predict(fit.grridge$predobj$GroupRegul, matrix(xtest, nrow=1))
-+   pred1.SGL[foldid==k] <- as.numeric(exp(cbind(1, matrix(xtest, nrow=1)) %*% 
-+                                            rbind(fit.SGL$fit$intercepts, fit.SGL$fit$beta)
-+                                          [, which.min(fit.SGL$lldiff)])/
-+                                        (1 + exp(cbind(1, matrix(xtest, nrow=1)) %*% 
-+                                                   rbind(fit.SGL$fit$intercepts, fit.SGL$fit$beta)
-+                                                 [, which.min(fit.SGL$lldiff)])))
-+   
-+ }
-[1] "Fold 12"
-Estimating global lambda1 and lambda2 by cross-validation
-Global lambda1 and lambda2 estimated at 4.65 and 1.62
-Estimating penalty multipliers by empirical Bayes
-Penalty multipliers estimated at 1.07, 0.78 and 0.87      Penalty multipliers estimated at 1.08, 0.77 and 0.85      Penalty multipliers estimated at 1.08, 0.77 and 0.84      Penalty multipliers estimated at 1.09, 0.77 and 0.82      Penalty multipliers estimated at 1.1, 0.77 and 0.8      Penalty multipliers estimated at 1.1, 0.77 and 0.79      Penalty multipliers estimated at 1.11, 0.77 and 0.77      Penalty multipliers estimated at 1.11, 0.77 and 0.76      Penalty multipliers estimated at 1.12, 0.77 and 0.74      Penalty multipliers estimated at 1.13, 0.77 and 0.73      Penalty multipliers estimated at 1.13, 0.77 and 0.72      Penalty multipliers estimated at 1.14, 0.77 and 0.71      Penalty multipliers estimated at 1.14, 0.77 and 0.69      Penalty multipliers estimated at 1.15, 0.77 and 0.68      Penalty multipliers estimated at 1.15, 0.77 and 0.67      Penalty multipliers estimated at 1.16, 0.77 and 0.66      Penalty multipliers estimated at 1.16, 0.77 and 0.65      Penalty multipliers estimated at 1.17, 0.77 and 0.64      Penalty multipliers estimated at 1.17, 0.77 and 0.63      Penalty multipliers estimated at 1.18, 0.77 and 0.62      Penalty multipliers estimated at 1.18, 0.77 and 0.61      Penalty multipliers estimated at 1.18, 0.77 and 0.6      Penalty multipliers estimated at 1.19, 0.77 and 0.6      Penalty multipliers estimated at 1.19, 0.77 and 0.59      Penalty multipliers estimated at 1.2, 0.77 and 0.58      Penalty multipliers estimated at 1.2, 0.77 and 0.57      Penalty multipliers estimated at 1.2, 0.77 and 0.57      Penalty multipliers estimated at 1.21, 0.77 and 0.56      Penalty multipliers estimated at 1.21, 0.78 and 0.55      Penalty multipliers estimated at 1.22, 0.78 and 0.55      Penalty multipliers estimated at 1.22, 0.78 and 0.54      Penalty multipliers estimated at 1.22, 0.78 and 0.53      Penalty multipliers estimated at 1.23, 0.78 and 0.53      Penalty multipliers estimated at 1.23, 0.78 and 0.52      Penalty multipliers estimated at 1.23, 0.78 and 0.52      Penalty multipliers estimated at 1.24, 0.78 and 0.51      Penalty multipliers estimated at 1.24, 0.78 and 0.51      Penalty multipliers estimated at 1.24, 0.78 and 0.5      Penalty multipliers estimated at 1.25, 0.78 and 0.5      Penalty multipliers estimated at 1.25, 0.78 and 0.49      Penalty multipliers estimated at 1.25, 0.79 and 0.49      Penalty multipliers estimated at 1.25, 0.79 and 0.48      Penalty multipliers estimated at 1.26, 0.79 and 0.48      Penalty multipliers estimated at 1.26, 0.79 and 0.48      Penalty multipliers estimated at 1.26, 0.79 and 0.47      Penalty multipliers estimated at 1.26, 0.79 and 0.47      Penalty multipliers estimated at 1.27, 0.79 and 0.47      Penalty multipliers estimated at 1.27, 0.79 and 0.46      Penalty multipliers estimated at 1.27, 0.79 and 0.46      Penalty multipliers estimated at 1.27, 0.79 and 0.46      Penalty multipliers estimated at 1.27, 0.79 and 0.45      Penalty multipliers estimated at 1.28, 0.79 and 0.45      Penalty multipliers estimated at 1.28, 0.8 and 0.45      Penalty multipliers estimated at 1.28, 0.8 and 0.44      Penalty multipliers estimated at 1.28, 0.8 and 0.44      Penalty multipliers estimated at 1.28, 0.8 and 0.44      Penalty multipliers estimated at 1.29, 0.8 and 0.44      Penalty multipliers estimated at 1.29, 0.8 and 0.43      Penalty multipliers estimated at 1.29, 0.8 and 0.43      Penalty multipliers estimated at 1.29, 0.8 and 0.43      Penalty multipliers estimated at 1.29, 0.8 and 0.43      Penalty multipliers estimated at 1.29, 0.8 and 0.43      Penalty multipliers estimated at 1.3, 0.8 and 0.42      Penalty multipliers estimated at 1.3, 0.8 and 0.42      Penalty multipliers estimated at 1.3, 0.8 and 0.42      Penalty multipliers estimated at 1.3, 0.8 and 0.42      Penalty multipliers estimated at 1.3, 0.81 and 0.42      Penalty multipliers estimated at 1.3, 0.81 and 0.41      Penalty multipliers estimated at 1.3, 0.81 and 0.41      Penalty multipliers estimated at 1.3, 0.81 and 0.41      Penalty multipliers estimated at 1.31, 0.81 and 0.41      Penalty multipliers estimated at 1.31, 0.81 and 0.41      Penalty multipliers estimated at 1.31, 0.81 and 0.41      Penalty multipliers estimated at 1.31, 0.81 and 0.41      Penalty multipliers estimated at 1.31, 0.81 and 0.4      Penalty multipliers estimated at 1.31, 0.81 and 0.4      Penalty multipliers estimated at 1.31, 0.81 and 0.4      Penalty multipliers estimated at 1.31, 0.81 and 0.4      Penalty multipliers estimated at 1.31, 0.81 and 0.4      Penalty multipliers estimated at 1.31, 0.81 and 0.4      Penalty multipliers estimated at 1.32, 0.81 and 0.4      Penalty multipliers estimated at 1.32, 0.81 and 0.4      Penalty multipliers estimated at 1.32, 0.81 and 0.4      Penalty multipliers estimated at 1.32, 0.82 and 0.39      Penalty multipliers estimated at 1.32, 0.82 and 0.39      Penalty multipliers estimated at 1.32, 0.82 and 0.39      Penalty multipliers estimated at 1.32, 0.82 and 0.39      Penalty multipliers estimated at 1.32, 0.82 and 0.39      Penalty multipliers estimated at 1.32, 0.82 and 0.39      Penalty multipliers estimated at 1.32, 0.82 and 0.39      Penalty multipliers estimated at 1.32, 0.82 and 0.39      Penalty multipliers estimated at 1.32, 0.82 and 0.39      Penalty multipliers estimated at 1.32, 0.82 and 0.39      Penalty multipliers estimated at 1.32, 0.82 and 0.39      Penalty multipliers estimated at 1.32, 0.82 and 0.39      Penalty multipliers estimated at 1.33, 0.82 and 0.39      Penalty multipliers estimated at 1.33, 0.82 and 0.38      Penalty multipliers estimated at 1.33, 0.82 and 0.38      Penalty multipliers estimated at 1.33, 0.82 and 0.38      Penalty multipliers estimated at 1.33, 0.82 and 0.38      Penalty multipliers estimated at 1.33, 0.82 and 0.38      Penalty multipliers estimated at 1.33, 0.82 and 0.38      Penalty multipliers estimated at 1.33, 0.82 and 0.38      Penalty multipliers estimated at 1.33, 0.82 and 0.38      Penalty multipliers estimated at 1.33, 0.82 and 0.38      Penalty multipliers estimated at 1.33, 0.82 and 0.38      Penalty multipliers estimated at 1.33, 0.82 and 0.38      Penalty multipliers estimated at 1.33, 0.82 and 0.38      Penalty multipliers estimated at 1.33, 0.82 and 0.38      Penalty multipliers estimated at 1.33, 0.83 and 0.38      Penalty multipliers estimated at 1.33, 0.83 and 0.38      Penalty multipliers estimated at 1.33, 0.83 and 0.38      # nonzero coefficients: 773# nonzero coefficients: 436          # nonzero coefficients: 485          # nonzero coefficients: 484          # nonzero coefficients: 484          # nonzero coefficients: 483          # nonzero coefficients: 482          # nonzero coefficients: 481          # nonzero coefficients: 480          # nonzero coefficients: 479          # nonzero coefficients: 478          # nonzero coefficients: 477          # nonzero coefficients: 476          # nonzero coefficients: 475          # nonzero coefficients: 474          # nonzero coefficients: 473          # nonzero coefficients: 472          # nonzero coefficients: 471          # nonzero coefficients: 470          # nonzero coefficients: 469          # nonzero coefficients: 468          # nonzero coefficients: 467          # nonzero coefficients: 466          # nonzero coefficients: 465          # nonzero coefficients: 464          # nonzero coefficients: 463          # nonzero coefficients: 462          # nonzero coefficients: 461          # nonzero coefficients: 460          # nonzero coefficients: 459          # nonzero coefficients: 458          # nonzero coefficients: 457          # nonzero coefficients: 456          # nonzero coefficients: 455          # nonzero coefficients: 454          # nonzero coefficients: 453          # nonzero coefficients: 452          # nonzero coefficients: 452          # nonzero coefficients: 451          # nonzero coefficients: 450          # nonzero coefficients: 449          # nonzero coefficients: 448          # nonzero coefficients: 447          # nonzero coefficients: 446          # nonzero coefficients: 445          # nonzero coefficients: 444          # nonzero coefficients: 443          # nonzero coefficients: 442          # nonzero coefficients: 441          # nonzero coefficients: 440          # nonzero coefficients: 439          # nonzero coefficients: 438          # nonzero coefficients: 437          # nonzero coefficients: 436          # nonzero coefficients: 435          # nonzero coefficients: 434          # nonzero coefficients: 433          # nonzero coefficients: 432          # nonzero coefficients: 431          # nonzero coefficients: 430          # nonzero coefficients: 429          # nonzero coefficients: 428          # nonzero coefficients: 427          # nonzero coefficients: 426          # nonzero coefficients: 425          # nonzero coefficients: 424          # nonzero coefficients: 424          # nonzero coefficients: 423          # nonzero coefficients: 422          # nonzero coefficients: 421          # nonzero coefficients: 420          # nonzero coefficients: 419          # nonzero coefficients: 418          # nonzero coefficients: 417          # nonzero coefficients: 416          # nonzero coefficients: 415          # nonzero coefficients: 414          # nonzero coefficients: 413          # nonzero coefficients: 412          # nonzero coefficients: 411          # nonzero coefficients: 410          # nonzero coefficients: 409          # nonzero coefficients: 408          # nonzero coefficients: 407          # nonzero coefficients: 406          # nonzero coefficients: 405          # nonzero coefficients: 404          # nonzero coefficients: 403          # nonzero coefficients: 402          # nonzero coefficients: 401          # nonzero coefficients: 400          # nonzero coefficients: 399          # nonzero coefficients: 398          # nonzero coefficients: 397          # nonzero coefficients: 396          # nonzero coefficients: 395          # nonzero coefficients: 394          # nonzero coefficients: 393          # nonzero coefficients: 392          # nonzero coefficients: 391          # nonzero coefficients: 390          # nonzero coefficients: 389          # nonzero coefficients: 387          # nonzero coefficients: 386          # nonzero coefficients: 385          # nonzero coefficients: 384          # nonzero coefficients: 383          # nonzero coefficients: 382          # nonzero coefficients: 381          # nonzero coefficients: 380          # nonzero coefficients: 379          # nonzero coefficients: 378          # nonzero coefficients: 377          # nonzero coefficients: 376          # nonzero coefficients: 375          # nonzero coefficients: 374          # nonzero coefficients: 373          # nonzero coefficients: 372          # nonzero coefficients: 371          # nonzero coefficients: 370          # nonzero coefficients: 369          # nonzero coefficients: 368          # nonzero coefficients: 367          # nonzero coefficients: 366          # nonzero coefficients: 365          # nonzero coefficients: 364          # nonzero coefficients: 363          # nonzero coefficients: 362          # nonzero coefficients: 361          # nonzero coefficients: 360          # nonzero coefficients: 359          # nonzero coefficients: 358          # nonzero coefficients: 357          # nonzero coefficients: 356          # nonzero coefficients: 355          # nonzero coefficients: 354          # nonzero coefficients: 353          # nonzero coefficients: 352          # nonzero coefficients: 351          # nonzero coefficients: 350          # nonzero coefficients: 349          # nonzero coefficients: 348          # nonzero coefficients: 347          # nonzero coefficients: 346          # nonzero coefficients: 345          # nonzero coefficients: 344          # nonzero coefficients: 343          # nonzero coefficients: 342          # nonzero coefficients: 341          # nonzero coefficients: 340          # nonzero coefficients: 339          # nonzero coefficients: 338          # nonzero coefficients: 337          # nonzero coefficients: 336          # nonzero coefficients: 335          # nonzero coefficients: 334          # nonzero coefficients: 333          # nonzero coefficients: 332          # nonzero coefficients: 331          # nonzero coefficients: 330          # nonzero coefficients: 329          # nonzero coefficients: 328          # nonzero coefficients: 327          # nonzero coefficients: 326          # nonzero coefficients: 325          # nonzero coefficients: 324          # nonzero coefficients: 323          # nonzero coefficients: 322          # nonzero coefficients: 321          # nonzero coefficients: 320          # nonzero coefficients: 319          # nonzero coefficients: 318          # nonzero coefficients: 317          # nonzero coefficients: 316          # nonzero coefficients: 315          # nonzero coefficients: 314          # nonzero coefficients: 313          # nonzero coefficients: 312          # nonzero coefficients: 311          # nonzero coefficients: 310          # nonzero coefficients: 309          # nonzero coefficients: 308          # nonzero coefficients: 307          # nonzero coefficients: 306          # nonzero coefficients: 305          # nonzero coefficients: 304          # nonzero coefficients: 303          # nonzero coefficients: 302          # nonzero coefficients: 301          # nonzero coefficients: 300          # nonzero coefficients: 299          # nonzero coefficients: 298          # nonzero coefficients: 297          # nonzero coefficients: 296          # nonzero coefficients: 295          # nonzero coefficients: 294          # nonzero coefficients: 293          # nonzero coefficients: 292          # nonzero coefficients: 291          # nonzero coefficients: 290          # nonzero coefficients: 289          # nonzero coefficients: 288          # nonzero coefficients: 287          # nonzero coefficients: 286          # nonzero coefficients: 285          # nonzero coefficients: 284          # nonzero coefficients: 283          # nonzero coefficients: 282          # nonzero coefficients: 281          # nonzero coefficients: 280          # nonzero coefficients: 279          # nonzero coefficients: 278          # nonzero coefficients: 277          # nonzero coefficients: 276          # nonzero coefficients: 275          # nonzero coefficients: 274          # nonzero coefficients: 272          # nonzero coefficients: 271          # nonzero coefficients: 270          # nonzero coefficients: 269          # nonzero coefficients: 268          # nonzero coefficients: 267          # nonzero coefficients: 266          # nonzero coefficients: 265          # nonzero coefficients: 264          # nonzero coefficients: 262          # nonzero coefficients: 261          # nonzero coefficients: 260          # nonzero coefficients: 259          # nonzero coefficients: 258          # nonzero coefficients: 257          # nonzero coefficients: 255          # nonzero coefficients: 254          # nonzero coefficients: 253          # nonzero coefficients: 252          # nonzero coefficients: 251          # nonzero coefficients: 250          # nonzero coefficients: 249          # nonzero coefficients: 248          # nonzero coefficients: 247          # nonzero coefficients: 246          # nonzero coefficients: 245          # nonzero coefficients: 244          # nonzero coefficients: 243          # nonzero coefficients: 242          # nonzero coefficients: 241          # nonzero coefficients: 240          # nonzero coefficients: 239          # nonzero coefficients: 238          # nonzero coefficients: 234          # nonzero coefficients: 233          # nonzero coefficients: 232          # nonzero coefficients: 231          # nonzero coefficients: 230          # nonzero coefficients: 229          # nonzero coefficients: 228          # nonzero coefficients: 227          # nonzero coefficients: 226          # nonzero coefficients: 225          # nonzero coefficients: 224          # nonzero coefficients: 223          # nonzero coefficients: 222          # nonzero coefficients: 221          # nonzero coefficients: 220          # nonzero coefficients: 219          # nonzero coefficients: 218          # nonzero coefficients: 217          # nonzero coefficients: 216          # nonzero coefficients: 215          # nonzero coefficients: 214          # nonzero coefficients: 213          # nonzero coefficients: 212          # nonzero coefficients: 211          # nonzero coefficients: 210          # nonzero coefficients: 209          # nonzero coefficients: 208          # nonzero coefficients: 207          # nonzero coefficients: 206          # nonzero coefficients: 205          # nonzero coefficients: 204          # nonzero coefficients: 203          # nonzero coefficients: 202          # nonzero coefficients: 201          # nonzero coefficients: 200          # nonzero coefficients: 199          # nonzero coefficients: 198          # nonzero coefficients: 197          # nonzero coefficients: 196          # nonzero coefficients: 195          # nonzero coefficients: 194          # nonzero coefficients: 193          # nonzero coefficients: 192          # nonzero coefficients: 191          # nonzero coefficients: 190          # nonzero coefficients: 189          # nonzero coefficients: 188          # nonzero coefficients: 187          # nonzero coefficients: 186          # nonzero coefficients: 185          # nonzero coefficients: 184          # nonzero coefficients: 183          # nonzero coefficients: 182          # nonzero coefficients: 181          # nonzero coefficients: 180          # nonzero coefficients: 179          # nonzero coefficients: 178          # nonzero coefficients: 177          # nonzero coefficients: 176          # nonzero coefficients: 175          # nonzero coefficients: 174          # nonzero coefficients: 173          # nonzero coefficients: 172          # nonzero coefficients: 171          # nonzero coefficients: 170          # nonzero coefficients: 169          # nonzero coefficients: 168          # nonzero coefficients: 167          # nonzero coefficients: 166          # nonzero coefficients: 165          # nonzero coefficients: 164          # nonzero coefficients: 163          # nonzero coefficients: 162          # nonzero coefficients: 161          # nonzero coefficients: 160          # nonzero coefficients: 159          # nonzero coefficients: 158          # nonzero coefficients: 157          # nonzero coefficients: 156          # nonzero coefficients: 155          # nonzero coefficients: 154          # nonzero coefficients: 153          # nonzero coefficients: 152          # nonzero coefficients: 151          # nonzero coefficients: 150          # nonzero coefficients: 149          # nonzero coefficients: 148          # nonzero coefficients: 147          # nonzero coefficients: 146          # nonzero coefficients: 145          # nonzero coefficients: 144          # nonzero coefficients: 143          # nonzero coefficients: 142          # nonzero coefficients: 141          # nonzero coefficients: 140          # nonzero coefficients: 139          # nonzero coefficients: 138          # nonzero coefficients: 137          # nonzero coefficients: 136          # nonzero coefficients: 135          # nonzero coefficients: 134          # nonzero coefficients: 133          # nonzero coefficients: 132          # nonzero coefficients: 131          # nonzero coefficients: 130          # nonzero coefficients: 128          # nonzero coefficients: 127          # nonzero coefficients: 126          # nonzero coefficients: 125          # nonzero coefficients: 124          # nonzero coefficients: 123          # nonzero coefficients: 122          # nonzero coefficients: 121          # nonzero coefficients: 120          # nonzero coefficients: 119          # nonzero coefficients: 118          # nonzero coefficients: 117          # nonzero coefficients: 116          # nonzero coefficients: 115          # nonzero coefficients: 114          # nonzero coefficients: 113          # nonzero coefficients: 112          # nonzero coefficients: 111          # nonzero coefficients: 110          # nonzero coefficients: 109          # nonzero coefficients: 108          # nonzero coefficients: 107          # nonzero coefficients: 106          # nonzero coefficients: 105          # nonzero coefficients: 104          # nonzero coefficients: 103          # nonzero coefficients: 102          # nonzero coefficients: 101          # nonzero coefficients: 100          # nonzero coefficients: 99          # nonzero coefficients: 98          # nonzero coefficients: 97          # nonzero coefficients: 96          # nonzero coefficients: 95          # nonzero coefficients: 94          # nonzero coefficients: 93          # nonzero coefficients: 92          # nonzero coefficients: 91          # nonzero coefficients: 90          # nonzero coefficients: 89          # nonzero coefficients: 88          # nonzero coefficients: 87          # nonzero coefficients: 86          # nonzero coefficients: 85          # nonzero coefficients: 84          # nonzero coefficients: 83          # nonzero coefficients: 82          # nonzero coefficients: 81          # nonzero coefficients: 80          # nonzero coefficients: 79          # nonzero coefficients: 78          # nonzero coefficients: 77          # nonzero coefficients: 76          # nonzero coefficients: 75          # nonzero coefficients: 74          # nonzero coefficients: 73          # nonzero coefficients: 72          # nonzero coefficients: 71          # nonzero coefficients: 70          # nonzero coefficients: 69          # nonzero coefficients: 68          # nonzero coefficients: 67          # nonzero coefficients: 66          # nonzero coefficients: 65          # nonzero coefficients: 64          # nonzero coefficients: 63          # nonzero coefficients: 62          # nonzero coefficients: 61          # nonzero coefficients: 60          # nonzero coefficients: 59          # nonzero coefficients: 58          # nonzero coefficients: 57          # nonzero coefficients: 56          # nonzero coefficients: 55          # nonzero coefficients: 54          # nonzero coefficients: 53          # nonzero coefficients: 52          # nonzero coefficients: 51          # nonzero coefficients: 50          # nonzero coefficients: 50          # nonzero coefficients: 49          # nonzero coefficients: 48          # nonzero coefficients: 47          # nonzero coefficients: 46          # nonzero coefficients: 45          # nonzero coefficients: 44          # nonzero coefficients: 43          # nonzero coefficients: 42          # nonzero coefficients: 41          # nonzero coefficients: 40          # nonzero coefficients: 39          # nonzero coefficients: 42          # nonzero coefficients: 41          # nonzero coefficients: 40          # nonzero coefficients: 39          # nonzero coefficients: 38          # nonzero coefficients: 37          # nonzero coefficients: 38          # nonzero coefficients: 38          # nonzero coefficients: 37          # nonzero coefficients: 36          # nonzero coefficients: 35          # nonzero coefficients: 35          # nonzero coefficients: 35          # nonzero coefficients: 34          # nonzero coefficients: 34          # nonzero coefficients: 34          # nonzero coefficients: 34          # nonzero coefficients: 34          # nonzero coefficients: 34          # nonzero coefficients: 34          # nonzero coefficients: 34          # nonzero coefficients: 34          # nonzero coefficients: 34          # nonzero coefficients: 34          # nonzero coefficients: 34          # nonzero coefficients: 34          # nonzero coefficients: 34          # nonzero coefficients: 33          # nonzero coefficients: 33          # nonzero coefficients: 33          # nonzero coefficients: 33          # nonzero coefficients: 33          # nonzero coefficients: 33          # nonzero coefficients: 33          # nonzero coefficients: 32          # nonzero coefficients: 32          # nonzero coefficients: 31          # nonzero coefficients: 31          # nonzero coefficients: 31          # nonzero coefficients: 31          # nonzero coefficients: 31          # nonzero coefficients: 30          # nonzero coefficients: 30          # nonzero coefficients: 30          # nonzero coefficients: 30          # nonzero coefficients: 30          # nonzero coefficients: 30          # nonzero coefficients: 30          
-[1] "Summary of group sizes:"
-  1   2   3 
-552  72 148 
-[1] "Grouping 1 contains mutually exclusive groups"
-[1] "Binary response, executing logistic ridge regression"
-[1] "Finding lambda for initial ridge regression"
-[1] -29.00581
-[1] "Computation time for cross-validating main penalty parameter: 5.93299999999999"
-[1] "lambda2 9.15260369874536"
-1234567
-[1] -29.00581
-[1] -29.00581
-[1] "Relative error: 0.120945533121795"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.4789953 0.8350849 0.4735169
-[1] -24.79776
-1234567
-[1] "Partition group improved results"
-[1] "Relative error: 0.146718745056244"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.4070785 0.9145066 0.4917486
-[1] -22.9863
-12345678
-[1] "Partition group improved results"
-[1] "Relative error: 0.138942038898608"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.3059833 1.0335911 0.5291953
-[1] -23.81125
-[1] "Partition group CONVERGED after 3 iterations"
-[1] "All partitions CONVERGED after 3 iterations"
-[1] "Computation time for adaptive weigthing: 2.85199999999998"
-[1] "Final lambda multipliers (summary):"
-$group
-        1         2         3 
-2.0810625 0.7636906 0.2328512 
-
-[1] "CVLs -29.0058109980875" "CVLs -22.9862973898706"
-[1] "Total computation time: 8.78599999999994"
-Error in pred1.grridge[foldid == k] <- predict(fit.grridge$predobj$GroupRegul,  : 
-  object 'pred1.grridge' not found
-Execution halted

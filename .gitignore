@@ -29,7 +29,6 @@
 *.png
 *.Rcheck
 *.rda
-*.RData
 *.Rhistory
 *.Rout
 *.Rproj.user
@@ -41,9 +40,6 @@
 *.toc
 *.xlsx
 
-
-!data/
-
-data/*
-!data/ESetMbolCSFPR2.Rdata
-.Rproj.user
+old_data/
+old_results/
+old_figs/

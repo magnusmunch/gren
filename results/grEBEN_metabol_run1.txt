@@ -1,1006 +1,0 @@
-
-R version 3.2.5 (2016-04-14) -- "Very, Very Secure Dishes"
-Copyright (C) 2016 The R Foundation for Statistical Computing
-Platform: x86_64-pc-linux-gnu (64-bit)
-
-R is free software and comes with ABSOLUTELY NO WARRANTY.
-You are welcome to redistribute it under certain conditions.
-Type 'license()' or 'licence()' for distribution details.
-
-  Natural language support but running in an English locale
-
-R is a collaborative project with many contributors.
-Type 'contributors()' for more information and
-'citation()' on how to cite R or R packages in publications.
-
-Type 'demo()' for some demos, 'help()' for on-line help, or
-'help.start()' for an HTML browser interface to help.
-Type 'q()' to quit R.
-
-> ##############################  preamble  #############################
-> # grEBEN on real data                                                 #
-> # version: 01                                                         #
-> # author: Magnus Munch                                                #
-> # created: 04-04-2017                                                 #
-> # last edited: 04-04-2017                                             #
-> #######################################################################
-> 
-> ###############################  notes  ###############################
-> #######################################################################
-> 
-> ##########################  data description  #########################
-> # 248 samples of cases of Alzheimers and controls with measurements   #
-> # on 230 metabolites.                                                 #
-> #######################################################################
-> 
-> ### paths
-> path.data <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/data/" ,"~/EBEN/data/"))
-> path.code <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/code/" ,"~/EBEN/code/"))
-> path.res <- as.character(ifelse(Sys.info()[1]=="Darwin","/Users/magnusmunch/Documents/PhD/EBEN/results/" ,"~/EBEN/results/"))
-> 
-> ### libraries
-> library(glmnet)
-Loading required package: Matrix
-Loading required package: foreach
-Loaded glmnet 2.0-5
-
-> library(penalized)
-Loading required package: survival
-Welcome to penalized. For extended examples, see vignette("penalized").
-> library(GRridge)
-Loading required package: Iso
-Iso 0.0-17
-Loading required package: GSEABase
-Loading required package: BiocGenerics
-Loading required package: parallel
-
-Attaching package: ‘BiocGenerics’
-
-The following objects are masked from ‘package:parallel’:
-
-    clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
-    clusterExport, clusterMap, parApply, parCapply, parLapply,
-    parLapplyLB, parRapply, parSapply, parSapplyLB
-
-The following object is masked from ‘package:penalized’:
-
-    as.data.frame
-
-The following object is masked from ‘package:Matrix’:
-
-    as.vector
-
-The following objects are masked from ‘package:stats’:
-
-    IQR, mad, xtabs
-
-The following objects are masked from ‘package:base’:
-
-    anyDuplicated, append, as.data.frame, as.vector, cbind, colnames,
-    do.call, duplicated, eval, evalq, Filter, Find, get, grep, grepl,
-    intersect, is.unsorted, lapply, lengths, Map, mapply, match, mget,
-    order, paste, pmax, pmax.int, pmin, pmin.int, Position, rank,
-    rbind, Reduce, rownames, sapply, setdiff, sort, table, tapply,
-    union, unique, unlist, unsplit
-
-Loading required package: Biobase
-Welcome to Bioconductor
-
-    Vignettes contain introductory material; view with
-    'browseVignettes()'. To cite Bioconductor, see
-    'citation("Biobase")', and for packages 'citation("pkgname")'.
-
-Loading required package: annotate
-Loading required package: AnnotationDbi
-Loading required package: stats4
-Loading required package: IRanges
-Loading required package: S4Vectors
-
-Attaching package: ‘IRanges’
-
-The following object is masked from ‘package:Matrix’:
-
-    expand
-
-Loading required package: XML
-Loading required package: graph
-
-Attaching package: ‘graph’
-
-The following object is masked from ‘package:XML’:
-
-    addNode
-
-
-Attaching package: ‘GRridge’
-
-The following object is masked from ‘package:glmnet’:
-
-    auc
-
-Warning messages:
-1: replacing previous import ‘stats::xtabs’ by ‘BiocGenerics::xtabs’ when loading ‘GRridge’ 
-2: replacing previous import ‘GSEABase::intersect’ by ‘BiocGenerics::intersect’ when loading ‘GRridge’ 
-3: replacing previous import ‘stats::mad’ by ‘BiocGenerics::mad’ when loading ‘GRridge’ 
-4: replacing previous import ‘GSEABase::setdiff’ by ‘BiocGenerics::setdiff’ when loading ‘GRridge’ 
-5: replacing previous import ‘penalized::as.data.frame’ by ‘BiocGenerics::as.data.frame’ when loading ‘GRridge’ 
-6: replacing previous import ‘stats::IQR’ by ‘BiocGenerics::IQR’ when loading ‘GRridge’ 
-> library(pROC)
-Type 'citation("pROC")' for a citation.
-
-Attaching package: ‘pROC’
-
-The following objects are masked from ‘package:GRridge’:
-
-    auc, roc
-
-The following objects are masked from ‘package:IRanges’:
-
-    cov, var
-
-The following object is masked from ‘package:glmnet’:
-
-    auc
-
-The following objects are masked from ‘package:stats’:
-
-    cov, smooth, var
-
-> library(Biobase)
-> 
-> ### loading data
-> load(paste(path.data, "ESetMbolCSFPR2.Rdata", sep=""))
-> 
-> ### loading functions 
-> source(paste(path.code, "grVBEM.R", sep=""))
-> 
-> # function to cross-validate elastic net
-> cv.en <- function(x, y, intercept=intercept) {
-+   fit.pen <- cv.pen(x, y, intercept=intercept)
-+   fit.en <- glmnet(x, y, family="binomial", alpha=fit.pen$alpha[which.min(fit.pen$cvll)],
-+                    lambda=fit.pen$lambda[which.min(fit.pen$cvll)])
-+   return(fit.en)
-+ }
-> 
-> ### data analysis
-> # phenotype data
-> y <- as.numeric(pData(ESetMbolCSFPR2)$D_diag_name) - 1
-> 
-> # metabolite data
-> x <- apply(t(exprs(ESetMbolCSFPR2)), 2, function(x) {(x - mean(x))/sd(x)})
-> 
-> # co-data (two partitions)
-> partitions1 <- list(platform=replace(as.numeric(fData(ESetMbolCSFPR2)$PlatformCode),
-+                                      as.numeric(fData(ESetMbolCSFPR2)$PlatformCode)==5, 4))
-> partitions2 <- list(platform=as.numeric(fData(ESetMbolCSFPR2)$PlatformCode))
-> 
-> # more info
-> n <- nrow(x)
-> p <- ncol(x)
-> m <- y*y + (y - 1)*(y - 1)
-> nfolds <- 10
-> rest <- n %% nfolds
-> foldsize <- c(rep(n %/% nfolds + as.numeric(rest!=0), times=rest),
-+               rep(n %/% nfolds, times=nfolds - rest))
-> set.seed(1002)
-> foldid <- sample(rep(1:nfolds, times=foldsize))
-> 
-> # cross validation of AUC
-> cv.ridge <- cv.glmnet(x, y, family="binomial", alpha=0, standardize=FALSE, intercept=TRUE)
-> cv.en <- cv.pen(x, y, intercept=TRUE)
-> 
-> lambda2ridge <- 0.5*n*cv.ridge$lambda.min
-> lambdaridge <- cv.ridge$lambda.min
-> alphaglmnet <- cv.en$alpha[which.min(cv.en$cvll)]
-> lambdaglmnet <- cv.en$lambda[which.min(cv.en$cvll)]
-> lambda1gren <- 2*n*lambdaglmnet*alphaglmnet
-> lambda2gren <- n*lambdaglmnet*(1 - alphaglmnet)
-> 
-> pred.ridge <- pred.en <- pred1.grEBEN <- pred1.grridge <- 
-+   pred2.grEBEN <- pred2.grridge <- numeric(n) # pred1.SGL <- numeric(n)
-> for(k in 1:nfolds) {
-+   print(paste("Fold", k, sep=" "))
-+   xtrain <- x[foldid!=k, ]
-+   xtest <- x[foldid==k, ]
-+   ytrain <- y[foldid!=k]
-+   ytest <- y[foldid==k]
-+   mtrain <- m[foldid!=k]
-+   mtest <- m[foldid==k]
-+   ntrain <- length(ytrain)
-+   ntest <- length(ytest)
-+   
-+   # grVBEM
-+   fit.ridge <- glmnet(xtrain, ytrain, family="binomial", alpha=0, lambda=lambdaridge, standardize=FALSE, 
-+                       intercept=TRUE)
-+   fit.en <- glmnet(xtrain, ytrain, family="binomial", alpha=alphaglmnet, lambda=lambdaglmnet, standardize=FALSE,
-+                    intercept=TRUE)
-+   fit1.grEBEN <- grVBEM(xtrain, ytrain, mtrain, partitions1, lambda1=lambda1gren, lambda2=lambda2gren, 
-+                        intercept=TRUE, eps=0.001, maxiter=500, trace=TRUE, QNacc=FALSE)
-+   fit2.grEBEN <- grVBEM(xtrain, ytrain, mtrain, partitions2, lambda1=lambda1gren, lambda2=lambda2gren, 
-+                        intercept=TRUE, eps=0.001, maxiter=500, trace=TRUE, QNacc=FALSE)
-+   fit1.grridge <- grridge(t(xtrain), ytrain, list(platform=CreatePartition(as.factor(partitions1[[1]]))), 
-+                           unpenal=~1, optl=lambda2ridge, trace=FALSE)
-+   fit2.grridge <- grridge(t(xtrain), ytrain, list(platform=CreatePartition(as.factor(partitions2[[1]]))), 
-+                           unpenal=~1, optl=lambda2ridge, trace=FALSE)
-+   # fit.SGL <- SGL(list(x=xtrain, y=ytrain), index=groups, type="logit", standardize=FALSE)
-+   
-+   pred.ridge[foldid==k] <- predict(fit.ridge, xtest, type="response")
-+   pred.en[foldid==k] <- predict(fit.en, xtest, type="response")
-+   pred1.grEBEN[foldid==k] <- as.numeric(exp(cbind(1, xtest) %*% fit1.grEBEN$mu)/
-+                                            (1 + exp(cbind(1, xtest) %*% fit1.grEBEN$mu)))
-+   pred2.grEBEN[foldid==k] <- as.numeric(exp(cbind(1, xtest) %*% fit2.grEBEN$mu)/
-+                                            (1 + exp(cbind(1, xtest) %*% fit2.grEBEN$mu)))
-+   pred1.grridge[foldid==k] <- predict(fit1.grridge$predobj$GroupRegul, xtest)
-+   pred2.grridge[foldid==k] <- predict(fit2.grridge$predobj$GroupRegul, xtest)
-+   # pred1.SGL[foldid==k] <- as.numeric(exp(cbind(1, matrix(xtest, nrow=1)) %*% 
-+   #                                          rbind(fit.SGL$fit$intercepts, fit.SGL$fit$beta)
-+   #                                        [, which.min(fit.SGL$lldiff)])/
-+   #                                      (1 + exp(cbind(1, matrix(xtest, nrow=1)) %*% 
-+   #                                                 rbind(fit.SGL$fit$intercepts, fit.SGL$fit$beta)
-+   #                                               [, which.min(fit.SGL$lldiff)])))
-+   
-+ }
-[1] "Fold 1"
-
-Estimating penalty multipliers by empirical Bayes
-Penalty multipliers estimated at platform: 0.84, 0.82, 1.14, 0.97      Penalty multipliers estimated at platform: 0.86, 0.85, 1.14, 0.92      Penalty multipliers estimated at platform: 0.89, 0.87, 1.13, 0.87      Penalty multipliers estimated at platform: 0.91, 0.9, 1.13, 0.83      Penalty multipliers estimated at platform: 0.94, 0.92, 1.13, 0.8      Penalty multipliers estimated at platform: 0.96, 0.94, 1.13, 0.77      Penalty multipliers estimated at platform: 0.98, 0.95, 1.12, 0.75      Penalty multipliers estimated at platform: 0.99, 0.97, 1.12, 0.73      Penalty multipliers estimated at platform: 1.01, 0.98, 1.12, 0.71      Penalty multipliers estimated at platform: 1.03, 0.99, 1.12, 0.69      Penalty multipliers estimated at platform: 1.04, 1.01, 1.12, 0.68      Penalty multipliers estimated at platform: 1.06, 1.02, 1.11, 0.67      Penalty multipliers estimated at platform: 1.07, 1.02, 1.11, 0.66      Penalty multipliers estimated at platform: 1.08, 1.03, 1.11, 0.65      Penalty multipliers estimated at platform: 1.09, 1.04, 1.11, 0.64      Penalty multipliers estimated at platform: 1.1, 1.05, 1.1, 0.64      Penalty multipliers estimated at platform: 1.11, 1.05, 1.1, 0.63      Penalty multipliers estimated at platform: 1.12, 1.06, 1.1, 0.63      Penalty multipliers estimated at platform: 1.13, 1.06, 1.1, 0.62      Penalty multipliers estimated at platform: 1.14, 1.07, 1.09, 0.62      Penalty multipliers estimated at platform: 1.15, 1.07, 1.09, 0.62      Penalty multipliers estimated at platform: 1.16, 1.07, 1.09, 0.61      Penalty multipliers estimated at platform: 1.16, 1.08, 1.09, 0.61      Penalty multipliers estimated at platform: 1.17, 1.08, 1.08, 0.61      Penalty multipliers estimated at platform: 1.17, 1.08, 1.08, 0.61      Penalty multipliers estimated at platform: 1.18, 1.08, 1.08, 0.61      Penalty multipliers estimated at platform: 1.19, 1.08, 1.08, 0.61      Penalty multipliers estimated at platform: 1.19, 1.09, 1.08, 0.61      Penalty multipliers estimated at platform: 1.2, 1.09, 1.07, 0.6      Penalty multipliers estimated at platform: 1.2, 1.09, 1.07, 0.6      Penalty multipliers estimated at platform: 1.21, 1.09, 1.07, 0.6      Penalty multipliers estimated at platform: 1.21, 1.09, 1.07, 0.6      Penalty multipliers estimated at platform: 1.21, 1.09, 1.07, 0.6      Penalty multipliers estimated at platform: 1.22, 1.09, 1.07, 0.6      Penalty multipliers estimated at platform: 1.22, 1.09, 1.07, 0.6      Penalty multipliers estimated at platform: 1.22, 1.09, 1.06, 0.6      Penalty multipliers estimated at platform: 1.23, 1.09, 1.06, 0.6      Penalty multipliers estimated at platform: 1.23, 1.09, 1.06, 0.6      Penalty multipliers estimated at platform: 1.23, 1.09, 1.06, 0.6      Penalty multipliers estimated at platform: 1.24, 1.09, 1.06, 0.6      Penalty multipliers estimated at platform: 1.24, 1.09, 1.06, 0.6      Penalty multipliers estimated at platform: 1.24, 1.09, 1.06, 0.6      Penalty multipliers estimated at platform: 1.24, 1.09, 1.06, 0.6      Penalty multipliers estimated at platform: 1.25, 1.09, 1.06, 0.6      Penalty multipliers estimated at platform: 1.25, 1.09, 1.05, 0.6      Penalty multipliers estimated at platform: 1.25, 1.09, 1.05, 0.6      Penalty multipliers estimated at platform: 1.25, 1.09, 1.05, 0.6      Penalty multipliers estimated at platform: 1.26, 1.09, 1.05, 0.6      Penalty multipliers estimated at platform: 1.26, 1.09, 1.05, 0.6      Penalty multipliers estimated at platform: 1.26, 1.09, 1.05, 0.6      Penalty multipliers estimated at platform: 1.26, 1.09, 1.05, 0.6      Penalty multipliers estimated at platform: 1.26, 1.09, 1.05, 0.6      Penalty multipliers estimated at platform: 1.26, 1.09, 1.05, 0.6      Penalty multipliers estimated at platform: 1.27, 1.09, 1.05, 0.6      Penalty multipliers estimated at platform: 1.27, 1.09, 1.05, 0.6      Penalty multipliers estimated at platform: 1.27, 1.09, 1.05, 0.6      Penalty multipliers estimated at platform: 1.27, 1.09, 1.05, 0.6      Penalty multipliers estimated at platform: 1.27, 1.09, 1.05, 0.6      Penalty multipliers estimated at platform: 1.27, 1.09, 1.05, 0.6 in 20.67 seconds 
-Estimating penalty multipliers by empirical Bayes
-Penalty multipliers estimated at platform: 0.84, 0.81, 1.14, 0.82, 1.07      Penalty multipliers estimated at platform: 0.86, 0.83, 1.13, 0.65, 1.12      Penalty multipliers estimated at platform: 0.89, 0.86, 1.13, 0.53, 1.17      Penalty multipliers estimated at platform: 0.91, 0.88, 1.12, 0.45, 1.22      Penalty multipliers estimated at platform: 0.93, 0.9, 1.11, 0.4, 1.26      Penalty multipliers estimated at platform: 0.95, 0.92, 1.1, 0.37, 1.29      Penalty multipliers estimated at platform: 0.96, 0.94, 1.09, 0.35, 1.33      Penalty multipliers estimated at platform: 0.97, 0.95, 1.08, 0.33, 1.36      Penalty multipliers estimated at platform: 0.99, 0.97, 1.07, 0.32, 1.39      Penalty multipliers estimated at platform: 1, 0.98, 1.06, 0.31, 1.41      Penalty multipliers estimated at platform: 1.01, 0.99, 1.05, 0.31, 1.44      Penalty multipliers estimated at platform: 1.02, 1, 1.04, 0.31, 1.46      Penalty multipliers estimated at platform: 1.03, 1.01, 1.03, 0.3, 1.48      Penalty multipliers estimated at platform: 1.04, 1.02, 1.02, 0.3, 1.51      Penalty multipliers estimated at platform: 1.05, 1.03, 1.01, 0.3, 1.53      Penalty multipliers estimated at platform: 1.05, 1.04, 1.01, 0.3, 1.55      Penalty multipliers estimated at platform: 1.06, 1.04, 1, 0.3, 1.57      Penalty multipliers estimated at platform: 1.07, 1.05, 0.99, 0.3, 1.59      Penalty multipliers estimated at platform: 1.08, 1.06, 0.98, 0.3, 1.6      Penalty multipliers estimated at platform: 1.08, 1.06, 0.98, 0.3, 1.62      Penalty multipliers estimated at platform: 1.09, 1.07, 0.97, 0.3, 1.64      Penalty multipliers estimated at platform: 1.1, 1.07, 0.97, 0.3, 1.66      Penalty multipliers estimated at platform: 1.1, 1.08, 0.96, 0.3, 1.67      Penalty multipliers estimated at platform: 1.11, 1.08, 0.96, 0.3, 1.69      Penalty multipliers estimated at platform: 1.11, 1.08, 0.95, 0.3, 1.7      Penalty multipliers estimated at platform: 1.12, 1.09, 0.95, 0.3, 1.72      Penalty multipliers estimated at platform: 1.12, 1.09, 0.94, 0.3, 1.73      Penalty multipliers estimated at platform: 1.13, 1.09, 0.94, 0.3, 1.75      Penalty multipliers estimated at platform: 1.13, 1.1, 0.94, 0.3, 1.76      Penalty multipliers estimated at platform: 1.14, 1.1, 0.93, 0.3, 1.77      Penalty multipliers estimated at platform: 1.14, 1.1, 0.93, 0.3, 1.78      Penalty multipliers estimated at platform: 1.15, 1.1, 0.93, 0.3, 1.8      Penalty multipliers estimated at platform: 1.15, 1.1, 0.92, 0.3, 1.81      Penalty multipliers estimated at platform: 1.15, 1.11, 0.92, 0.3, 1.82      Penalty multipliers estimated at platform: 1.16, 1.11, 0.92, 0.3, 1.83      Penalty multipliers estimated at platform: 1.16, 1.11, 0.91, 0.3, 1.84      Penalty multipliers estimated at platform: 1.16, 1.11, 0.91, 0.3, 1.85      Penalty multipliers estimated at platform: 1.17, 1.11, 0.91, 0.3, 1.86      Penalty multipliers estimated at platform: 1.17, 1.11, 0.91, 0.3, 1.87      Penalty multipliers estimated at platform: 1.17, 1.11, 0.9, 0.3, 1.88      Penalty multipliers estimated at platform: 1.17, 1.11, 0.9, 0.3, 1.89      Penalty multipliers estimated at platform: 1.18, 1.11, 0.9, 0.3, 1.9      Penalty multipliers estimated at platform: 1.18, 1.12, 0.9, 0.3, 1.9      Penalty multipliers estimated at platform: 1.18, 1.12, 0.9, 0.3, 1.91      Penalty multipliers estimated at platform: 1.18, 1.12, 0.9, 0.3, 1.92      Penalty multipliers estimated at platform: 1.19, 1.12, 0.89, 0.3, 1.93      Penalty multipliers estimated at platform: 1.19, 1.12, 0.89, 0.3, 1.93      Penalty multipliers estimated at platform: 1.19, 1.12, 0.89, 0.3, 1.94      Penalty multipliers estimated at platform: 1.19, 1.12, 0.89, 0.3, 1.95      Penalty multipliers estimated at platform: 1.19, 1.12, 0.89, 0.3, 1.95      Penalty multipliers estimated at platform: 1.2, 1.12, 0.89, 0.3, 1.96      Penalty multipliers estimated at platform: 1.2, 1.12, 0.89, 0.3, 1.96      Penalty multipliers estimated at platform: 1.2, 1.12, 0.88, 0.3, 1.97      Penalty multipliers estimated at platform: 1.2, 1.12, 0.88, 0.3, 1.97      Penalty multipliers estimated at platform: 1.2, 1.12, 0.88, 0.3, 1.98      Penalty multipliers estimated at platform: 1.2, 1.12, 0.88, 0.3, 1.98      Penalty multipliers estimated at platform: 1.2, 1.12, 0.88, 0.3, 1.99      Penalty multipliers estimated at platform: 1.21, 1.12, 0.88, 0.3, 1.99      Penalty multipliers estimated at platform: 1.21, 1.12, 0.88, 0.3, 2      Penalty multipliers estimated at platform: 1.21, 1.12, 0.88, 0.3, 2      Penalty multipliers estimated at platform: 1.21, 1.12, 0.88, 0.3, 2.01      Penalty multipliers estimated at platform: 1.21, 1.12, 0.88, 0.3, 2.01      Penalty multipliers estimated at platform: 1.21, 1.12, 0.88, 0.3, 2.01      Penalty multipliers estimated at platform: 1.21, 1.12, 0.88, 0.3, 2.02      Penalty multipliers estimated at platform: 1.21, 1.12, 0.88, 0.3, 2.02      Penalty multipliers estimated at platform: 1.21, 1.12, 0.87, 0.3, 2.02      Penalty multipliers estimated at platform: 1.22, 1.12, 0.87, 0.3, 2.03      Penalty multipliers estimated at platform: 1.22, 1.12, 0.87, 0.3, 2.03      Penalty multipliers estimated at platform: 1.22, 1.12, 0.87, 0.3, 2.03      Penalty multipliers estimated at platform: 1.22, 1.12, 0.87, 0.3, 2.03      Penalty multipliers estimated at platform: 1.22, 1.12, 0.87, 0.3, 2.04      Penalty multipliers estimated at platform: 1.22, 1.12, 0.87, 0.3, 2.04      Penalty multipliers estimated at platform: 1.22, 1.12, 0.87, 0.3, 2.04      Penalty multipliers estimated at platform: 1.22, 1.12, 0.87, 0.3, 2.04      Penalty multipliers estimated at platform: 1.22, 1.12, 0.87, 0.3, 2.05      Penalty multipliers estimated at platform: 1.22, 1.12, 0.87, 0.3, 2.05      Penalty multipliers estimated at platform: 1.22, 1.12, 0.87, 0.3, 2.05      Penalty multipliers estimated at platform: 1.22, 1.12, 0.87, 0.3, 2.05      Penalty multipliers estimated at platform: 1.22, 1.12, 0.87, 0.3, 2.05 in 24.42 seconds [1] "Summary of group sizes:"
-  1   2   3   4 
- 53  22 116  39 
-[1] "Grouping 1 contains mutually exclusive groups"
-[1] "Binary response, executing logistic ridge regression"
-1234
-[1] -138.2613
-[1] -138.2613
-[1] "Relative error: 0.163557986870351"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.0304369 1.0375359 1.0251585 0.8821894
-[1] -138.0377
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.163185909267324"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.0185005 1.0270742 1.0198934 0.9111027
-[1] -137.8705
-[1] "Partition platform CONVERGED after 2 iterations"
-[1] "All partitions CONVERGED after 2 iterations"
-[1] "Computation time for adaptive weigthing: 57.965"
-[1] "Final lambda multipliers (summary):"
-$platform
-        1         2         3         4 
-1.0304369 1.0375359 1.0251585 0.8821894 
-
-[1] "CVLs -138.261314381071" "CVLs -138.037653481662"
-[1] "Total computation time: 57.965"
-[1] "Summary of group sizes:"
-  1   2   3   4   5 
- 53  22 116  13  26 
-[1] "Grouping 1 contains mutually exclusive groups"
-[1] "Binary response, executing logistic ridge regression"
-1234
-[1] -138.2613
-[1] -138.2613
-[1] "Relative error: 0.221946868922962"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.0304369 1.0375359 1.0251585 0.4609429 1.6244786
-[1] -136.277
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.222163122469608"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.0118340 1.0648185 0.9797642 0.6057304 1.5203307
-[1] -135.3356
-[1] "Partition platform CONVERGED after 2 iterations"
-[1] "All partitions CONVERGED after 2 iterations"
-[1] "Computation time for adaptive weigthing: 53.97"
-[1] "Final lambda multipliers (summary):"
-$platform
-        1         2         3         4         5 
-1.0304369 1.0375359 1.0251585 0.4609429 1.6244786 
-
-[1] "CVLs -138.261314381071" "CVLs -136.277006229096"
-[1] "Total computation time: 53.971"
-[1] "Fold 2"
-
-Estimating penalty multipliers by empirical Bayes
-Penalty multipliers estimated at platform: 0.85, 0.84, 1.13, 0.96      Penalty multipliers estimated at platform: 0.86, 0.88, 1.14, 0.9      Penalty multipliers estimated at platform: 0.86, 0.92, 1.14, 0.85      Penalty multipliers estimated at platform: 0.87, 0.96, 1.15, 0.81      Penalty multipliers estimated at platform: 0.88, 1, 1.16, 0.78      Penalty multipliers estimated at platform: 0.88, 1.03, 1.16, 0.75      Penalty multipliers estimated at platform: 0.89, 1.07, 1.17, 0.72      Penalty multipliers estimated at platform: 0.89, 1.1, 1.17, 0.7      Penalty multipliers estimated at platform: 0.89, 1.13, 1.17, 0.68      Penalty multipliers estimated at platform: 0.89, 1.16, 1.18, 0.66      Penalty multipliers estimated at platform: 0.9, 1.18, 1.18, 0.64      Penalty multipliers estimated at platform: 0.9, 1.21, 1.18, 0.63      Penalty multipliers estimated at platform: 0.9, 1.23, 1.19, 0.62      Penalty multipliers estimated at platform: 0.9, 1.26, 1.19, 0.61      Penalty multipliers estimated at platform: 0.9, 1.28, 1.19, 0.6      Penalty multipliers estimated at platform: 0.9, 1.3, 1.19, 0.59      Penalty multipliers estimated at platform: 0.9, 1.32, 1.19, 0.59      Penalty multipliers estimated at platform: 0.9, 1.33, 1.19, 0.58      Penalty multipliers estimated at platform: 0.9, 1.35, 1.2, 0.58      Penalty multipliers estimated at platform: 0.89, 1.37, 1.2, 0.57      Penalty multipliers estimated at platform: 0.89, 1.38, 1.2, 0.57      Penalty multipliers estimated at platform: 0.89, 1.4, 1.2, 0.57      Penalty multipliers estimated at platform: 0.89, 1.41, 1.2, 0.56      Penalty multipliers estimated at platform: 0.89, 1.42, 1.2, 0.56      Penalty multipliers estimated at platform: 0.89, 1.44, 1.2, 0.56      Penalty multipliers estimated at platform: 0.89, 1.45, 1.2, 0.56      Penalty multipliers estimated at platform: 0.89, 1.46, 1.2, 0.55      Penalty multipliers estimated at platform: 0.89, 1.47, 1.2, 0.55      Penalty multipliers estimated at platform: 0.88, 1.48, 1.2, 0.55      Penalty multipliers estimated at platform: 0.88, 1.49, 1.2, 0.55      Penalty multipliers estimated at platform: 0.88, 1.5, 1.2, 0.55      Penalty multipliers estimated at platform: 0.88, 1.51, 1.2, 0.55      Penalty multipliers estimated at platform: 0.88, 1.52, 1.2, 0.55      Penalty multipliers estimated at platform: 0.88, 1.52, 1.2, 0.55      Penalty multipliers estimated at platform: 0.88, 1.53, 1.2, 0.55      Penalty multipliers estimated at platform: 0.88, 1.54, 1.2, 0.55      Penalty multipliers estimated at platform: 0.88, 1.55, 1.2, 0.55      Penalty multipliers estimated at platform: 0.88, 1.55, 1.2, 0.54      Penalty multipliers estimated at platform: 0.88, 1.56, 1.2, 0.54      Penalty multipliers estimated at platform: 0.87, 1.56, 1.2, 0.54      Penalty multipliers estimated at platform: 0.87, 1.57, 1.2, 0.54      Penalty multipliers estimated at platform: 0.87, 1.58, 1.2, 0.54      Penalty multipliers estimated at platform: 0.87, 1.58, 1.2, 0.54      Penalty multipliers estimated at platform: 0.87, 1.59, 1.2, 0.54      Penalty multipliers estimated at platform: 0.87, 1.59, 1.2, 0.54      Penalty multipliers estimated at platform: 0.87, 1.6, 1.2, 0.54      Penalty multipliers estimated at platform: 0.87, 1.6, 1.2, 0.54      Penalty multipliers estimated at platform: 0.87, 1.6, 1.2, 0.54      Penalty multipliers estimated at platform: 0.87, 1.61, 1.2, 0.54      Penalty multipliers estimated at platform: 0.87, 1.61, 1.2, 0.54      Penalty multipliers estimated at platform: 0.87, 1.61, 1.2, 0.54      Penalty multipliers estimated at platform: 0.87, 1.62, 1.2, 0.54      Penalty multipliers estimated at platform: 0.87, 1.62, 1.2, 0.54      Penalty multipliers estimated at platform: 0.87, 1.62, 1.2, 0.54      Penalty multipliers estimated at platform: 0.87, 1.63, 1.2, 0.54      Penalty multipliers estimated at platform: 0.87, 1.63, 1.2, 0.54      Penalty multipliers estimated at platform: 0.87, 1.63, 1.2, 0.54      Penalty multipliers estimated at platform: 0.87, 1.63, 1.2, 0.54      Penalty multipliers estimated at platform: 0.87, 1.64, 1.2, 0.54      Penalty multipliers estimated at platform: 0.87, 1.64, 1.19, 0.54      Penalty multipliers estimated at platform: 0.87, 1.64, 1.19, 0.54      Penalty multipliers estimated at platform: 0.87, 1.64, 1.19, 0.54      Penalty multipliers estimated at platform: 0.87, 1.65, 1.19, 0.54      Penalty multipliers estimated at platform: 0.87, 1.65, 1.19, 0.54      Penalty multipliers estimated at platform: 0.87, 1.65, 1.19, 0.54      Penalty multipliers estimated at platform: 0.87, 1.65, 1.19, 0.54      Penalty multipliers estimated at platform: 0.87, 1.65, 1.19, 0.54      Penalty multipliers estimated at platform: 0.87, 1.65, 1.19, 0.54 in 20.29 seconds 
-Estimating penalty multipliers by empirical Bayes
-Penalty multipliers estimated at platform: 0.87, 0.83, 1.13, 0.67, 1.09      Penalty multipliers estimated at platform: 0.87, 0.88, 1.13, 0.52, 1.16      Penalty multipliers estimated at platform: 0.87, 0.91, 1.14, 0.43, 1.23      Penalty multipliers estimated at platform: 0.87, 0.95, 1.14, 0.36, 1.3      Penalty multipliers estimated at platform: 0.86, 0.99, 1.14, 0.32, 1.35      Penalty multipliers estimated at platform: 0.86, 1.02, 1.14, 0.29, 1.41      Penalty multipliers estimated at platform: 0.85, 1.05, 1.14, 0.28, 1.46      Penalty multipliers estimated at platform: 0.84, 1.07, 1.13, 0.26, 1.51      Penalty multipliers estimated at platform: 0.83, 1.1, 1.13, 0.26, 1.55      Penalty multipliers estimated at platform: 0.82, 1.12, 1.13, 0.25, 1.6      Penalty multipliers estimated at platform: 0.81, 1.15, 1.13, 0.25, 1.64      Penalty multipliers estimated at platform: 0.8, 1.17, 1.12, 0.24, 1.68      Penalty multipliers estimated at platform: 0.79, 1.19, 1.12, 0.24, 1.72      Penalty multipliers estimated at platform: 0.78, 1.21, 1.12, 0.24, 1.76      Penalty multipliers estimated at platform: 0.77, 1.23, 1.12, 0.24, 1.79      Penalty multipliers estimated at platform: 0.77, 1.25, 1.11, 0.24, 1.83      Penalty multipliers estimated at platform: 0.76, 1.26, 1.11, 0.24, 1.86      Penalty multipliers estimated at platform: 0.75, 1.28, 1.11, 0.24, 1.89      Penalty multipliers estimated at platform: 0.75, 1.3, 1.11, 0.24, 1.93      Penalty multipliers estimated at platform: 0.74, 1.31, 1.1, 0.23, 1.96      Penalty multipliers estimated at platform: 0.73, 1.33, 1.1, 0.23, 1.99      Penalty multipliers estimated at platform: 0.73, 1.34, 1.1, 0.23, 2.02      Penalty multipliers estimated at platform: 0.73, 1.35, 1.1, 0.23, 2.04      Penalty multipliers estimated at platform: 0.72, 1.37, 1.09, 0.23, 2.07      Penalty multipliers estimated at platform: 0.72, 1.38, 1.09, 0.23, 2.1      Penalty multipliers estimated at platform: 0.71, 1.39, 1.09, 0.23, 2.12      Penalty multipliers estimated at platform: 0.71, 1.4, 1.09, 0.23, 2.15      Penalty multipliers estimated at platform: 0.71, 1.41, 1.09, 0.23, 2.17      Penalty multipliers estimated at platform: 0.7, 1.42, 1.08, 0.23, 2.19      Penalty multipliers estimated at platform: 0.7, 1.43, 1.08, 0.23, 2.21      Penalty multipliers estimated at platform: 0.7, 1.44, 1.08, 0.23, 2.24      Penalty multipliers estimated at platform: 0.7, 1.45, 1.08, 0.23, 2.26      Penalty multipliers estimated at platform: 0.69, 1.46, 1.08, 0.23, 2.28      Penalty multipliers estimated at platform: 0.69, 1.47, 1.08, 0.23, 2.3      Penalty multipliers estimated at platform: 0.69, 1.48, 1.07, 0.23, 2.31      Penalty multipliers estimated at platform: 0.69, 1.48, 1.07, 0.23, 2.33      Penalty multipliers estimated at platform: 0.69, 1.49, 1.07, 0.23, 2.35      Penalty multipliers estimated at platform: 0.68, 1.5, 1.07, 0.23, 2.37      Penalty multipliers estimated at platform: 0.68, 1.51, 1.07, 0.23, 2.38      Penalty multipliers estimated at platform: 0.68, 1.51, 1.07, 0.23, 2.4      Penalty multipliers estimated at platform: 0.68, 1.52, 1.07, 0.23, 2.41      Penalty multipliers estimated at platform: 0.68, 1.52, 1.07, 0.23, 2.43      Penalty multipliers estimated at platform: 0.68, 1.53, 1.06, 0.23, 2.44      Penalty multipliers estimated at platform: 0.68, 1.54, 1.06, 0.23, 2.45      Penalty multipliers estimated at platform: 0.67, 1.54, 1.06, 0.23, 2.47      Penalty multipliers estimated at platform: 0.67, 1.55, 1.06, 0.23, 2.48      Penalty multipliers estimated at platform: 0.67, 1.55, 1.06, 0.23, 2.49      Penalty multipliers estimated at platform: 0.67, 1.55, 1.06, 0.23, 2.5      Penalty multipliers estimated at platform: 0.67, 1.56, 1.06, 0.23, 2.52      Penalty multipliers estimated at platform: 0.67, 1.56, 1.06, 0.23, 2.53      Penalty multipliers estimated at platform: 0.67, 1.57, 1.06, 0.23, 2.54      Penalty multipliers estimated at platform: 0.67, 1.57, 1.05, 0.23, 2.55      Penalty multipliers estimated at platform: 0.67, 1.57, 1.05, 0.23, 2.56      Penalty multipliers estimated at platform: 0.67, 1.58, 1.05, 0.23, 2.57      Penalty multipliers estimated at platform: 0.67, 1.58, 1.05, 0.23, 2.57      Penalty multipliers estimated at platform: 0.67, 1.58, 1.05, 0.23, 2.58      Penalty multipliers estimated at platform: 0.67, 1.59, 1.05, 0.23, 2.59      Penalty multipliers estimated at platform: 0.67, 1.59, 1.05, 0.23, 2.6      Penalty multipliers estimated at platform: 0.67, 1.59, 1.05, 0.23, 2.61      Penalty multipliers estimated at platform: 0.67, 1.6, 1.05, 0.23, 2.62      Penalty multipliers estimated at platform: 0.66, 1.6, 1.05, 0.23, 2.62      Penalty multipliers estimated at platform: 0.66, 1.6, 1.05, 0.23, 2.63      Penalty multipliers estimated at platform: 0.66, 1.6, 1.05, 0.23, 2.64      Penalty multipliers estimated at platform: 0.66, 1.61, 1.05, 0.23, 2.64      Penalty multipliers estimated at platform: 0.66, 1.61, 1.05, 0.23, 2.65      Penalty multipliers estimated at platform: 0.66, 1.61, 1.04, 0.23, 2.65      Penalty multipliers estimated at platform: 0.66, 1.61, 1.04, 0.23, 2.66      Penalty multipliers estimated at platform: 0.66, 1.61, 1.04, 0.23, 2.67      Penalty multipliers estimated at platform: 0.66, 1.61, 1.04, 0.23, 2.67      Penalty multipliers estimated at platform: 0.66, 1.62, 1.04, 0.23, 2.68      Penalty multipliers estimated at platform: 0.66, 1.62, 1.04, 0.23, 2.68      Penalty multipliers estimated at platform: 0.66, 1.62, 1.04, 0.23, 2.69      Penalty multipliers estimated at platform: 0.66, 1.62, 1.04, 0.23, 2.69      Penalty multipliers estimated at platform: 0.66, 1.62, 1.04, 0.23, 2.7      Penalty multipliers estimated at platform: 0.66, 1.62, 1.04, 0.23, 2.7      Penalty multipliers estimated at platform: 0.66, 1.63, 1.04, 0.23, 2.7      Penalty multipliers estimated at platform: 0.66, 1.63, 1.04, 0.23, 2.71      Penalty multipliers estimated at platform: 0.66, 1.63, 1.04, 0.23, 2.71      Penalty multipliers estimated at platform: 0.66, 1.63, 1.04, 0.23, 2.72      Penalty multipliers estimated at platform: 0.66, 1.63, 1.04, 0.23, 2.72      Penalty multipliers estimated at platform: 0.66, 1.63, 1.04, 0.23, 2.72      Penalty multipliers estimated at platform: 0.66, 1.63, 1.04, 0.23, 2.73      Penalty multipliers estimated at platform: 0.66, 1.63, 1.04, 0.23, 2.73      Penalty multipliers estimated at platform: 0.66, 1.63, 1.04, 0.23, 2.73      Penalty multipliers estimated at platform: 0.66, 1.63, 1.04, 0.23, 2.74      Penalty multipliers estimated at platform: 0.66, 1.64, 1.04, 0.23, 2.74      Penalty multipliers estimated at platform: 0.66, 1.64, 1.04, 0.23, 2.74      Penalty multipliers estimated at platform: 0.66, 1.64, 1.04, 0.23, 2.74      Penalty multipliers estimated at platform: 0.66, 1.64, 1.04, 0.23, 2.74 in 41.65 seconds [1] "Summary of group sizes:"
-  1   2   3   4 
- 53  22 116  39 
-[1] "Grouping 1 contains mutually exclusive groups"
-[1] "Binary response, executing logistic ridge regression"
-1234
-[1] -138.259
-[1] -138.259
-[1] "Relative error: 0.164797241903434"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.0098723 1.1528203 1.0093418 0.8963848
-[1] -138.0646
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.158195572570448"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 0.9980917 1.1311445 1.0063362 0.9246151
-[1] -137.921
-[1] "Partition platform CONVERGED after 2 iterations"
-[1] "All partitions CONVERGED after 2 iterations"
-[1] "Computation time for adaptive weigthing: 54.061"
-[1] "Final lambda multipliers (summary):"
-$platform
-        1         2         3         4 
-1.0098723 1.1528203 1.0093418 0.8963848 
-
-[1] "CVLs -138.25897278268"  "CVLs -138.064636351436"
-[1] "Total computation time: 54.062"
-[1] "Summary of group sizes:"
-  1   2   3   4   5 
- 53  22 116  13  26 
-[1] "Grouping 1 contains mutually exclusive groups"
-[1] "Binary response, executing logistic ridge regression"
-1234
-[1] -138.259
-[1] -138.259
-[1] "Relative error: 0.193917579086578"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.0098723 1.1528203 1.0093418 0.4355905 1.9028724
-[1] -135.9276
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.181192250485784"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 0.9620138 1.1846622 0.9703694 0.5808874 1.8036913
-[1] -134.7097
-[1] "Partition platform CONVERGED after 2 iterations"
-[1] "All partitions CONVERGED after 2 iterations"
-[1] "Computation time for adaptive weigthing: 54.628"
-[1] "Final lambda multipliers (summary):"
-$platform
-        1         2         3         4         5 
-1.0098723 1.1528203 1.0093418 0.4355905 1.9028724 
-
-[1] "CVLs -138.25897278268"  "CVLs -135.927589177911"
-[1] "Total computation time: 54.629"
-[1] "Fold 3"
-
-Estimating penalty multipliers by empirical Bayes
-Penalty multipliers estimated at platform: 0.83, 0.85, 1.17, 0.89      Penalty multipliers estimated at platform: 0.84, 0.93, 1.17, 0.83      Penalty multipliers estimated at platform: 0.85, 1.02, 1.17, 0.78      Penalty multipliers estimated at platform: 0.86, 1.1, 1.17, 0.73      Penalty multipliers estimated at platform: 0.86, 1.18, 1.17, 0.7      Penalty multipliers estimated at platform: 0.87, 1.25, 1.17, 0.67      Penalty multipliers estimated at platform: 0.87, 1.32, 1.17, 0.64      Penalty multipliers estimated at platform: 0.88, 1.39, 1.17, 0.62      Penalty multipliers estimated at platform: 0.88, 1.46, 1.17, 0.6      Penalty multipliers estimated at platform: 0.88, 1.53, 1.17, 0.59      Penalty multipliers estimated at platform: 0.88, 1.59, 1.17, 0.58      Penalty multipliers estimated at platform: 0.88, 1.65, 1.17, 0.57      Penalty multipliers estimated at platform: 0.88, 1.71, 1.16, 0.56      Penalty multipliers estimated at platform: 0.88, 1.76, 1.16, 0.55      Penalty multipliers estimated at platform: 0.88, 1.82, 1.16, 0.55      Penalty multipliers estimated at platform: 0.88, 1.87, 1.16, 0.54      Penalty multipliers estimated at platform: 0.88, 1.92, 1.16, 0.54      Penalty multipliers estimated at platform: 0.88, 1.96, 1.15, 0.53      Penalty multipliers estimated at platform: 0.88, 2.01, 1.15, 0.53      Penalty multipliers estimated at platform: 0.88, 2.05, 1.15, 0.53      Penalty multipliers estimated at platform: 0.88, 2.1, 1.15, 0.52      Penalty multipliers estimated at platform: 0.87, 2.14, 1.14, 0.52      Penalty multipliers estimated at platform: 0.87, 2.17, 1.14, 0.52      Penalty multipliers estimated at platform: 0.87, 2.21, 1.14, 0.52      Penalty multipliers estimated at platform: 0.87, 2.25, 1.14, 0.52      Penalty multipliers estimated at platform: 0.87, 2.28, 1.14, 0.52      Penalty multipliers estimated at platform: 0.87, 2.32, 1.14, 0.52      Penalty multipliers estimated at platform: 0.87, 2.35, 1.13, 0.52      Penalty multipliers estimated at platform: 0.87, 2.38, 1.13, 0.51      Penalty multipliers estimated at platform: 0.87, 2.41, 1.13, 0.51      Penalty multipliers estimated at platform: 0.87, 2.44, 1.13, 0.51      Penalty multipliers estimated at platform: 0.87, 2.46, 1.13, 0.51      Penalty multipliers estimated at platform: 0.87, 2.49, 1.13, 0.51      Penalty multipliers estimated at platform: 0.86, 2.51, 1.12, 0.51      Penalty multipliers estimated at platform: 0.86, 2.54, 1.12, 0.51      Penalty multipliers estimated at platform: 0.86, 2.56, 1.12, 0.51      Penalty multipliers estimated at platform: 0.86, 2.58, 1.12, 0.51      Penalty multipliers estimated at platform: 0.86, 2.61, 1.12, 0.51      Penalty multipliers estimated at platform: 0.86, 2.63, 1.12, 0.51      Penalty multipliers estimated at platform: 0.86, 2.65, 1.12, 0.51      Penalty multipliers estimated at platform: 0.86, 2.67, 1.11, 0.51      Penalty multipliers estimated at platform: 0.86, 2.68, 1.11, 0.51      Penalty multipliers estimated at platform: 0.86, 2.7, 1.11, 0.51      Penalty multipliers estimated at platform: 0.86, 2.72, 1.11, 0.51      Penalty multipliers estimated at platform: 0.86, 2.73, 1.11, 0.51      Penalty multipliers estimated at platform: 0.86, 2.75, 1.11, 0.51      Penalty multipliers estimated at platform: 0.86, 2.76, 1.11, 0.51      Penalty multipliers estimated at platform: 0.86, 2.78, 1.11, 0.51      Penalty multipliers estimated at platform: 0.86, 2.79, 1.11, 0.51      Penalty multipliers estimated at platform: 0.86, 2.81, 1.11, 0.51      Penalty multipliers estimated at platform: 0.86, 2.82, 1.11, 0.51      Penalty multipliers estimated at platform: 0.86, 2.83, 1.1, 0.51      Penalty multipliers estimated at platform: 0.86, 2.84, 1.1, 0.51      Penalty multipliers estimated at platform: 0.86, 2.85, 1.1, 0.51      Penalty multipliers estimated at platform: 0.86, 2.87, 1.1, 0.51      Penalty multipliers estimated at platform: 0.86, 2.88, 1.1, 0.51      Penalty multipliers estimated at platform: 0.86, 2.89, 1.1, 0.51      Penalty multipliers estimated at platform: 0.86, 2.9, 1.1, 0.51      Penalty multipliers estimated at platform: 0.86, 2.9, 1.1, 0.51      Penalty multipliers estimated at platform: 0.86, 2.91, 1.1, 0.51      Penalty multipliers estimated at platform: 0.86, 2.92, 1.1, 0.51      Penalty multipliers estimated at platform: 0.86, 2.93, 1.1, 0.51      Penalty multipliers estimated at platform: 0.86, 2.94, 1.1, 0.51      Penalty multipliers estimated at platform: 0.86, 2.95, 1.1, 0.51      Penalty multipliers estimated at platform: 0.86, 2.95, 1.1, 0.51      Penalty multipliers estimated at platform: 0.86, 2.96, 1.1, 0.51      Penalty multipliers estimated at platform: 0.86, 2.97, 1.1, 0.51      Penalty multipliers estimated at platform: 0.86, 2.97, 1.1, 0.51      Penalty multipliers estimated at platform: 0.86, 2.98, 1.1, 0.51      Penalty multipliers estimated at platform: 0.86, 2.98, 1.1, 0.51      Penalty multipliers estimated at platform: 0.86, 2.99, 1.1, 0.51      Penalty multipliers estimated at platform: 0.86, 3, 1.09, 0.51      Penalty multipliers estimated at platform: 0.86, 3, 1.09, 0.51      Penalty multipliers estimated at platform: 0.86, 3.01, 1.09, 0.51      Penalty multipliers estimated at platform: 0.86, 3.01, 1.09, 0.51      Penalty multipliers estimated at platform: 0.86, 3.02, 1.09, 0.51      Penalty multipliers estimated at platform: 0.86, 3.02, 1.09, 0.51      Penalty multipliers estimated at platform: 0.86, 3.02, 1.09, 0.51      Penalty multipliers estimated at platform: 0.86, 3.03, 1.09, 0.51      Penalty multipliers estimated at platform: 0.86, 3.03, 1.09, 0.51      Penalty multipliers estimated at platform: 0.86, 3.04, 1.09, 0.51      Penalty multipliers estimated at platform: 0.86, 3.04, 1.09, 0.51      Penalty multipliers estimated at platform: 0.86, 3.04, 1.09, 0.51      Penalty multipliers estimated at platform: 0.86, 3.05, 1.09, 0.51      Penalty multipliers estimated at platform: 0.86, 3.05, 1.09, 0.51      Penalty multipliers estimated at platform: 0.86, 3.05, 1.09, 0.51      Penalty multipliers estimated at platform: 0.86, 3.06, 1.09, 0.51      Penalty multipliers estimated at platform: 0.86, 3.06, 1.09, 0.51 in 25.52 seconds 
-Estimating penalty multipliers by empirical Bayes
-Penalty multipliers estimated at platform: 0.83, 0.8, 1.15, 0.79, 1.04      Penalty multipliers estimated at platform: 0.84, 0.89, 1.15, 0.57, 1.11      Penalty multipliers estimated at platform: 0.84, 0.97, 1.15, 0.44, 1.18      Penalty multipliers estimated at platform: 0.84, 1.05, 1.14, 0.35, 1.25      Penalty multipliers estimated at platform: 0.84, 1.13, 1.14, 0.3, 1.31      Penalty multipliers estimated at platform: 0.84, 1.2, 1.13, 0.27, 1.37      Penalty multipliers estimated at platform: 0.83, 1.27, 1.12, 0.25, 1.42      Penalty multipliers estimated at platform: 0.83, 1.34, 1.11, 0.24, 1.47      Penalty multipliers estimated at platform: 0.82, 1.41, 1.1, 0.23, 1.52      Penalty multipliers estimated at platform: 0.81, 1.47, 1.09, 0.22, 1.57      Penalty multipliers estimated at platform: 0.8, 1.53, 1.08, 0.22, 1.62      Penalty multipliers estimated at platform: 0.8, 1.59, 1.08, 0.22, 1.66      Penalty multipliers estimated at platform: 0.79, 1.65, 1.07, 0.21, 1.7      Penalty multipliers estimated at platform: 0.79, 1.7, 1.06, 0.21, 1.74      Penalty multipliers estimated at platform: 0.78, 1.76, 1.05, 0.21, 1.78      Penalty multipliers estimated at platform: 0.78, 1.81, 1.04, 0.21, 1.82      Penalty multipliers estimated at platform: 0.77, 1.86, 1.04, 0.21, 1.86      Penalty multipliers estimated at platform: 0.77, 1.9, 1.03, 0.21, 1.89      Penalty multipliers estimated at platform: 0.76, 1.95, 1.02, 0.21, 1.93      Penalty multipliers estimated at platform: 0.76, 1.99, 1.02, 0.21, 1.96      Penalty multipliers estimated at platform: 0.76, 2.04, 1.01, 0.21, 1.99      Penalty multipliers estimated at platform: 0.75, 2.08, 1.01, 0.21, 2.02      Penalty multipliers estimated at platform: 0.75, 2.12, 1, 0.21, 2.05      Penalty multipliers estimated at platform: 0.75, 2.16, 1, 0.21, 2.08      Penalty multipliers estimated at platform: 0.75, 2.19, 0.99, 0.21, 2.11      Penalty multipliers estimated at platform: 0.74, 2.23, 0.99, 0.21, 2.13      Penalty multipliers estimated at platform: 0.74, 2.26, 0.98, 0.21, 2.16      Penalty multipliers estimated at platform: 0.74, 2.3, 0.98, 0.21, 2.18      Penalty multipliers estimated at platform: 0.74, 2.33, 0.98, 0.21, 2.21      Penalty multipliers estimated at platform: 0.74, 2.36, 0.97, 0.21, 2.23      Penalty multipliers estimated at platform: 0.74, 2.39, 0.97, 0.21, 2.25      Penalty multipliers estimated at platform: 0.74, 2.42, 0.97, 0.21, 2.27      Penalty multipliers estimated at platform: 0.73, 2.45, 0.96, 0.21, 2.29      Penalty multipliers estimated at platform: 0.73, 2.47, 0.96, 0.21, 2.31      Penalty multipliers estimated at platform: 0.73, 2.5, 0.96, 0.21, 2.33      Penalty multipliers estimated at platform: 0.73, 2.52, 0.95, 0.21, 2.35      Penalty multipliers estimated at platform: 0.73, 2.54, 0.95, 0.21, 2.37      Penalty multipliers estimated at platform: 0.73, 2.57, 0.95, 0.21, 2.38      Penalty multipliers estimated at platform: 0.73, 2.59, 0.95, 0.21, 2.4      Penalty multipliers estimated at platform: 0.73, 2.61, 0.94, 0.21, 2.41      Penalty multipliers estimated at platform: 0.73, 2.63, 0.94, 0.21, 2.43      Penalty multipliers estimated at platform: 0.73, 2.65, 0.94, 0.21, 2.44      Penalty multipliers estimated at platform: 0.73, 2.67, 0.94, 0.21, 2.46      Penalty multipliers estimated at platform: 0.73, 2.68, 0.94, 0.21, 2.47      Penalty multipliers estimated at platform: 0.73, 2.7, 0.93, 0.21, 2.48      Penalty multipliers estimated at platform: 0.73, 2.72, 0.93, 0.21, 2.5      Penalty multipliers estimated at platform: 0.72, 2.73, 0.93, 0.21, 2.51      Penalty multipliers estimated at platform: 0.72, 2.75, 0.93, 0.21, 2.52      Penalty multipliers estimated at platform: 0.72, 2.76, 0.93, 0.21, 2.53      Penalty multipliers estimated at platform: 0.72, 2.77, 0.93, 0.2, 2.54      Penalty multipliers estimated at platform: 0.72, 2.79, 0.92, 0.2, 2.55      Penalty multipliers estimated at platform: 0.72, 2.8, 0.92, 0.2, 2.56      Penalty multipliers estimated at platform: 0.72, 2.81, 0.92, 0.2, 2.57      Penalty multipliers estimated at platform: 0.72, 2.82, 0.92, 0.2, 2.58      Penalty multipliers estimated at platform: 0.72, 2.83, 0.92, 0.2, 2.59      Penalty multipliers estimated at platform: 0.72, 2.84, 0.92, 0.2, 2.59      Penalty multipliers estimated at platform: 0.72, 2.85, 0.92, 0.2, 2.6      Penalty multipliers estimated at platform: 0.72, 2.86, 0.92, 0.2, 2.61      Penalty multipliers estimated at platform: 0.72, 2.87, 0.91, 0.2, 2.62      Penalty multipliers estimated at platform: 0.72, 2.88, 0.91, 0.2, 2.62      Penalty multipliers estimated at platform: 0.72, 2.89, 0.91, 0.2, 2.63      Penalty multipliers estimated at platform: 0.72, 2.9, 0.91, 0.2, 2.64      Penalty multipliers estimated at platform: 0.72, 2.91, 0.91, 0.2, 2.64      Penalty multipliers estimated at platform: 0.72, 2.91, 0.91, 0.2, 2.65      Penalty multipliers estimated at platform: 0.72, 2.92, 0.91, 0.2, 2.65      Penalty multipliers estimated at platform: 0.72, 2.93, 0.91, 0.2, 2.66      Penalty multipliers estimated at platform: 0.72, 2.94, 0.91, 0.2, 2.67      Penalty multipliers estimated at platform: 0.72, 2.94, 0.91, 0.2, 2.67      Penalty multipliers estimated at platform: 0.72, 2.95, 0.91, 0.2, 2.68      Penalty multipliers estimated at platform: 0.72, 2.95, 0.91, 0.2, 2.68      Penalty multipliers estimated at platform: 0.72, 2.96, 0.91, 0.2, 2.68      Penalty multipliers estimated at platform: 0.72, 2.96, 0.9, 0.2, 2.69      Penalty multipliers estimated at platform: 0.72, 2.97, 0.9, 0.2, 2.69      Penalty multipliers estimated at platform: 0.72, 2.98, 0.9, 0.2, 2.7      Penalty multipliers estimated at platform: 0.72, 2.98, 0.9, 0.2, 2.7      Penalty multipliers estimated at platform: 0.72, 2.98, 0.9, 0.2, 2.7      Penalty multipliers estimated at platform: 0.72, 2.99, 0.9, 0.2, 2.71      Penalty multipliers estimated at platform: 0.72, 2.99, 0.9, 0.2, 2.71      Penalty multipliers estimated at platform: 0.72, 3, 0.9, 0.2, 2.71      Penalty multipliers estimated at platform: 0.72, 3, 0.9, 0.2, 2.72      Penalty multipliers estimated at platform: 0.72, 3, 0.9, 0.2, 2.72      Penalty multipliers estimated at platform: 0.72, 3.01, 0.9, 0.2, 2.72      Penalty multipliers estimated at platform: 0.72, 3.01, 0.9, 0.2, 2.73      Penalty multipliers estimated at platform: 0.72, 3.01, 0.9, 0.2, 2.73      Penalty multipliers estimated at platform: 0.72, 3.02, 0.9, 0.2, 2.73      Penalty multipliers estimated at platform: 0.72, 3.02, 0.9, 0.2, 2.73      Penalty multipliers estimated at platform: 0.72, 3.02, 0.9, 0.2, 2.73 in 24.65 seconds [1] "Summary of group sizes:"
-  1   2   3   4 
- 53  22 116  39 
-[1] "Grouping 1 contains mutually exclusive groups"
-[1] "Binary response, executing logistic ridge regression"
-1234
-[1] -137.623
-[1] -137.623
-[1] "Relative error: 0.144127506645869"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.0028445 1.5254734 1.0824327 0.7019115
-[1] -136.4753
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.152250305873699"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 0.9579272 1.4297694 1.0642384 0.7755488
-[1] -135.6617
-[1] "Partition platform CONVERGED after 2 iterations"
-[1] "All partitions CONVERGED after 2 iterations"
-[1] "Computation time for adaptive weigthing: 53.896"
-[1] "Final lambda multipliers (summary):"
-$platform
-        1         2         3         4 
-1.0028445 1.5254734 1.0824327 0.7019115 
-
-[1] "CVLs -137.622967199533" "CVLs -136.47534442213" 
-[1] "Total computation time: 53.896"
-[1] "Summary of group sizes:"
-  1   2   3   4   5 
- 53  22 116  13  26 
-[1] "Grouping 1 contains mutually exclusive groups"
-[1] "Binary response, executing logistic ridge regression"
-1234
-[1] -137.623
-[1] -137.623
-[1] "Relative error: 0.204650798469066"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.002844 1.525473 1.082433 0.333931 1.563218
-[1] -133.8046
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.206693916035123"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 0.9358960 1.5023664 0.9985033 0.4881470 1.6330616
-[1] -132.2851
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.206048522499512"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 0.8989464 1.5096553 0.9536289 0.7014325 1.5955695
-[1] -131.8517
-[1] "Partition platform CONVERGED after 3 iterations"
-[1] "All partitions CONVERGED after 3 iterations"
-[1] "Computation time for adaptive weigthing: 72.641"
-[1] "Final lambda multipliers (summary):"
-$platform
-        1         2         3         4         5 
-0.9385581 2.2918201 1.0808126 0.1630074 2.5528311 
-
-[1] "CVLs -137.622967199533" "CVLs -132.28510787505" 
-[1] "Total computation time: 72.6420000000001"
-[1] "Fold 4"
-
-Estimating penalty multipliers by empirical Bayes
-Penalty multipliers estimated at platform: 0.8, 0.92, 1.14, 0.97      Penalty multipliers estimated at platform: 0.83, 0.92, 1.14, 0.91      Penalty multipliers estimated at platform: 0.87, 0.91, 1.14, 0.86      Penalty multipliers estimated at platform: 0.9, 0.91, 1.15, 0.81      Penalty multipliers estimated at platform: 0.92, 0.91, 1.15, 0.77      Penalty multipliers estimated at platform: 0.95, 0.91, 1.15, 0.74      Penalty multipliers estimated at platform: 0.97, 0.91, 1.15, 0.71      Penalty multipliers estimated at platform: 0.99, 0.91, 1.16, 0.69      Penalty multipliers estimated at platform: 1.01, 0.9, 1.16, 0.67      Penalty multipliers estimated at platform: 1.03, 0.9, 1.16, 0.65      Penalty multipliers estimated at platform: 1.05, 0.9, 1.16, 0.64      Penalty multipliers estimated at platform: 1.06, 0.9, 1.16, 0.63      Penalty multipliers estimated at platform: 1.08, 0.89, 1.16, 0.62      Penalty multipliers estimated at platform: 1.09, 0.89, 1.16, 0.61      Penalty multipliers estimated at platform: 1.1, 0.88, 1.16, 0.6      Penalty multipliers estimated at platform: 1.11, 0.88, 1.16, 0.59      Penalty multipliers estimated at platform: 1.12, 0.88, 1.16, 0.59      Penalty multipliers estimated at platform: 1.13, 0.87, 1.16, 0.58      Penalty multipliers estimated at platform: 1.14, 0.87, 1.16, 0.58      Penalty multipliers estimated at platform: 1.15, 0.87, 1.16, 0.58      Penalty multipliers estimated at platform: 1.15, 0.86, 1.16, 0.57      Penalty multipliers estimated at platform: 1.16, 0.86, 1.16, 0.57      Penalty multipliers estimated at platform: 1.17, 0.86, 1.16, 0.57      Penalty multipliers estimated at platform: 1.17, 0.85, 1.16, 0.57      Penalty multipliers estimated at platform: 1.18, 0.85, 1.16, 0.56      Penalty multipliers estimated at platform: 1.18, 0.85, 1.16, 0.56      Penalty multipliers estimated at platform: 1.19, 0.85, 1.16, 0.56      Penalty multipliers estimated at platform: 1.19, 0.84, 1.16, 0.56      Penalty multipliers estimated at platform: 1.19, 0.84, 1.16, 0.56      Penalty multipliers estimated at platform: 1.2, 0.84, 1.16, 0.56      Penalty multipliers estimated at platform: 1.2, 0.84, 1.16, 0.56      Penalty multipliers estimated at platform: 1.21, 0.84, 1.16, 0.56      Penalty multipliers estimated at platform: 1.21, 0.84, 1.15, 0.56      Penalty multipliers estimated at platform: 1.21, 0.83, 1.15, 0.56      Penalty multipliers estimated at platform: 1.21, 0.83, 1.15, 0.56      Penalty multipliers estimated at platform: 1.22, 0.83, 1.15, 0.56      Penalty multipliers estimated at platform: 1.22, 0.83, 1.15, 0.56      Penalty multipliers estimated at platform: 1.22, 0.83, 1.15, 0.56      Penalty multipliers estimated at platform: 1.22, 0.83, 1.15, 0.56      Penalty multipliers estimated at platform: 1.23, 0.83, 1.15, 0.56      Penalty multipliers estimated at platform: 1.23, 0.83, 1.15, 0.56      Penalty multipliers estimated at platform: 1.23, 0.82, 1.15, 0.56      Penalty multipliers estimated at platform: 1.23, 0.82, 1.15, 0.56      Penalty multipliers estimated at platform: 1.23, 0.82, 1.15, 0.56      Penalty multipliers estimated at platform: 1.23, 0.82, 1.15, 0.56      Penalty multipliers estimated at platform: 1.24, 0.82, 1.15, 0.56      Penalty multipliers estimated at platform: 1.24, 0.82, 1.15, 0.56      Penalty multipliers estimated at platform: 1.24, 0.82, 1.15, 0.56      Penalty multipliers estimated at platform: 1.24, 0.82, 1.15, 0.56      Penalty multipliers estimated at platform: 1.24, 0.82, 1.15, 0.56 in 19.76 seconds 
-Estimating penalty multipliers by empirical Bayes
-Penalty multipliers estimated at platform: 0.83, 0.83, 1.17, 0.7, 1.01      Penalty multipliers estimated at platform: 0.86, 0.83, 1.17, 0.55, 1.06      Penalty multipliers estimated at platform: 0.89, 0.84, 1.17, 0.46, 1.1      Penalty multipliers estimated at platform: 0.91, 0.84, 1.16, 0.39, 1.15      Penalty multipliers estimated at platform: 0.93, 0.84, 1.16, 0.35, 1.18      Penalty multipliers estimated at platform: 0.94, 0.85, 1.15, 0.32, 1.22      Penalty multipliers estimated at platform: 0.96, 0.85, 1.14, 0.31, 1.25      Penalty multipliers estimated at platform: 0.97, 0.85, 1.14, 0.29, 1.28      Penalty multipliers estimated at platform: 0.98, 0.85, 1.13, 0.28, 1.31      Penalty multipliers estimated at platform: 0.99, 0.84, 1.12, 0.28, 1.34      Penalty multipliers estimated at platform: 1, 0.84, 1.11, 0.27, 1.36      Penalty multipliers estimated at platform: 1.01, 0.84, 1.11, 0.27, 1.38      Penalty multipliers estimated at platform: 1.02, 0.84, 1.1, 0.27, 1.41      Penalty multipliers estimated at platform: 1.03, 0.84, 1.09, 0.27, 1.43      Penalty multipliers estimated at platform: 1.03, 0.84, 1.09, 0.27, 1.45      Penalty multipliers estimated at platform: 1.04, 0.84, 1.08, 0.27, 1.47      Penalty multipliers estimated at platform: 1.05, 0.83, 1.08, 0.27, 1.49      Penalty multipliers estimated at platform: 1.05, 0.83, 1.07, 0.27, 1.51      Penalty multipliers estimated at platform: 1.06, 0.83, 1.06, 0.27, 1.53      Penalty multipliers estimated at platform: 1.06, 0.83, 1.06, 0.27, 1.55      Penalty multipliers estimated at platform: 1.07, 0.83, 1.05, 0.27, 1.57      Penalty multipliers estimated at platform: 1.07, 0.83, 1.05, 0.27, 1.58      Penalty multipliers estimated at platform: 1.08, 0.83, 1.05, 0.27, 1.6      Penalty multipliers estimated at platform: 1.08, 0.83, 1.04, 0.27, 1.62      Penalty multipliers estimated at platform: 1.09, 0.83, 1.04, 0.27, 1.63      Penalty multipliers estimated at platform: 1.09, 0.83, 1.03, 0.27, 1.65      Penalty multipliers estimated at platform: 1.09, 0.83, 1.03, 0.27, 1.66      Penalty multipliers estimated at platform: 1.1, 0.83, 1.03, 0.27, 1.68      Penalty multipliers estimated at platform: 1.1, 0.82, 1.02, 0.27, 1.69      Penalty multipliers estimated at platform: 1.11, 0.82, 1.02, 0.27, 1.7      Penalty multipliers estimated at platform: 1.11, 0.82, 1.02, 0.27, 1.71      Penalty multipliers estimated at platform: 1.11, 0.82, 1.01, 0.27, 1.73      Penalty multipliers estimated at platform: 1.11, 0.82, 1.01, 0.27, 1.74      Penalty multipliers estimated at platform: 1.12, 0.82, 1.01, 0.27, 1.75      Penalty multipliers estimated at platform: 1.12, 0.82, 1.01, 0.27, 1.76      Penalty multipliers estimated at platform: 1.12, 0.82, 1, 0.27, 1.77      Penalty multipliers estimated at platform: 1.12, 0.82, 1, 0.27, 1.78      Penalty multipliers estimated at platform: 1.13, 0.82, 1, 0.27, 1.79      Penalty multipliers estimated at platform: 1.13, 0.82, 1, 0.27, 1.8      Penalty multipliers estimated at platform: 1.13, 0.82, 1, 0.27, 1.81      Penalty multipliers estimated at platform: 1.13, 0.82, 0.99, 0.27, 1.82      Penalty multipliers estimated at platform: 1.14, 0.82, 0.99, 0.27, 1.83      Penalty multipliers estimated at platform: 1.14, 0.82, 0.99, 0.27, 1.84      Penalty multipliers estimated at platform: 1.14, 0.82, 0.99, 0.27, 1.84      Penalty multipliers estimated at platform: 1.14, 0.82, 0.99, 0.27, 1.85      Penalty multipliers estimated at platform: 1.14, 0.82, 0.99, 0.27, 1.86      Penalty multipliers estimated at platform: 1.14, 0.82, 0.98, 0.27, 1.87      Penalty multipliers estimated at platform: 1.15, 0.82, 0.98, 0.27, 1.87      Penalty multipliers estimated at platform: 1.15, 0.82, 0.98, 0.27, 1.88      Penalty multipliers estimated at platform: 1.15, 0.82, 0.98, 0.27, 1.89      Penalty multipliers estimated at platform: 1.15, 0.82, 0.98, 0.27, 1.89      Penalty multipliers estimated at platform: 1.15, 0.82, 0.98, 0.27, 1.9      Penalty multipliers estimated at platform: 1.15, 0.82, 0.98, 0.27, 1.91      Penalty multipliers estimated at platform: 1.15, 0.82, 0.98, 0.27, 1.91      Penalty multipliers estimated at platform: 1.15, 0.82, 0.98, 0.27, 1.92      Penalty multipliers estimated at platform: 1.15, 0.82, 0.97, 0.27, 1.92      Penalty multipliers estimated at platform: 1.16, 0.82, 0.97, 0.27, 1.93      Penalty multipliers estimated at platform: 1.16, 0.81, 0.97, 0.27, 1.93      Penalty multipliers estimated at platform: 1.16, 0.81, 0.97, 0.27, 1.94      Penalty multipliers estimated at platform: 1.16, 0.81, 0.97, 0.27, 1.94      Penalty multipliers estimated at platform: 1.16, 0.81, 0.97, 0.27, 1.95      Penalty multipliers estimated at platform: 1.16, 0.81, 0.97, 0.27, 1.95      Penalty multipliers estimated at platform: 1.16, 0.81, 0.97, 0.27, 1.95      Penalty multipliers estimated at platform: 1.16, 0.81, 0.97, 0.27, 1.96      Penalty multipliers estimated at platform: 1.16, 0.81, 0.97, 0.27, 1.96      Penalty multipliers estimated at platform: 1.16, 0.81, 0.97, 0.27, 1.96      Penalty multipliers estimated at platform: 1.16, 0.81, 0.97, 0.27, 1.97      Penalty multipliers estimated at platform: 1.16, 0.81, 0.97, 0.27, 1.97      Penalty multipliers estimated at platform: 1.16, 0.81, 0.97, 0.27, 1.98      Penalty multipliers estimated at platform: 1.16, 0.81, 0.96, 0.27, 1.98      Penalty multipliers estimated at platform: 1.16, 0.81, 0.96, 0.27, 1.98      Penalty multipliers estimated at platform: 1.16, 0.81, 0.96, 0.27, 1.98      Penalty multipliers estimated at platform: 1.17, 0.81, 0.96, 0.27, 1.99      Penalty multipliers estimated at platform: 1.17, 0.81, 0.96, 0.27, 1.99      Penalty multipliers estimated at platform: 1.17, 0.81, 0.96, 0.27, 1.99      Penalty multipliers estimated at platform: 1.17, 0.81, 0.96, 0.27, 1.99      Penalty multipliers estimated at platform: 1.17, 0.81, 0.96, 0.27, 2      Penalty multipliers estimated at platform: 1.17, 0.81, 0.96, 0.27, 2      Penalty multipliers estimated at platform: 1.17, 0.81, 0.96, 0.27, 2      Penalty multipliers estimated at platform: 1.17, 0.81, 0.96, 0.27, 2      Penalty multipliers estimated at platform: 1.17, 0.81, 0.96, 0.27, 2.01      Penalty multipliers estimated at platform: 1.17, 0.81, 0.96, 0.27, 2.01      Penalty multipliers estimated at platform: 1.17, 0.81, 0.96, 0.27, 2.01      Penalty multipliers estimated at platform: 1.17, 0.81, 0.96, 0.27, 2.01 in 29.7 seconds [1] "Summary of group sizes:"
-  1   2   3   4 
- 53  22 116  39 
-[1] "Grouping 1 contains mutually exclusive groups"
-[1] "Binary response, executing logistic ridge regression"
-1234
-[1] -137.7547
-[1] -137.7547
-[1] "Relative error: 0.162281545982125"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 0.9997337 0.9488850 1.1263305 0.7675434
-[1] -137.0672
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.155160733659589"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 0.9757543 0.9389474 1.1160599 0.8071947
-[1] -136.4832
-[1] "Partition platform CONVERGED after 2 iterations"
-[1] "All partitions CONVERGED after 2 iterations"
-[1] "Computation time for adaptive weigthing: 53.92"
-[1] "Final lambda multipliers (summary):"
-$platform
-        1         2         3         4 
-0.9997337 0.9488850 1.1263305 0.7675434 
-
-[1] "CVLs -137.754742575248" "CVLs -137.067175963552"
-[1] "Total computation time: 53.9209999999999"
-[1] "Summary of group sizes:"
-  1   2   3   4   5 
- 53  22 116  13  26 
-[1] "Grouping 1 contains mutually exclusive groups"
-[1] "Binary response, executing logistic ridge regression"
-1234
-[1] -137.7547
-[1] -137.7547
-[1] "Relative error: 0.19621041782119"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 0.9997337 0.9488850 1.1263305 0.3998909 1.4205638
-[1] -135.3088
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.193287391716479"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 0.9574816 0.9658031 1.0649535 0.5428069 1.3689285
-[1] -134.1271
-[1] "Partition platform CONVERGED after 2 iterations"
-[1] "All partitions CONVERGED after 2 iterations"
-[1] "Computation time for adaptive weigthing: 53.9879999999999"
-[1] "Final lambda multipliers (summary):"
-$platform
-        1         2         3         4         5 
-0.9997337 0.9488850 1.1263305 0.3998909 1.4205638 
-
-[1] "CVLs -137.754742575248" "CVLs -135.308826091158"
-[1] "Total computation time: 53.989"
-[1] "Fold 5"
-
-Estimating penalty multipliers by empirical Bayes
-Penalty multipliers estimated at platform: 0.82, 0.86, 1.15, 0.95      Penalty multipliers estimated at platform: 0.82, 0.95, 1.14, 0.91      Penalty multipliers estimated at platform: 0.83, 1.03, 1.14, 0.87      Penalty multipliers estimated at platform: 0.83, 1.12, 1.13, 0.84      Penalty multipliers estimated at platform: 0.83, 1.2, 1.13, 0.81      Penalty multipliers estimated at platform: 0.83, 1.28, 1.12, 0.79      Penalty multipliers estimated at platform: 0.84, 1.35, 1.12, 0.77      Penalty multipliers estimated at platform: 0.84, 1.43, 1.12, 0.75      Penalty multipliers estimated at platform: 0.84, 1.5, 1.11, 0.74      Penalty multipliers estimated at platform: 0.84, 1.57, 1.11, 0.73      Penalty multipliers estimated at platform: 0.83, 1.64, 1.11, 0.71      Penalty multipliers estimated at platform: 0.83, 1.71, 1.1, 0.71      Penalty multipliers estimated at platform: 0.83, 1.77, 1.1, 0.7      Penalty multipliers estimated at platform: 0.83, 1.84, 1.1, 0.69      Penalty multipliers estimated at platform: 0.83, 1.9, 1.1, 0.68      Penalty multipliers estimated at platform: 0.83, 1.96, 1.09, 0.68      Penalty multipliers estimated at platform: 0.82, 2.02, 1.09, 0.68      Penalty multipliers estimated at platform: 0.82, 2.08, 1.09, 0.67      Penalty multipliers estimated at platform: 0.82, 2.13, 1.09, 0.67      Penalty multipliers estimated at platform: 0.82, 2.19, 1.08, 0.66      Penalty multipliers estimated at platform: 0.82, 2.24, 1.08, 0.66      Penalty multipliers estimated at platform: 0.81, 2.29, 1.08, 0.66      Penalty multipliers estimated at platform: 0.81, 2.34, 1.08, 0.66      Penalty multipliers estimated at platform: 0.81, 2.39, 1.07, 0.66      Penalty multipliers estimated at platform: 0.81, 2.44, 1.07, 0.65      Penalty multipliers estimated at platform: 0.81, 2.49, 1.07, 0.65      Penalty multipliers estimated at platform: 0.81, 2.53, 1.07, 0.65      Penalty multipliers estimated at platform: 0.8, 2.58, 1.07, 0.65      Penalty multipliers estimated at platform: 0.8, 2.62, 1.07, 0.65      Penalty multipliers estimated at platform: 0.8, 2.66, 1.06, 0.65      Penalty multipliers estimated at platform: 0.8, 2.7, 1.06, 0.65      Penalty multipliers estimated at platform: 0.8, 2.74, 1.06, 0.65      Penalty multipliers estimated at platform: 0.8, 2.78, 1.06, 0.65      Penalty multipliers estimated at platform: 0.79, 2.82, 1.06, 0.65      Penalty multipliers estimated at platform: 0.79, 2.86, 1.06, 0.65      Penalty multipliers estimated at platform: 0.79, 2.89, 1.05, 0.65      Penalty multipliers estimated at platform: 0.79, 2.93, 1.05, 0.64      Penalty multipliers estimated at platform: 0.79, 2.96, 1.05, 0.64      Penalty multipliers estimated at platform: 0.79, 3, 1.05, 0.64      Penalty multipliers estimated at platform: 0.79, 3.03, 1.05, 0.64      Penalty multipliers estimated at platform: 0.79, 3.06, 1.05, 0.64      Penalty multipliers estimated at platform: 0.79, 3.09, 1.05, 0.64      Penalty multipliers estimated at platform: 0.78, 3.12, 1.04, 0.64      Penalty multipliers estimated at platform: 0.78, 3.15, 1.04, 0.64      Penalty multipliers estimated at platform: 0.78, 3.18, 1.04, 0.64      Penalty multipliers estimated at platform: 0.78, 3.21, 1.04, 0.64      Penalty multipliers estimated at platform: 0.78, 3.24, 1.04, 0.64      Penalty multipliers estimated at platform: 0.78, 3.27, 1.04, 0.64      Penalty multipliers estimated at platform: 0.78, 3.29, 1.04, 0.64      Penalty multipliers estimated at platform: 0.78, 3.32, 1.04, 0.64      Penalty multipliers estimated at platform: 0.78, 3.34, 1.04, 0.64      Penalty multipliers estimated at platform: 0.78, 3.37, 1.03, 0.64      Penalty multipliers estimated at platform: 0.78, 3.39, 1.03, 0.64      Penalty multipliers estimated at platform: 0.78, 3.41, 1.03, 0.64      Penalty multipliers estimated at platform: 0.78, 3.43, 1.03, 0.64      Penalty multipliers estimated at platform: 0.78, 3.46, 1.03, 0.64      Penalty multipliers estimated at platform: 0.77, 3.48, 1.03, 0.64      Penalty multipliers estimated at platform: 0.77, 3.5, 1.03, 0.64      Penalty multipliers estimated at platform: 0.77, 3.52, 1.03, 0.64      Penalty multipliers estimated at platform: 0.77, 3.54, 1.03, 0.64      Penalty multipliers estimated at platform: 0.77, 3.56, 1.03, 0.64      Penalty multipliers estimated at platform: 0.77, 3.57, 1.03, 0.64      Penalty multipliers estimated at platform: 0.77, 3.59, 1.03, 0.64      Penalty multipliers estimated at platform: 0.77, 3.61, 1.03, 0.64      Penalty multipliers estimated at platform: 0.77, 3.63, 1.02, 0.64      Penalty multipliers estimated at platform: 0.77, 3.64, 1.02, 0.64      Penalty multipliers estimated at platform: 0.77, 3.66, 1.02, 0.64      Penalty multipliers estimated at platform: 0.77, 3.67, 1.02, 0.64      Penalty multipliers estimated at platform: 0.77, 3.69, 1.02, 0.64      Penalty multipliers estimated at platform: 0.77, 3.71, 1.02, 0.64      Penalty multipliers estimated at platform: 0.77, 3.72, 1.02, 0.64      Penalty multipliers estimated at platform: 0.77, 3.73, 1.02, 0.64      Penalty multipliers estimated at platform: 0.77, 3.75, 1.02, 0.64      Penalty multipliers estimated at platform: 0.77, 3.76, 1.02, 0.64      Penalty multipliers estimated at platform: 0.77, 3.77, 1.02, 0.64      Penalty multipliers estimated at platform: 0.77, 3.79, 1.02, 0.64      Penalty multipliers estimated at platform: 0.77, 3.8, 1.02, 0.64      Penalty multipliers estimated at platform: 0.77, 3.81, 1.02, 0.64      Penalty multipliers estimated at platform: 0.77, 3.82, 1.02, 0.64      Penalty multipliers estimated at platform: 0.77, 3.83, 1.02, 0.64      Penalty multipliers estimated at platform: 0.77, 3.84, 1.02, 0.64      Penalty multipliers estimated at platform: 0.77, 3.86, 1.02, 0.64      Penalty multipliers estimated at platform: 0.77, 3.87, 1.02, 0.64      Penalty multipliers estimated at platform: 0.77, 3.88, 1.02, 0.64      Penalty multipliers estimated at platform: 0.77, 3.89, 1.02, 0.64      Penalty multipliers estimated at platform: 0.77, 3.9, 1.01, 0.64      Penalty multipliers estimated at platform: 0.77, 3.9, 1.01, 0.64      Penalty multipliers estimated at platform: 0.77, 3.91, 1.01, 0.64      Penalty multipliers estimated at platform: 0.77, 3.92, 1.01, 0.64      Penalty multipliers estimated at platform: 0.77, 3.93, 1.01, 0.64      Penalty multipliers estimated at platform: 0.77, 3.94, 1.01, 0.64      Penalty multipliers estimated at platform: 0.77, 3.95, 1.01, 0.64      Penalty multipliers estimated at platform: 0.77, 3.96, 1.01, 0.64      Penalty multipliers estimated at platform: 0.77, 3.96, 1.01, 0.64      Penalty multipliers estimated at platform: 0.77, 3.97, 1.01, 0.64      Penalty multipliers estimated at platform: 0.77, 3.98, 1.01, 0.64      Penalty multipliers estimated at platform: 0.77, 3.99, 1.01, 0.64      Penalty multipliers estimated at platform: 0.77, 3.99, 1.01, 0.64      Penalty multipliers estimated at platform: 0.77, 4, 1.01, 0.64      Penalty multipliers estimated at platform: 0.76, 4.01, 1.01, 0.64      Penalty multipliers estimated at platform: 0.76, 4.01, 1.01, 0.64      Penalty multipliers estimated at platform: 0.76, 4.02, 1.01, 0.64      Penalty multipliers estimated at platform: 0.76, 4.02, 1.01, 0.64      Penalty multipliers estimated at platform: 0.76, 4.03, 1.01, 0.64      Penalty multipliers estimated at platform: 0.76, 4.04, 1.01, 0.64      Penalty multipliers estimated at platform: 0.76, 4.04, 1.01, 0.64      Penalty multipliers estimated at platform: 0.76, 4.05, 1.01, 0.64      Penalty multipliers estimated at platform: 0.76, 4.05, 1.01, 0.64      Penalty multipliers estimated at platform: 0.76, 4.06, 1.01, 0.64      Penalty multipliers estimated at platform: 0.76, 4.06, 1.01, 0.64      Penalty multipliers estimated at platform: 0.76, 4.07, 1.01, 0.64      Penalty multipliers estimated at platform: 0.76, 4.07, 1.01, 0.64      Penalty multipliers estimated at platform: 0.76, 4.08, 1.01, 0.64      Penalty multipliers estimated at platform: 0.76, 4.08, 1.01, 0.64      Penalty multipliers estimated at platform: 0.76, 4.08, 1.01, 0.64      Penalty multipliers estimated at platform: 0.76, 4.09, 1.01, 0.64      Penalty multipliers estimated at platform: 0.76, 4.09, 1.01, 0.64      Penalty multipliers estimated at platform: 0.76, 4.09, 1.01, 0.64 in 29.6 seconds 
-Estimating penalty multipliers by empirical Bayes
-Penalty multipliers estimated at platform: 0.82, 0.9, 1.14, 0.69, 1.1      Penalty multipliers estimated at platform: 0.82, 0.98, 1.13, 0.56, 1.17      Penalty multipliers estimated at platform: 0.82, 1.06, 1.13, 0.47, 1.24      Penalty multipliers estimated at platform: 0.82, 1.14, 1.12, 0.41, 1.3      Penalty multipliers estimated at platform: 0.81, 1.21, 1.11, 0.37, 1.36      Penalty multipliers estimated at platform: 0.81, 1.29, 1.1, 0.34, 1.42      Penalty multipliers estimated at platform: 0.8, 1.36, 1.09, 0.32, 1.48      Penalty multipliers estimated at platform: 0.79, 1.42, 1.08, 0.31, 1.53      Penalty multipliers estimated at platform: 0.79, 1.49, 1.07, 0.3, 1.59      Penalty multipliers estimated at platform: 0.78, 1.55, 1.06, 0.29, 1.64      Penalty multipliers estimated at platform: 0.77, 1.62, 1.05, 0.29, 1.69      Penalty multipliers estimated at platform: 0.77, 1.68, 1.04, 0.29, 1.74      Penalty multipliers estimated at platform: 0.76, 1.74, 1.03, 0.28, 1.79      Penalty multipliers estimated at platform: 0.75, 1.8, 1.02, 0.28, 1.83      Penalty multipliers estimated at platform: 0.75, 1.85, 1.02, 0.28, 1.88      Penalty multipliers estimated at platform: 0.74, 1.91, 1.01, 0.28, 1.93      Penalty multipliers estimated at platform: 0.74, 1.96, 1, 0.28, 1.97      Penalty multipliers estimated at platform: 0.73, 2.02, 0.99, 0.28, 2.01      Penalty multipliers estimated at platform: 0.73, 2.07, 0.99, 0.28, 2.05      Penalty multipliers estimated at platform: 0.73, 2.12, 0.98, 0.28, 2.09      Penalty multipliers estimated at platform: 0.72, 2.17, 0.97, 0.28, 2.13      Penalty multipliers estimated at platform: 0.72, 2.22, 0.97, 0.28, 2.17      Penalty multipliers estimated at platform: 0.72, 2.27, 0.96, 0.28, 2.21      Penalty multipliers estimated at platform: 0.71, 2.31, 0.96, 0.28, 2.25      Penalty multipliers estimated at platform: 0.71, 2.36, 0.95, 0.28, 2.28      Penalty multipliers estimated at platform: 0.71, 2.4, 0.95, 0.28, 2.32      Penalty multipliers estimated at platform: 0.71, 2.45, 0.94, 0.28, 2.35      Penalty multipliers estimated at platform: 0.7, 2.49, 0.94, 0.28, 2.39      Penalty multipliers estimated at platform: 0.7, 2.53, 0.93, 0.28, 2.42      Penalty multipliers estimated at platform: 0.7, 2.57, 0.93, 0.28, 2.45      Penalty multipliers estimated at platform: 0.7, 2.61, 0.93, 0.28, 2.48      Penalty multipliers estimated at platform: 0.7, 2.65, 0.92, 0.28, 2.51      Penalty multipliers estimated at platform: 0.69, 2.69, 0.92, 0.28, 2.54      Penalty multipliers estimated at platform: 0.69, 2.72, 0.91, 0.28, 2.57      Penalty multipliers estimated at platform: 0.69, 2.76, 0.91, 0.28, 2.6      Penalty multipliers estimated at platform: 0.69, 2.79, 0.91, 0.28, 2.62      Penalty multipliers estimated at platform: 0.69, 2.83, 0.9, 0.28, 2.65      Penalty multipliers estimated at platform: 0.69, 2.86, 0.9, 0.28, 2.68      Penalty multipliers estimated at platform: 0.69, 2.89, 0.9, 0.28, 2.7      Penalty multipliers estimated at platform: 0.69, 2.92, 0.89, 0.28, 2.72      Penalty multipliers estimated at platform: 0.68, 2.95, 0.89, 0.28, 2.75      Penalty multipliers estimated at platform: 0.68, 2.98, 0.89, 0.28, 2.77      Penalty multipliers estimated at platform: 0.68, 3.01, 0.89, 0.28, 2.79      Penalty multipliers estimated at platform: 0.68, 3.04, 0.88, 0.27, 2.81      Penalty multipliers estimated at platform: 0.68, 3.06, 0.88, 0.27, 2.83      Penalty multipliers estimated at platform: 0.68, 3.09, 0.88, 0.27, 2.85      Penalty multipliers estimated at platform: 0.68, 3.11, 0.88, 0.27, 2.87      Penalty multipliers estimated at platform: 0.68, 3.14, 0.88, 0.27, 2.89      Penalty multipliers estimated at platform: 0.68, 3.16, 0.87, 0.27, 2.91      Penalty multipliers estimated at platform: 0.68, 3.19, 0.87, 0.27, 2.93      Penalty multipliers estimated at platform: 0.68, 3.21, 0.87, 0.27, 2.94      Penalty multipliers estimated at platform: 0.68, 3.23, 0.87, 0.27, 2.96      Penalty multipliers estimated at platform: 0.68, 3.25, 0.87, 0.27, 2.98      Penalty multipliers estimated at platform: 0.68, 3.27, 0.86, 0.27, 2.99      Penalty multipliers estimated at platform: 0.67, 3.29, 0.86, 0.27, 3.01      Penalty multipliers estimated at platform: 0.67, 3.31, 0.86, 0.27, 3.02      Penalty multipliers estimated at platform: 0.67, 3.33, 0.86, 0.27, 3.04      Penalty multipliers estimated at platform: 0.67, 3.35, 0.86, 0.27, 3.05      Penalty multipliers estimated at platform: 0.67, 3.37, 0.86, 0.27, 3.07      Penalty multipliers estimated at platform: 0.67, 3.39, 0.85, 0.27, 3.08      Penalty multipliers estimated at platform: 0.67, 3.4, 0.85, 0.27, 3.09      Penalty multipliers estimated at platform: 0.67, 3.42, 0.85, 0.27, 3.1      Penalty multipliers estimated at platform: 0.67, 3.43, 0.85, 0.27, 3.11      Penalty multipliers estimated at platform: 0.67, 3.45, 0.85, 0.27, 3.13      Penalty multipliers estimated at platform: 0.67, 3.46, 0.85, 0.27, 3.14      Penalty multipliers estimated at platform: 0.67, 3.48, 0.85, 0.27, 3.15      Penalty multipliers estimated at platform: 0.67, 3.49, 0.85, 0.27, 3.16      Penalty multipliers estimated at platform: 0.67, 3.51, 0.85, 0.27, 3.17      Penalty multipliers estimated at platform: 0.67, 3.52, 0.84, 0.27, 3.18      Penalty multipliers estimated at platform: 0.67, 3.53, 0.84, 0.27, 3.19      Penalty multipliers estimated at platform: 0.67, 3.55, 0.84, 0.27, 3.2      Penalty multipliers estimated at platform: 0.67, 3.56, 0.84, 0.27, 3.21      Penalty multipliers estimated at platform: 0.67, 3.57, 0.84, 0.27, 3.21      Penalty multipliers estimated at platform: 0.67, 3.58, 0.84, 0.27, 3.22      Penalty multipliers estimated at platform: 0.67, 3.59, 0.84, 0.27, 3.23      Penalty multipliers estimated at platform: 0.67, 3.6, 0.84, 0.27, 3.24      Penalty multipliers estimated at platform: 0.67, 3.61, 0.84, 0.27, 3.25      Penalty multipliers estimated at platform: 0.67, 3.62, 0.84, 0.27, 3.25      Penalty multipliers estimated at platform: 0.67, 3.63, 0.84, 0.27, 3.26      Penalty multipliers estimated at platform: 0.67, 3.64, 0.84, 0.27, 3.27      Penalty multipliers estimated at platform: 0.67, 3.65, 0.83, 0.27, 3.27      Penalty multipliers estimated at platform: 0.67, 3.66, 0.83, 0.27, 3.28      Penalty multipliers estimated at platform: 0.67, 3.67, 0.83, 0.27, 3.29      Penalty multipliers estimated at platform: 0.67, 3.68, 0.83, 0.27, 3.29      Penalty multipliers estimated at platform: 0.67, 3.68, 0.83, 0.27, 3.3      Penalty multipliers estimated at platform: 0.67, 3.69, 0.83, 0.27, 3.3      Penalty multipliers estimated at platform: 0.67, 3.7, 0.83, 0.27, 3.31      Penalty multipliers estimated at platform: 0.67, 3.71, 0.83, 0.27, 3.32      Penalty multipliers estimated at platform: 0.67, 3.71, 0.83, 0.27, 3.32      Penalty multipliers estimated at platform: 0.67, 3.72, 0.83, 0.27, 3.33      Penalty multipliers estimated at platform: 0.67, 3.73, 0.83, 0.27, 3.33      Penalty multipliers estimated at platform: 0.67, 3.73, 0.83, 0.27, 3.34      Penalty multipliers estimated at platform: 0.67, 3.74, 0.83, 0.27, 3.34      Penalty multipliers estimated at platform: 0.67, 3.75, 0.83, 0.27, 3.34      Penalty multipliers estimated at platform: 0.67, 3.75, 0.83, 0.27, 3.35      Penalty multipliers estimated at platform: 0.67, 3.76, 0.83, 0.27, 3.35      Penalty multipliers estimated at platform: 0.67, 3.76, 0.83, 0.27, 3.36      Penalty multipliers estimated at platform: 0.66, 3.77, 0.83, 0.27, 3.36      Penalty multipliers estimated at platform: 0.66, 3.77, 0.83, 0.27, 3.36      Penalty multipliers estimated at platform: 0.66, 3.78, 0.83, 0.27, 3.37      Penalty multipliers estimated at platform: 0.66, 3.78, 0.83, 0.27, 3.37      Penalty multipliers estimated at platform: 0.66, 3.79, 0.83, 0.27, 3.37      Penalty multipliers estimated at platform: 0.66, 3.79, 0.82, 0.27, 3.38      Penalty multipliers estimated at platform: 0.66, 3.8, 0.82, 0.27, 3.38      Penalty multipliers estimated at platform: 0.66, 3.8, 0.82, 0.27, 3.38      Penalty multipliers estimated at platform: 0.66, 3.81, 0.82, 0.27, 3.39      Penalty multipliers estimated at platform: 0.66, 3.81, 0.82, 0.27, 3.39      Penalty multipliers estimated at platform: 0.66, 3.81, 0.82, 0.27, 3.39      Penalty multipliers estimated at platform: 0.66, 3.82, 0.82, 0.27, 3.39      Penalty multipliers estimated at platform: 0.66, 3.82, 0.82, 0.27, 3.39 in 32.24 seconds [1] "Summary of group sizes:"
-  1   2   3   4 
- 53  22 116  39 
-[1] "Grouping 1 contains mutually exclusive groups"
-[1] "Binary response, executing logistic ridge regression"
-1234
-[1] -134.8194
-[1] -134.8194
-[1] "Relative error: 0.169593007454283"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 0.9344577 1.3998346 1.0038682 0.9282740
-[1] -134.5345
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.170582689858963"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 0.9213648 1.3679620 1.0055218 0.9504932
-[1] -134.2681
-[1] "Partition platform CONVERGED after 2 iterations"
-[1] "All partitions CONVERGED after 2 iterations"
-[1] "Computation time for adaptive weigthing: 53.9340000000001"
-[1] "Final lambda multipliers (summary):"
-$platform
-        1         2         3         4 
-0.9344577 1.3998346 1.0038682 0.9282740 
-
-[1] "CVLs -134.819434829647" "CVLs -134.53451636688" 
-[1] "Total computation time: 53.9340000000001"
-[1] "Summary of group sizes:"
-  1   2   3   4   5 
- 53  22 116  13  26 
-[1] "Grouping 1 contains mutually exclusive groups"
-[1] "Binary response, executing logistic ridge regression"
-1234
-[1] -134.8194
-[1] -134.8194
-[1] "Relative error: 0.208417294249238"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 0.9344577 1.3998346 1.0038682 0.4939083 1.6568125
-[1] -132.8511
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.216714040845985"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 0.9022278 1.3837928 0.9738906 0.6286662 1.6699202
-[1] -131.6252
-[1] "Partition platform CONVERGED after 2 iterations"
-[1] "All partitions CONVERGED after 2 iterations"
-[1] "Computation time for adaptive weigthing: 54.248"
-[1] "Final lambda multipliers (summary):"
-$platform
-        1         2         3         4         5 
-0.9344577 1.3998346 1.0038682 0.4939083 1.6568125 
-
-[1] "CVLs -134.819434829647" "CVLs -132.851099444949"
-[1] "Total computation time: 54.248"
-[1] "Fold 6"
-
-Estimating penalty multipliers by empirical Bayes
-Penalty multipliers estimated at platform: 0.86, 0.88, 1.11, 0.97      Penalty multipliers estimated at platform: 0.91, 0.94, 1.09, 0.9      Penalty multipliers estimated at platform: 0.96, 1, 1.08, 0.84      Penalty multipliers estimated at platform: 1, 1.06, 1.07, 0.8      Penalty multipliers estimated at platform: 1.04, 1.11, 1.05, 0.76      Penalty multipliers estimated at platform: 1.09, 1.17, 1.04, 0.72      Penalty multipliers estimated at platform: 1.13, 1.22, 1.03, 0.69      Penalty multipliers estimated at platform: 1.16, 1.27, 1.02, 0.67      Penalty multipliers estimated at platform: 1.2, 1.32, 1.01, 0.65      Penalty multipliers estimated at platform: 1.23, 1.36, 1, 0.63      Penalty multipliers estimated at platform: 1.27, 1.41, 0.99, 0.62      Penalty multipliers estimated at platform: 1.3, 1.45, 0.98, 0.61      Penalty multipliers estimated at platform: 1.33, 1.49, 0.97, 0.6      Penalty multipliers estimated at platform: 1.36, 1.53, 0.96, 0.59      Penalty multipliers estimated at platform: 1.39, 1.57, 0.95, 0.58      Penalty multipliers estimated at platform: 1.41, 1.6, 0.94, 0.57      Penalty multipliers estimated at platform: 1.44, 1.64, 0.93, 0.57      Penalty multipliers estimated at platform: 1.46, 1.67, 0.93, 0.56      Penalty multipliers estimated at platform: 1.49, 1.7, 0.92, 0.56      Penalty multipliers estimated at platform: 1.51, 1.73, 0.91, 0.55      Penalty multipliers estimated at platform: 1.53, 1.76, 0.9, 0.55      Penalty multipliers estimated at platform: 1.55, 1.79, 0.9, 0.55      Penalty multipliers estimated at platform: 1.57, 1.82, 0.89, 0.55      Penalty multipliers estimated at platform: 1.59, 1.85, 0.88, 0.55      Penalty multipliers estimated at platform: 1.61, 1.87, 0.88, 0.54      Penalty multipliers estimated at platform: 1.63, 1.9, 0.87, 0.54      Penalty multipliers estimated at platform: 1.64, 1.92, 0.86, 0.54      Penalty multipliers estimated at platform: 1.66, 1.94, 0.86, 0.54      Penalty multipliers estimated at platform: 1.68, 1.97, 0.85, 0.54      Penalty multipliers estimated at platform: 1.69, 1.99, 0.85, 0.54      Penalty multipliers estimated at platform: 1.71, 2.01, 0.84, 0.54      Penalty multipliers estimated at platform: 1.72, 2.03, 0.84, 0.54      Penalty multipliers estimated at platform: 1.73, 2.05, 0.84, 0.54      Penalty multipliers estimated at platform: 1.75, 2.06, 0.83, 0.54      Penalty multipliers estimated at platform: 1.76, 2.08, 0.83, 0.54      Penalty multipliers estimated at platform: 1.77, 2.1, 0.82, 0.54      Penalty multipliers estimated at platform: 1.79, 2.12, 0.82, 0.54      Penalty multipliers estimated at platform: 1.8, 2.13, 0.82, 0.54      Penalty multipliers estimated at platform: 1.81, 2.15, 0.81, 0.54      Penalty multipliers estimated at platform: 1.82, 2.16, 0.81, 0.54      Penalty multipliers estimated at platform: 1.83, 2.18, 0.81, 0.54      Penalty multipliers estimated at platform: 1.84, 2.19, 0.8, 0.54      Penalty multipliers estimated at platform: 1.85, 2.2, 0.8, 0.54      Penalty multipliers estimated at platform: 1.86, 2.22, 0.8, 0.54      Penalty multipliers estimated at platform: 1.87, 2.23, 0.79, 0.54      Penalty multipliers estimated at platform: 1.88, 2.24, 0.79, 0.54      Penalty multipliers estimated at platform: 1.89, 2.25, 0.79, 0.54      Penalty multipliers estimated at platform: 1.89, 2.26, 0.79, 0.54      Penalty multipliers estimated at platform: 1.9, 2.27, 0.79, 0.54      Penalty multipliers estimated at platform: 1.91, 2.28, 0.78, 0.54      Penalty multipliers estimated at platform: 1.92, 2.29, 0.78, 0.54      Penalty multipliers estimated at platform: 1.92, 2.3, 0.78, 0.54      Penalty multipliers estimated at platform: 1.93, 2.31, 0.78, 0.54      Penalty multipliers estimated at platform: 1.94, 2.32, 0.78, 0.54      Penalty multipliers estimated at platform: 1.94, 2.33, 0.77, 0.54      Penalty multipliers estimated at platform: 1.95, 2.34, 0.77, 0.54      Penalty multipliers estimated at platform: 1.95, 2.34, 0.77, 0.54      Penalty multipliers estimated at platform: 1.96, 2.35, 0.77, 0.54      Penalty multipliers estimated at platform: 1.97, 2.36, 0.77, 0.54      Penalty multipliers estimated at platform: 1.97, 2.37, 0.77, 0.54      Penalty multipliers estimated at platform: 1.98, 2.37, 0.77, 0.54      Penalty multipliers estimated at platform: 1.98, 2.38, 0.76, 0.54      Penalty multipliers estimated at platform: 1.99, 2.38, 0.76, 0.54      Penalty multipliers estimated at platform: 1.99, 2.39, 0.76, 0.54      Penalty multipliers estimated at platform: 1.99, 2.4, 0.76, 0.54      Penalty multipliers estimated at platform: 2, 2.4, 0.76, 0.54      Penalty multipliers estimated at platform: 2, 2.41, 0.76, 0.54      Penalty multipliers estimated at platform: 2.01, 2.41, 0.76, 0.54      Penalty multipliers estimated at platform: 2.01, 2.42, 0.76, 0.54      Penalty multipliers estimated at platform: 2.01, 2.42, 0.76, 0.54      Penalty multipliers estimated at platform: 2.02, 2.43, 0.75, 0.54      Penalty multipliers estimated at platform: 2.02, 2.43, 0.75, 0.54      Penalty multipliers estimated at platform: 2.02, 2.43, 0.75, 0.54      Penalty multipliers estimated at platform: 2.03, 2.44, 0.75, 0.54      Penalty multipliers estimated at platform: 2.03, 2.44, 0.75, 0.54      Penalty multipliers estimated at platform: 2.03, 2.45, 0.75, 0.54      Penalty multipliers estimated at platform: 2.04, 2.45, 0.75, 0.54      Penalty multipliers estimated at platform: 2.04, 2.45, 0.75, 0.54      Penalty multipliers estimated at platform: 2.04, 2.46, 0.75, 0.54      Penalty multipliers estimated at platform: 2.04, 2.46, 0.75, 0.54      Penalty multipliers estimated at platform: 2.05, 2.46, 0.75, 0.54      Penalty multipliers estimated at platform: 2.05, 2.47, 0.75, 0.54      Penalty multipliers estimated at platform: 2.05, 2.47, 0.75, 0.54      Penalty multipliers estimated at platform: 2.05, 2.47, 0.75, 0.54      Penalty multipliers estimated at platform: 2.06, 2.47, 0.75, 0.54      Penalty multipliers estimated at platform: 2.06, 2.48, 0.75, 0.54      Penalty multipliers estimated at platform: 2.06, 2.48, 0.75, 0.54 in 35.47 seconds 
-Estimating penalty multipliers by empirical Bayes
-Penalty multipliers estimated at platform: 0.87, 0.89, 1.11, 0.8, 1.04      Penalty multipliers estimated at platform: 0.91, 0.95, 1.09, 0.6, 1.1      Penalty multipliers estimated at platform: 0.95, 1, 1.07, 0.48, 1.16      Penalty multipliers estimated at platform: 0.99, 1.05, 1.05, 0.4, 1.22      Penalty multipliers estimated at platform: 1.03, 1.1, 1.03, 0.35, 1.27      Penalty multipliers estimated at platform: 1.06, 1.14, 1.01, 0.32, 1.32      Penalty multipliers estimated at platform: 1.09, 1.18, 0.99, 0.3, 1.37      Penalty multipliers estimated at platform: 1.12, 1.22, 0.97, 0.28, 1.41      Penalty multipliers estimated at platform: 1.15, 1.26, 0.95, 0.27, 1.45      Penalty multipliers estimated at platform: 1.18, 1.29, 0.94, 0.27, 1.49      Penalty multipliers estimated at platform: 1.2, 1.32, 0.92, 0.27, 1.54      Penalty multipliers estimated at platform: 1.23, 1.36, 0.9, 0.26, 1.58      Penalty multipliers estimated at platform: 1.25, 1.39, 0.89, 0.26, 1.61      Penalty multipliers estimated at platform: 1.27, 1.42, 0.87, 0.26, 1.65      Penalty multipliers estimated at platform: 1.29, 1.44, 0.86, 0.26, 1.69      Penalty multipliers estimated at platform: 1.31, 1.47, 0.84, 0.26, 1.73      Penalty multipliers estimated at platform: 1.33, 1.5, 0.83, 0.26, 1.77      Penalty multipliers estimated at platform: 1.35, 1.52, 0.82, 0.26, 1.8      Penalty multipliers estimated at platform: 1.37, 1.55, 0.81, 0.26, 1.84      Penalty multipliers estimated at platform: 1.39, 1.57, 0.8, 0.26, 1.87      Penalty multipliers estimated at platform: 1.41, 1.6, 0.79, 0.26, 1.91      Penalty multipliers estimated at platform: 1.43, 1.62, 0.78, 0.26, 1.94      Penalty multipliers estimated at platform: 1.44, 1.64, 0.77, 0.26, 1.98      Penalty multipliers estimated at platform: 1.46, 1.66, 0.76, 0.26, 2.01      Penalty multipliers estimated at platform: 1.47, 1.68, 0.75, 0.26, 2.04      Penalty multipliers estimated at platform: 1.49, 1.7, 0.74, 0.26, 2.07      Penalty multipliers estimated at platform: 1.5, 1.72, 0.74, 0.26, 2.1      Penalty multipliers estimated at platform: 1.52, 1.74, 0.73, 0.26, 2.13      Penalty multipliers estimated at platform: 1.53, 1.75, 0.72, 0.26, 2.16      Penalty multipliers estimated at platform: 1.54, 1.77, 0.72, 0.26, 2.19      Penalty multipliers estimated at platform: 1.55, 1.79, 0.71, 0.26, 2.22      Penalty multipliers estimated at platform: 1.57, 1.8, 0.71, 0.26, 2.25      Penalty multipliers estimated at platform: 1.58, 1.82, 0.7, 0.26, 2.27      Penalty multipliers estimated at platform: 1.59, 1.83, 0.7, 0.26, 2.3      Penalty multipliers estimated at platform: 1.6, 1.84, 0.69, 0.26, 2.32      Penalty multipliers estimated at platform: 1.61, 1.86, 0.69, 0.26, 2.35      Penalty multipliers estimated at platform: 1.62, 1.87, 0.68, 0.26, 2.37      Penalty multipliers estimated at platform: 1.63, 1.88, 0.68, 0.26, 2.39      Penalty multipliers estimated at platform: 1.64, 1.89, 0.67, 0.26, 2.42      Penalty multipliers estimated at platform: 1.65, 1.9, 0.67, 0.26, 2.44      Penalty multipliers estimated at platform: 1.65, 1.91, 0.67, 0.26, 2.46      Penalty multipliers estimated at platform: 1.66, 1.92, 0.66, 0.26, 2.48      Penalty multipliers estimated at platform: 1.67, 1.93, 0.66, 0.26, 2.5      Penalty multipliers estimated at platform: 1.68, 1.94, 0.66, 0.26, 2.52      Penalty multipliers estimated at platform: 1.68, 1.95, 0.65, 0.26, 2.54      Penalty multipliers estimated at platform: 1.69, 1.96, 0.65, 0.26, 2.56      Penalty multipliers estimated at platform: 1.7, 1.96, 0.65, 0.26, 2.58      Penalty multipliers estimated at platform: 1.7, 1.97, 0.65, 0.26, 2.59      Penalty multipliers estimated at platform: 1.71, 1.98, 0.64, 0.26, 2.61      Penalty multipliers estimated at platform: 1.71, 1.98, 0.64, 0.26, 2.63      Penalty multipliers estimated at platform: 1.72, 1.99, 0.64, 0.26, 2.64      Penalty multipliers estimated at platform: 1.72, 2, 0.64, 0.26, 2.66      Penalty multipliers estimated at platform: 1.73, 2, 0.64, 0.26, 2.67      Penalty multipliers estimated at platform: 1.73, 2.01, 0.63, 0.26, 2.69      Penalty multipliers estimated at platform: 1.74, 2.01, 0.63, 0.26, 2.7      Penalty multipliers estimated at platform: 1.74, 2.02, 0.63, 0.26, 2.72      Penalty multipliers estimated at platform: 1.75, 2.02, 0.63, 0.26, 2.73      Penalty multipliers estimated at platform: 1.75, 2.03, 0.63, 0.26, 2.74      Penalty multipliers estimated at platform: 1.75, 2.03, 0.63, 0.26, 2.76      Penalty multipliers estimated at platform: 1.76, 2.03, 0.63, 0.26, 2.77      Penalty multipliers estimated at platform: 1.76, 2.04, 0.62, 0.26, 2.78      Penalty multipliers estimated at platform: 1.76, 2.04, 0.62, 0.26, 2.79      Penalty multipliers estimated at platform: 1.77, 2.04, 0.62, 0.26, 2.8      Penalty multipliers estimated at platform: 1.77, 2.05, 0.62, 0.26, 2.81      Penalty multipliers estimated at platform: 1.77, 2.05, 0.62, 0.26, 2.82      Penalty multipliers estimated at platform: 1.78, 2.05, 0.62, 0.26, 2.83      Penalty multipliers estimated at platform: 1.78, 2.06, 0.62, 0.26, 2.84      Penalty multipliers estimated at platform: 1.78, 2.06, 0.62, 0.26, 2.85      Penalty multipliers estimated at platform: 1.78, 2.06, 0.61, 0.26, 2.86      Penalty multipliers estimated at platform: 1.78, 2.06, 0.61, 0.26, 2.87      Penalty multipliers estimated at platform: 1.79, 2.07, 0.61, 0.26, 2.88      Penalty multipliers estimated at platform: 1.79, 2.07, 0.61, 0.26, 2.89      Penalty multipliers estimated at platform: 1.79, 2.07, 0.61, 0.26, 2.89      Penalty multipliers estimated at platform: 1.79, 2.07, 0.61, 0.26, 2.9      Penalty multipliers estimated at platform: 1.79, 2.07, 0.61, 0.26, 2.91      Penalty multipliers estimated at platform: 1.8, 2.07, 0.61, 0.26, 2.92      Penalty multipliers estimated at platform: 1.8, 2.08, 0.61, 0.26, 2.92      Penalty multipliers estimated at platform: 1.8, 2.08, 0.61, 0.26, 2.93      Penalty multipliers estimated at platform: 1.8, 2.08, 0.61, 0.26, 2.94      Penalty multipliers estimated at platform: 1.8, 2.08, 0.61, 0.26, 2.94      Penalty multipliers estimated at platform: 1.8, 2.08, 0.61, 0.26, 2.95      Penalty multipliers estimated at platform: 1.8, 2.08, 0.61, 0.26, 2.96      Penalty multipliers estimated at platform: 1.8, 2.08, 0.61, 0.26, 2.96      Penalty multipliers estimated at platform: 1.81, 2.08, 0.61, 0.26, 2.97      Penalty multipliers estimated at platform: 1.81, 2.08, 0.6, 0.26, 2.97      Penalty multipliers estimated at platform: 1.81, 2.08, 0.6, 0.26, 2.98      Penalty multipliers estimated at platform: 1.81, 2.09, 0.6, 0.26, 2.98      Penalty multipliers estimated at platform: 1.81, 2.09, 0.6, 0.26, 2.99      Penalty multipliers estimated at platform: 1.81, 2.09, 0.6, 0.26, 2.99      Penalty multipliers estimated at platform: 1.81, 2.09, 0.6, 0.26, 3      Penalty multipliers estimated at platform: 1.81, 2.09, 0.6, 0.26, 3      Penalty multipliers estimated at platform: 1.81, 2.09, 0.6, 0.26, 3.01      Penalty multipliers estimated at platform: 1.81, 2.09, 0.6, 0.26, 3.01      Penalty multipliers estimated at platform: 1.81, 2.09, 0.6, 0.26, 3.01      Penalty multipliers estimated at platform: 1.81, 2.09, 0.6, 0.26, 3.02      Penalty multipliers estimated at platform: 1.82, 2.09, 0.6, 0.26, 3.02      Penalty multipliers estimated at platform: 1.82, 2.09, 0.6, 0.26, 3.03      Penalty multipliers estimated at platform: 1.82, 2.09, 0.6, 0.26, 3.03      Penalty multipliers estimated at platform: 1.82, 2.09, 0.6, 0.26, 3.03      Penalty multipliers estimated at platform: 1.82, 2.09, 0.6, 0.26, 3.04      Penalty multipliers estimated at platform: 1.82, 2.09, 0.6, 0.26, 3.04      Penalty multipliers estimated at platform: 1.82, 2.09, 0.6, 0.26, 3.04      Penalty multipliers estimated at platform: 1.82, 2.09, 0.6, 0.26, 3.05      Penalty multipliers estimated at platform: 1.82, 2.09, 0.6, 0.26, 3.05      Penalty multipliers estimated at platform: 1.82, 2.09, 0.6, 0.26, 3.05 in 32.97 seconds [1] "Summary of group sizes:"
-  1   2   3   4 
- 53  22 116  39 
-[1] "Grouping 1 contains mutually exclusive groups"
-[1] "Binary response, executing logistic ridge regression"
-1234
-[1] -134.9764
-[1] -134.9764
-[1] "Relative error: 0.175713317672725"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.3130147 1.5574674 0.8906656 0.8615034
-[1] -134.5226
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.179913573506382"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.2710002 1.4433252 0.8940905 0.9003352
-[1] -134.191
-[1] "Partition platform CONVERGED after 2 iterations"
-[1] "All partitions CONVERGED after 2 iterations"
-[1] "Computation time for adaptive weigthing: 53.7739999999999"
-[1] "Final lambda multipliers (summary):"
-$platform
-        1         2         3         4 
-1.3130147 1.5574674 0.8906656 0.8615034 
-
-[1] "CVLs -134.976428952671" "CVLs -134.522556899914"
-[1] "Total computation time: 53.7749999999999"
-[1] "Summary of group sizes:"
-  1   2   3   4   5 
- 53  22 116  13  26 
-[1] "Grouping 1 contains mutually exclusive groups"
-[1] "Binary response, executing logistic ridge regression"
-1234
-[1] -134.9764
-[1] -134.9764
-[1] "Relative error: 0.215240097646548"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.3130147 1.5574674 0.8906656 0.4276497 1.7483710
-[1] -132.4055
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.218844002652825"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.2394457 1.4824178 0.8568138 0.5699414 1.8305147
-[1] -130.9959
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.220707057439053"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.1742851 1.4285635 0.8395071 0.7418188 1.8888129
-[1] -130.2884
-[1] "Partition platform CONVERGED after 3 iterations"
-[1] "All partitions CONVERGED after 3 iterations"
-[1] "Computation time for adaptive weigthing: 72.2249999999999"
-[1] "Final lambda multipliers (summary):"
-$platform
-        1         2         3         4         5 
-1.6274104 2.3088174 0.7631345 0.2437353 3.2004188 
-
-[1] "CVLs -134.976428952671" "CVLs -130.995934244624"
-[1] "Total computation time: 72.2259999999999"
-[1] "Fold 7"
-
-Estimating penalty multipliers by empirical Bayes
-Penalty multipliers estimated at platform: 0.84, 0.82, 1.14, 0.97      Penalty multipliers estimated at platform: 0.83, 0.87, 1.14, 0.95      Penalty multipliers estimated at platform: 0.82, 0.92, 1.14, 0.94      Penalty multipliers estimated at platform: 0.81, 0.96, 1.13, 0.93      Penalty multipliers estimated at platform: 0.81, 1.01, 1.13, 0.92      Penalty multipliers estimated at platform: 0.8, 1.05, 1.13, 0.92      Penalty multipliers estimated at platform: 0.79, 1.09, 1.13, 0.91      Penalty multipliers estimated at platform: 0.79, 1.14, 1.13, 0.9      Penalty multipliers estimated at platform: 0.78, 1.17, 1.12, 0.9      Penalty multipliers estimated at platform: 0.78, 1.21, 1.12, 0.89      Penalty multipliers estimated at platform: 0.77, 1.25, 1.12, 0.89      Penalty multipliers estimated at platform: 0.77, 1.29, 1.12, 0.88      Penalty multipliers estimated at platform: 0.76, 1.32, 1.12, 0.88      Penalty multipliers estimated at platform: 0.76, 1.35, 1.12, 0.88      Penalty multipliers estimated at platform: 0.75, 1.39, 1.12, 0.87      Penalty multipliers estimated at platform: 0.75, 1.42, 1.12, 0.87      Penalty multipliers estimated at platform: 0.75, 1.45, 1.12, 0.87      Penalty multipliers estimated at platform: 0.74, 1.48, 1.12, 0.87      Penalty multipliers estimated at platform: 0.74, 1.51, 1.11, 0.86      Penalty multipliers estimated at platform: 0.74, 1.53, 1.11, 0.86      Penalty multipliers estimated at platform: 0.73, 1.56, 1.11, 0.86      Penalty multipliers estimated at platform: 0.73, 1.58, 1.11, 0.86      Penalty multipliers estimated at platform: 0.73, 1.61, 1.11, 0.86      Penalty multipliers estimated at platform: 0.73, 1.63, 1.11, 0.86      Penalty multipliers estimated at platform: 0.72, 1.66, 1.11, 0.86      Penalty multipliers estimated at platform: 0.72, 1.68, 1.11, 0.85      Penalty multipliers estimated at platform: 0.72, 1.7, 1.11, 0.85      Penalty multipliers estimated at platform: 0.72, 1.72, 1.11, 0.85      Penalty multipliers estimated at platform: 0.71, 1.74, 1.11, 0.85      Penalty multipliers estimated at platform: 0.71, 1.76, 1.11, 0.85      Penalty multipliers estimated at platform: 0.71, 1.78, 1.11, 0.85      Penalty multipliers estimated at platform: 0.71, 1.8, 1.11, 0.85      Penalty multipliers estimated at platform: 0.71, 1.82, 1.11, 0.85      Penalty multipliers estimated at platform: 0.71, 1.83, 1.11, 0.85      Penalty multipliers estimated at platform: 0.7, 1.85, 1.1, 0.85      Penalty multipliers estimated at platform: 0.7, 1.87, 1.1, 0.85      Penalty multipliers estimated at platform: 0.7, 1.88, 1.1, 0.84      Penalty multipliers estimated at platform: 0.7, 1.9, 1.1, 0.84      Penalty multipliers estimated at platform: 0.7, 1.91, 1.1, 0.84      Penalty multipliers estimated at platform: 0.7, 1.93, 1.1, 0.84      Penalty multipliers estimated at platform: 0.7, 1.94, 1.1, 0.84      Penalty multipliers estimated at platform: 0.7, 1.95, 1.1, 0.84      Penalty multipliers estimated at platform: 0.7, 1.96, 1.1, 0.84      Penalty multipliers estimated at platform: 0.69, 1.98, 1.1, 0.84      Penalty multipliers estimated at platform: 0.69, 1.99, 1.1, 0.84      Penalty multipliers estimated at platform: 0.69, 2, 1.1, 0.84      Penalty multipliers estimated at platform: 0.69, 2.01, 1.1, 0.84      Penalty multipliers estimated at platform: 0.69, 2.02, 1.1, 0.84      Penalty multipliers estimated at platform: 0.69, 2.03, 1.1, 0.84      Penalty multipliers estimated at platform: 0.69, 2.04, 1.1, 0.84      Penalty multipliers estimated at platform: 0.69, 2.05, 1.1, 0.84      Penalty multipliers estimated at platform: 0.69, 2.06, 1.1, 0.84      Penalty multipliers estimated at platform: 0.69, 2.07, 1.1, 0.84      Penalty multipliers estimated at platform: 0.69, 2.08, 1.1, 0.84      Penalty multipliers estimated at platform: 0.69, 2.09, 1.1, 0.84      Penalty multipliers estimated at platform: 0.69, 2.1, 1.1, 0.84      Penalty multipliers estimated at platform: 0.69, 2.1, 1.1, 0.84      Penalty multipliers estimated at platform: 0.69, 2.11, 1.1, 0.84      Penalty multipliers estimated at platform: 0.68, 2.12, 1.1, 0.84      Penalty multipliers estimated at platform: 0.68, 2.12, 1.09, 0.84      Penalty multipliers estimated at platform: 0.68, 2.13, 1.09, 0.84      Penalty multipliers estimated at platform: 0.68, 2.14, 1.09, 0.84      Penalty multipliers estimated at platform: 0.68, 2.14, 1.09, 0.84      Penalty multipliers estimated at platform: 0.68, 2.15, 1.09, 0.84      Penalty multipliers estimated at platform: 0.68, 2.16, 1.09, 0.84      Penalty multipliers estimated at platform: 0.68, 2.16, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.17, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.17, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.18, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.18, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.19, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.19, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.2, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.2, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.21, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.21, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.21, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.22, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.22, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.23, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.23, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.23, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.24, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.24, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.24, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.24, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.25, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.25, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.25, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.26, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.26, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.26, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.26, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.26, 1.09, 0.83      Penalty multipliers estimated at platform: 0.68, 2.26, 1.09, 0.83 in 29.2 seconds 
-Estimating penalty multipliers by empirical Bayes
-Penalty multipliers estimated at platform: 0.84, 0.83, 1.09, 0.98, 1.17      Penalty multipliers estimated at platform: 0.83, 0.88, 1.08, 0.82, 1.25      Penalty multipliers estimated at platform: 0.83, 0.93, 1.08, 0.69, 1.32      Penalty multipliers estimated at platform: 0.82, 0.97, 1.08, 0.6, 1.4      Penalty multipliers estimated at platform: 0.81, 1.02, 1.08, 0.53, 1.48      Penalty multipliers estimated at platform: 0.8, 1.06, 1.07, 0.48, 1.55      Penalty multipliers estimated at platform: 0.79, 1.11, 1.07, 0.45, 1.62      Penalty multipliers estimated at platform: 0.78, 1.15, 1.07, 0.42, 1.69      Penalty multipliers estimated at platform: 0.78, 1.19, 1.06, 0.4, 1.75      Penalty multipliers estimated at platform: 0.77, 1.22, 1.06, 0.39, 1.82      Penalty multipliers estimated at platform: 0.76, 1.26, 1.05, 0.38, 1.88      Penalty multipliers estimated at platform: 0.75, 1.3, 1.05, 0.37, 1.94      Penalty multipliers estimated at platform: 0.74, 1.33, 1.04, 0.36, 2      Penalty multipliers estimated at platform: 0.73, 1.36, 1.04, 0.36, 2.06      Penalty multipliers estimated at platform: 0.73, 1.39, 1.03, 0.35, 2.11      Penalty multipliers estimated at platform: 0.72, 1.43, 1.03, 0.35, 2.17      Penalty multipliers estimated at platform: 0.71, 1.46, 1.02, 0.35, 2.22      Penalty multipliers estimated at platform: 0.71, 1.48, 1.02, 0.35, 2.27      Penalty multipliers estimated at platform: 0.7, 1.51, 1.02, 0.35, 2.32      Penalty multipliers estimated at platform: 0.69, 1.54, 1.01, 0.34, 2.37      Penalty multipliers estimated at platform: 0.69, 1.57, 1.01, 0.34, 2.42      Penalty multipliers estimated at platform: 0.68, 1.59, 1, 0.34, 2.46      Penalty multipliers estimated at platform: 0.68, 1.62, 1, 0.34, 2.51      Penalty multipliers estimated at platform: 0.68, 1.64, 1, 0.34, 2.55      Penalty multipliers estimated at platform: 0.67, 1.67, 0.99, 0.34, 2.59      Penalty multipliers estimated at platform: 0.67, 1.69, 0.99, 0.34, 2.63      Penalty multipliers estimated at platform: 0.66, 1.71, 0.99, 0.34, 2.67      Penalty multipliers estimated at platform: 0.66, 1.73, 0.98, 0.34, 2.71      Penalty multipliers estimated at platform: 0.66, 1.75, 0.98, 0.34, 2.75      Penalty multipliers estimated at platform: 0.65, 1.77, 0.98, 0.34, 2.78      Penalty multipliers estimated at platform: 0.65, 1.79, 0.98, 0.34, 2.82      Penalty multipliers estimated at platform: 0.65, 1.81, 0.97, 0.34, 2.85      Penalty multipliers estimated at platform: 0.65, 1.83, 0.97, 0.34, 2.89      Penalty multipliers estimated at platform: 0.64, 1.85, 0.97, 0.34, 2.92      Penalty multipliers estimated at platform: 0.64, 1.87, 0.97, 0.34, 2.95      Penalty multipliers estimated at platform: 0.64, 1.88, 0.96, 0.33, 2.98      Penalty multipliers estimated at platform: 0.64, 1.9, 0.96, 0.33, 3.01      Penalty multipliers estimated at platform: 0.64, 1.91, 0.96, 0.33, 3.04      Penalty multipliers estimated at platform: 0.63, 1.93, 0.96, 0.33, 3.07      Penalty multipliers estimated at platform: 0.63, 1.94, 0.95, 0.33, 3.09      Penalty multipliers estimated at platform: 0.63, 1.96, 0.95, 0.33, 3.12      Penalty multipliers estimated at platform: 0.63, 1.97, 0.95, 0.33, 3.14      Penalty multipliers estimated at platform: 0.63, 1.98, 0.95, 0.33, 3.17      Penalty multipliers estimated at platform: 0.63, 2, 0.95, 0.33, 3.19      Penalty multipliers estimated at platform: 0.63, 2.01, 0.95, 0.33, 3.21      Penalty multipliers estimated at platform: 0.62, 2.02, 0.94, 0.33, 3.24      Penalty multipliers estimated at platform: 0.62, 2.03, 0.94, 0.33, 3.26      Penalty multipliers estimated at platform: 0.62, 2.04, 0.94, 0.33, 3.28      Penalty multipliers estimated at platform: 0.62, 2.05, 0.94, 0.33, 3.3      Penalty multipliers estimated at platform: 0.62, 2.06, 0.94, 0.33, 3.32      Penalty multipliers estimated at platform: 0.62, 2.07, 0.94, 0.33, 3.34      Penalty multipliers estimated at platform: 0.62, 2.08, 0.94, 0.33, 3.35      Penalty multipliers estimated at platform: 0.62, 2.09, 0.93, 0.33, 3.37      Penalty multipliers estimated at platform: 0.62, 2.1, 0.93, 0.33, 3.39      Penalty multipliers estimated at platform: 0.62, 2.11, 0.93, 0.33, 3.41      Penalty multipliers estimated at platform: 0.62, 2.12, 0.93, 0.33, 3.42      Penalty multipliers estimated at platform: 0.62, 2.13, 0.93, 0.33, 3.44      Penalty multipliers estimated at platform: 0.61, 2.13, 0.93, 0.33, 3.45      Penalty multipliers estimated at platform: 0.61, 2.14, 0.93, 0.33, 3.47      Penalty multipliers estimated at platform: 0.61, 2.15, 0.93, 0.33, 3.48      Penalty multipliers estimated at platform: 0.61, 2.16, 0.92, 0.33, 3.49      Penalty multipliers estimated at platform: 0.61, 2.16, 0.92, 0.33, 3.51      Penalty multipliers estimated at platform: 0.61, 2.17, 0.92, 0.33, 3.52      Penalty multipliers estimated at platform: 0.61, 2.17, 0.92, 0.33, 3.53      Penalty multipliers estimated at platform: 0.61, 2.18, 0.92, 0.33, 3.54      Penalty multipliers estimated at platform: 0.61, 2.19, 0.92, 0.33, 3.55      Penalty multipliers estimated at platform: 0.61, 2.19, 0.92, 0.33, 3.57      Penalty multipliers estimated at platform: 0.61, 2.2, 0.92, 0.33, 3.58      Penalty multipliers estimated at platform: 0.61, 2.2, 0.92, 0.33, 3.59      Penalty multipliers estimated at platform: 0.61, 2.21, 0.92, 0.33, 3.6      Penalty multipliers estimated at platform: 0.61, 2.21, 0.92, 0.33, 3.61      Penalty multipliers estimated at platform: 0.61, 2.22, 0.92, 0.33, 3.61      Penalty multipliers estimated at platform: 0.61, 2.22, 0.92, 0.33, 3.62      Penalty multipliers estimated at platform: 0.61, 2.23, 0.92, 0.33, 3.63      Penalty multipliers estimated at platform: 0.61, 2.23, 0.91, 0.33, 3.64      Penalty multipliers estimated at platform: 0.61, 2.23, 0.91, 0.33, 3.65      Penalty multipliers estimated at platform: 0.61, 2.24, 0.91, 0.33, 3.66      Penalty multipliers estimated at platform: 0.61, 2.24, 0.91, 0.33, 3.66      Penalty multipliers estimated at platform: 0.61, 2.24, 0.91, 0.33, 3.67      Penalty multipliers estimated at platform: 0.61, 2.25, 0.91, 0.33, 3.68      Penalty multipliers estimated at platform: 0.61, 2.25, 0.91, 0.33, 3.69      Penalty multipliers estimated at platform: 0.61, 2.25, 0.91, 0.33, 3.69      Penalty multipliers estimated at platform: 0.61, 2.26, 0.91, 0.33, 3.7      Penalty multipliers estimated at platform: 0.61, 2.26, 0.91, 0.33, 3.7      Penalty multipliers estimated at platform: 0.61, 2.26, 0.91, 0.33, 3.71      Penalty multipliers estimated at platform: 0.61, 2.27, 0.91, 0.33, 3.72      Penalty multipliers estimated at platform: 0.61, 2.27, 0.91, 0.33, 3.72      Penalty multipliers estimated at platform: 0.61, 2.27, 0.91, 0.33, 3.73      Penalty multipliers estimated at platform: 0.61, 2.27, 0.91, 0.33, 3.73      Penalty multipliers estimated at platform: 0.61, 2.28, 0.91, 0.33, 3.74      Penalty multipliers estimated at platform: 0.61, 2.28, 0.91, 0.33, 3.74      Penalty multipliers estimated at platform: 0.6, 2.28, 0.91, 0.33, 3.75      Penalty multipliers estimated at platform: 0.6, 2.28, 0.91, 0.33, 3.75      Penalty multipliers estimated at platform: 0.6, 2.28, 0.91, 0.33, 3.76      Penalty multipliers estimated at platform: 0.6, 2.29, 0.91, 0.33, 3.76      Penalty multipliers estimated at platform: 0.6, 2.29, 0.91, 0.33, 3.76      Penalty multipliers estimated at platform: 0.6, 2.29, 0.91, 0.33, 3.77      Penalty multipliers estimated at platform: 0.6, 2.29, 0.91, 0.33, 3.77      Penalty multipliers estimated at platform: 0.6, 2.29, 0.91, 0.33, 3.78      Penalty multipliers estimated at platform: 0.6, 2.29, 0.91, 0.33, 3.78 in 31.49 seconds [1] "Summary of group sizes:"
-  1   2   3   4 
- 53  22 116  39 
-[1] "Grouping 1 contains mutually exclusive groups"
-[1] "Binary response, executing logistic ridge regression"
-1234
-[1] -136.5729
-[1] -136.5729
-[1] "Relative error: 0.149948450310645"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 0.8828151 1.2645243 1.0017315 1.0607209
-[1] -136.4499
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.142842022259282"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 0.8854716 1.2620692 1.0052511 1.0450400
-[1] -136.2846
-[1] "Partition platform CONVERGED after 2 iterations"
-[1] "All partitions CONVERGED after 2 iterations"
-[1] "Computation time for adaptive weigthing: 53.982"
-[1] "Final lambda multipliers (summary):"
-$platform
-        1         2         3         4 
-0.8828151 1.2645243 1.0017315 1.0607209 
-
-[1] "CVLs -136.572929966649" "CVLs -136.449858802769"
-[1] "Total computation time: 53.9829999999999"
-[1] "Summary of group sizes:"
-  1   2   3   4   5 
- 53  22 116  13  26 
-[1] "Grouping 1 contains mutually exclusive groups"
-[1] "Binary response, executing logistic ridge regression"
-1234
-[1] -136.5729
-[1] -136.5729
-[1] "Relative error: 0.210811127915199"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 0.8828151 1.2645243 1.0017315 0.5426656 2.0294066
-[1] -134.8686
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.197553455549515"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 0.8716554 1.2772627 0.9761604 0.6399211 2.0274678
-[1] -133.6017
-[1] "Partition platform CONVERGED after 2 iterations"
-[1] "All partitions CONVERGED after 2 iterations"
-[1] "Computation time for adaptive weigthing: 54.3319999999999"
-[1] "Final lambda multipliers (summary):"
-$platform
-        1         2         3         4         5 
-0.8828151 1.2645243 1.0017315 0.5426656 2.0294066 
-
-[1] "CVLs -136.572929966649" "CVLs -134.868648531816"
-[1] "Total computation time: 54.3329999999999"
-[1] "Fold 8"
-
-Estimating penalty multipliers by empirical Bayes
-Penalty multipliers estimated at platform: 0.82, 0.81, 1.16, 0.96      Penalty multipliers estimated at platform: 0.84, 0.84, 1.16, 0.91      Penalty multipliers estimated at platform: 0.86, 0.86, 1.16, 0.87      Penalty multipliers estimated at platform: 0.88, 0.89, 1.16, 0.83      Penalty multipliers estimated at platform: 0.89, 0.91, 1.16, 0.79      Penalty multipliers estimated at platform: 0.91, 0.93, 1.16, 0.77      Penalty multipliers estimated at platform: 0.92, 0.95, 1.16, 0.74      Penalty multipliers estimated at platform: 0.93, 0.96, 1.16, 0.72      Penalty multipliers estimated at platform: 0.94, 0.98, 1.16, 0.7      Penalty multipliers estimated at platform: 0.95, 0.99, 1.16, 0.69      Penalty multipliers estimated at platform: 0.96, 1, 1.17, 0.67      Penalty multipliers estimated at platform: 0.96, 1.01, 1.17, 0.66      Penalty multipliers estimated at platform: 0.97, 1.02, 1.17, 0.65      Penalty multipliers estimated at platform: 0.97, 1.03, 1.17, 0.64      Penalty multipliers estimated at platform: 0.98, 1.04, 1.17, 0.63      Penalty multipliers estimated at platform: 0.98, 1.05, 1.17, 0.63      Penalty multipliers estimated at platform: 0.99, 1.05, 1.17, 0.62      Penalty multipliers estimated at platform: 0.99, 1.06, 1.17, 0.62      Penalty multipliers estimated at platform: 0.99, 1.06, 1.17, 0.61      Penalty multipliers estimated at platform: 1, 1.07, 1.17, 0.61      Penalty multipliers estimated at platform: 1, 1.07, 1.17, 0.61      Penalty multipliers estimated at platform: 1, 1.07, 1.17, 0.6      Penalty multipliers estimated at platform: 1, 1.08, 1.17, 0.6      Penalty multipliers estimated at platform: 1, 1.08, 1.17, 0.6      Penalty multipliers estimated at platform: 1, 1.08, 1.17, 0.6      Penalty multipliers estimated at platform: 1.01, 1.09, 1.17, 0.59      Penalty multipliers estimated at platform: 1.01, 1.09, 1.17, 0.59      Penalty multipliers estimated at platform: 1.01, 1.09, 1.17, 0.59      Penalty multipliers estimated at platform: 1.01, 1.09, 1.17, 0.59      Penalty multipliers estimated at platform: 1.01, 1.09, 1.17, 0.59      Penalty multipliers estimated at platform: 1.01, 1.09, 1.17, 0.59      Penalty multipliers estimated at platform: 1.01, 1.09, 1.17, 0.59      Penalty multipliers estimated at platform: 1.01, 1.1, 1.17, 0.59      Penalty multipliers estimated at platform: 1.01, 1.1, 1.17, 0.59 in 12.95 seconds 
-Estimating penalty multipliers by empirical Bayes
-Penalty multipliers estimated at platform: 0.82, 0.8, 1.16, 0.77, 1.06      Penalty multipliers estimated at platform: 0.84, 0.83, 1.16, 0.63, 1.09      Penalty multipliers estimated at platform: 0.86, 0.86, 1.16, 0.53, 1.12      Penalty multipliers estimated at platform: 0.87, 0.89, 1.15, 0.47, 1.15      Penalty multipliers estimated at platform: 0.88, 0.91, 1.15, 0.42, 1.17      Penalty multipliers estimated at platform: 0.88, 0.93, 1.15, 0.39, 1.2      Penalty multipliers estimated at platform: 0.89, 0.95, 1.14, 0.36, 1.22      Penalty multipliers estimated at platform: 0.89, 0.97, 1.14, 0.35, 1.24      Penalty multipliers estimated at platform: 0.9, 0.98, 1.13, 0.33, 1.26      Penalty multipliers estimated at platform: 0.9, 1, 1.13, 0.33, 1.27      Penalty multipliers estimated at platform: 0.9, 1.01, 1.12, 0.32, 1.29      Penalty multipliers estimated at platform: 0.9, 1.02, 1.12, 0.32, 1.3      Penalty multipliers estimated at platform: 0.9, 1.04, 1.11, 0.31, 1.32      Penalty multipliers estimated at platform: 0.9, 1.05, 1.11, 0.31, 1.33      Penalty multipliers estimated at platform: 0.9, 1.06, 1.11, 0.31, 1.34      Penalty multipliers estimated at platform: 0.9, 1.07, 1.1, 0.31, 1.36      Penalty multipliers estimated at platform: 0.91, 1.08, 1.1, 0.31, 1.37      Penalty multipliers estimated at platform: 0.91, 1.08, 1.09, 0.31, 1.38      Penalty multipliers estimated at platform: 0.91, 1.09, 1.09, 0.31, 1.39      Penalty multipliers estimated at platform: 0.91, 1.1, 1.09, 0.31, 1.4      Penalty multipliers estimated at platform: 0.91, 1.1, 1.08, 0.31, 1.41      Penalty multipliers estimated at platform: 0.91, 1.11, 1.08, 0.31, 1.42      Penalty multipliers estimated at platform: 0.91, 1.12, 1.08, 0.31, 1.44      Penalty multipliers estimated at platform: 0.91, 1.12, 1.08, 0.31, 1.44      Penalty multipliers estimated at platform: 0.91, 1.13, 1.07, 0.31, 1.45      Penalty multipliers estimated at platform: 0.91, 1.13, 1.07, 0.31, 1.46      Penalty multipliers estimated at platform: 0.91, 1.14, 1.07, 0.31, 1.47      Penalty multipliers estimated at platform: 0.91, 1.14, 1.07, 0.31, 1.48      Penalty multipliers estimated at platform: 0.91, 1.14, 1.06, 0.31, 1.49      Penalty multipliers estimated at platform: 0.91, 1.15, 1.06, 0.31, 1.5      Penalty multipliers estimated at platform: 0.91, 1.15, 1.06, 0.31, 1.51      Penalty multipliers estimated at platform: 0.91, 1.16, 1.06, 0.31, 1.51      Penalty multipliers estimated at platform: 0.91, 1.16, 1.05, 0.31, 1.52      Penalty multipliers estimated at platform: 0.91, 1.16, 1.05, 0.31, 1.53      Penalty multipliers estimated at platform: 0.91, 1.16, 1.05, 0.31, 1.53      Penalty multipliers estimated at platform: 0.91, 1.17, 1.05, 0.31, 1.54      Penalty multipliers estimated at platform: 0.91, 1.17, 1.05, 0.31, 1.55      Penalty multipliers estimated at platform: 0.91, 1.17, 1.05, 0.31, 1.55      Penalty multipliers estimated at platform: 0.91, 1.17, 1.05, 0.31, 1.56      Penalty multipliers estimated at platform: 0.91, 1.18, 1.04, 0.31, 1.57      Penalty multipliers estimated at platform: 0.91, 1.18, 1.04, 0.31, 1.57      Penalty multipliers estimated at platform: 0.91, 1.18, 1.04, 0.31, 1.58      Penalty multipliers estimated at platform: 0.91, 1.18, 1.04, 0.31, 1.58      Penalty multipliers estimated at platform: 0.91, 1.18, 1.04, 0.31, 1.59      Penalty multipliers estimated at platform: 0.91, 1.18, 1.04, 0.31, 1.59      Penalty multipliers estimated at platform: 0.91, 1.18, 1.04, 0.31, 1.6      Penalty multipliers estimated at platform: 0.91, 1.19, 1.04, 0.31, 1.6      Penalty multipliers estimated at platform: 0.91, 1.19, 1.03, 0.31, 1.61      Penalty multipliers estimated at platform: 0.91, 1.19, 1.03, 0.31, 1.61      Penalty multipliers estimated at platform: 0.92, 1.19, 1.03, 0.31, 1.62      Penalty multipliers estimated at platform: 0.92, 1.19, 1.03, 0.31, 1.62      Penalty multipliers estimated at platform: 0.92, 1.19, 1.03, 0.31, 1.62      Penalty multipliers estimated at platform: 0.92, 1.19, 1.03, 0.31, 1.63      Penalty multipliers estimated at platform: 0.92, 1.19, 1.03, 0.31, 1.63      Penalty multipliers estimated at platform: 0.92, 1.19, 1.03, 0.31, 1.64      Penalty multipliers estimated at platform: 0.92, 1.19, 1.03, 0.31, 1.64      Penalty multipliers estimated at platform: 0.92, 1.2, 1.03, 0.31, 1.64      Penalty multipliers estimated at platform: 0.92, 1.2, 1.03, 0.31, 1.65      Penalty multipliers estimated at platform: 0.92, 1.2, 1.03, 0.31, 1.65      Penalty multipliers estimated at platform: 0.92, 1.2, 1.03, 0.31, 1.65      Penalty multipliers estimated at platform: 0.92, 1.2, 1.02, 0.31, 1.65      Penalty multipliers estimated at platform: 0.92, 1.2, 1.02, 0.31, 1.66      Penalty multipliers estimated at platform: 0.92, 1.2, 1.02, 0.31, 1.66      Penalty multipliers estimated at platform: 0.92, 1.2, 1.02, 0.31, 1.66      Penalty multipliers estimated at platform: 0.92, 1.2, 1.02, 0.31, 1.66      Penalty multipliers estimated at platform: 0.92, 1.2, 1.02, 0.31, 1.67      Penalty multipliers estimated at platform: 0.92, 1.2, 1.02, 0.31, 1.67      Penalty multipliers estimated at platform: 0.92, 1.2, 1.02, 0.31, 1.67      Penalty multipliers estimated at platform: 0.92, 1.2, 1.02, 0.31, 1.67      Penalty multipliers estimated at platform: 0.92, 1.2, 1.02, 0.31, 1.68      Penalty multipliers estimated at platform: 0.92, 1.2, 1.02, 0.31, 1.68      Penalty multipliers estimated at platform: 0.92, 1.2, 1.02, 0.31, 1.68      Penalty multipliers estimated at platform: 0.92, 1.2, 1.02, 0.31, 1.68      Penalty multipliers estimated at platform: 0.92, 1.2, 1.02, 0.31, 1.68      Penalty multipliers estimated at platform: 0.92, 1.2, 1.02, 0.31, 1.69      Penalty multipliers estimated at platform: 0.92, 1.2, 1.02, 0.31, 1.69      Penalty multipliers estimated at platform: 0.92, 1.2, 1.02, 0.31, 1.69      Penalty multipliers estimated at platform: 0.92, 1.2, 1.02, 0.31, 1.69 in 27.47 seconds [1] "Summary of group sizes:"
-  1   2   3   4 
- 53  22 116  39 
-[1] "Grouping 1 contains mutually exclusive groups"
-[1] "Binary response, executing logistic ridge regression"
-1234
-[1] -137.0119
-[1] -137.0119
-[1] "Relative error: 0.165099756171701"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 0.9155950 0.9326503 1.1181966 0.8707887
-[1] -136.5794
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.157204840224687"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 0.9090345 0.9403620 1.1168062 0.8777158
-[1] -136.1541
-[1] "Partition platform CONVERGED after 2 iterations"
-[1] "All partitions CONVERGED after 2 iterations"
-[1] "Computation time for adaptive weigthing: 53.7810000000002"
-[1] "Final lambda multipliers (summary):"
-$platform
-        1         2         3         4 
-0.9155950 0.9326503 1.1181966 0.8707887 
-
-[1] "CVLs -137.011928450064" "CVLs -136.579445415014"
-[1] "Total computation time: 53.7820000000002"
-[1] "Summary of group sizes:"
-  1   2   3   4   5 
- 53  22 116  13  26 
-[1] "Grouping 1 contains mutually exclusive groups"
-[1] "Binary response, executing logistic ridge regression"
-1234
-[1] -137.0119
-[1] -137.0119
-[1] "Relative error: 0.207184778497754"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 0.9155950 0.9326503 1.1181966 0.4838385 1.4510131
-[1] -135.351
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.219825397547556"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 0.8903164 0.9750703 1.0718149 0.6097874 1.4160005
-[1] -134.3829
-[1] "Partition platform CONVERGED after 2 iterations"
-[1] "All partitions CONVERGED after 2 iterations"
-[1] "Computation time for adaptive weigthing: 54.3020000000001"
-[1] "Final lambda multipliers (summary):"
-$platform
-        1         2         3         4         5 
-0.9155950 0.9326503 1.1181966 0.4838385 1.4510131 
-
-[1] "CVLs -137.011928450064" "CVLs -135.350967077696"
-[1] "Total computation time: 54.3020000000001"
-[1] "Fold 9"
-
-Estimating penalty multipliers by empirical Bayes
-Penalty multipliers estimated at platform: 0.83, 0.79, 1.15, 0.97      Penalty multipliers estimated at platform: 0.87, 0.83, 1.14, 0.91      Penalty multipliers estimated at platform: 0.92, 0.86, 1.13, 0.86      Penalty multipliers estimated at platform: 0.96, 0.89, 1.12, 0.82      Penalty multipliers estimated at platform: 1, 0.92, 1.11, 0.78      Penalty multipliers estimated at platform: 1.04, 0.94, 1.1, 0.75      Penalty multipliers estimated at platform: 1.07, 0.97, 1.09, 0.72      Penalty multipliers estimated at platform: 1.11, 0.99, 1.08, 0.7      Penalty multipliers estimated at platform: 1.14, 1.01, 1.07, 0.68      Penalty multipliers estimated at platform: 1.17, 1.03, 1.06, 0.66      Penalty multipliers estimated at platform: 1.2, 1.04, 1.06, 0.65      Penalty multipliers estimated at platform: 1.22, 1.06, 1.05, 0.64      Penalty multipliers estimated at platform: 1.25, 1.07, 1.04, 0.63      Penalty multipliers estimated at platform: 1.27, 1.08, 1.04, 0.62      Penalty multipliers estimated at platform: 1.29, 1.09, 1.03, 0.61      Penalty multipliers estimated at platform: 1.31, 1.11, 1.03, 0.61      Penalty multipliers estimated at platform: 1.33, 1.11, 1.02, 0.6      Penalty multipliers estimated at platform: 1.35, 1.12, 1.01, 0.6      Penalty multipliers estimated at platform: 1.37, 1.13, 1.01, 0.59      Penalty multipliers estimated at platform: 1.39, 1.14, 1, 0.59      Penalty multipliers estimated at platform: 1.4, 1.14, 1, 0.59      Penalty multipliers estimated at platform: 1.42, 1.15, 0.99, 0.59      Penalty multipliers estimated at platform: 1.43, 1.16, 0.99, 0.58      Penalty multipliers estimated at platform: 1.44, 1.16, 0.99, 0.58      Penalty multipliers estimated at platform: 1.46, 1.17, 0.98, 0.58      Penalty multipliers estimated at platform: 1.47, 1.17, 0.98, 0.58      Penalty multipliers estimated at platform: 1.48, 1.17, 0.97, 0.58      Penalty multipliers estimated at platform: 1.49, 1.18, 0.97, 0.58      Penalty multipliers estimated at platform: 1.5, 1.18, 0.97, 0.58      Penalty multipliers estimated at platform: 1.51, 1.18, 0.96, 0.58      Penalty multipliers estimated at platform: 1.52, 1.19, 0.96, 0.58      Penalty multipliers estimated at platform: 1.53, 1.19, 0.96, 0.58      Penalty multipliers estimated at platform: 1.54, 1.19, 0.95, 0.58      Penalty multipliers estimated at platform: 1.55, 1.19, 0.95, 0.58      Penalty multipliers estimated at platform: 1.56, 1.19, 0.95, 0.58      Penalty multipliers estimated at platform: 1.57, 1.2, 0.95, 0.58      Penalty multipliers estimated at platform: 1.57, 1.2, 0.94, 0.58      Penalty multipliers estimated at platform: 1.58, 1.2, 0.94, 0.58      Penalty multipliers estimated at platform: 1.59, 1.2, 0.94, 0.58      Penalty multipliers estimated at platform: 1.59, 1.2, 0.94, 0.58      Penalty multipliers estimated at platform: 1.6, 1.2, 0.94, 0.58      Penalty multipliers estimated at platform: 1.61, 1.2, 0.93, 0.58      Penalty multipliers estimated at platform: 1.61, 1.21, 0.93, 0.58      Penalty multipliers estimated at platform: 1.62, 1.21, 0.93, 0.58      Penalty multipliers estimated at platform: 1.62, 1.21, 0.93, 0.58      Penalty multipliers estimated at platform: 1.63, 1.21, 0.93, 0.58      Penalty multipliers estimated at platform: 1.63, 1.21, 0.93, 0.58      Penalty multipliers estimated at platform: 1.64, 1.21, 0.92, 0.58      Penalty multipliers estimated at platform: 1.64, 1.21, 0.92, 0.58      Penalty multipliers estimated at platform: 1.65, 1.21, 0.92, 0.58      Penalty multipliers estimated at platform: 1.65, 1.21, 0.92, 0.58      Penalty multipliers estimated at platform: 1.65, 1.21, 0.92, 0.58      Penalty multipliers estimated at platform: 1.66, 1.21, 0.92, 0.58      Penalty multipliers estimated at platform: 1.66, 1.21, 0.92, 0.58      Penalty multipliers estimated at platform: 1.67, 1.21, 0.92, 0.58      Penalty multipliers estimated at platform: 1.67, 1.21, 0.92, 0.58      Penalty multipliers estimated at platform: 1.67, 1.21, 0.91, 0.58      Penalty multipliers estimated at platform: 1.67, 1.21, 0.91, 0.58      Penalty multipliers estimated at platform: 1.68, 1.21, 0.91, 0.58      Penalty multipliers estimated at platform: 1.68, 1.21, 0.91, 0.58      Penalty multipliers estimated at platform: 1.68, 1.21, 0.91, 0.58      Penalty multipliers estimated at platform: 1.69, 1.21, 0.91, 0.58      Penalty multipliers estimated at platform: 1.69, 1.21, 0.91, 0.58      Penalty multipliers estimated at platform: 1.69, 1.21, 0.91, 0.58      Penalty multipliers estimated at platform: 1.69, 1.21, 0.91, 0.58      Penalty multipliers estimated at platform: 1.7, 1.21, 0.91, 0.58      Penalty multipliers estimated at platform: 1.7, 1.21, 0.91, 0.58      Penalty multipliers estimated at platform: 1.7, 1.21, 0.91, 0.58      Penalty multipliers estimated at platform: 1.7, 1.21, 0.91, 0.58      Penalty multipliers estimated at platform: 1.7, 1.21, 0.91, 0.58      Penalty multipliers estimated at platform: 1.71, 1.21, 0.9, 0.58      Penalty multipliers estimated at platform: 1.71, 1.21, 0.9, 0.58      Penalty multipliers estimated at platform: 1.71, 1.21, 0.9, 0.58      Penalty multipliers estimated at platform: 1.71, 1.21, 0.9, 0.58 in 22.99 seconds 
-Estimating penalty multipliers by empirical Bayes
-Penalty multipliers estimated at platform: 0.83, 0.83, 1.16, 0.71, 1.05      Penalty multipliers estimated at platform: 0.84, 0.88, 1.12, 0.67, 1.16      Penalty multipliers estimated at platform: 0.88, 0.91, 1.11, 0.54, 1.19      Penalty multipliers estimated at platform: 0.92, 0.94, 1.09, 0.46, 1.23      Penalty multipliers estimated at platform: 0.96, 0.96, 1.08, 0.41, 1.26      Penalty multipliers estimated at platform: 0.99, 0.99, 1.06, 0.38, 1.29      Penalty multipliers estimated at platform: 1.02, 1.01, 1.05, 0.35, 1.31      Penalty multipliers estimated at platform: 1.05, 1.02, 1.03, 0.34, 1.33      Penalty multipliers estimated at platform: 1.07, 1.04, 1.02, 0.33, 1.36      Penalty multipliers estimated at platform: 1.1, 1.06, 1, 0.32, 1.38      Penalty multipliers estimated at platform: 1.12, 1.07, 0.99, 0.32, 1.4      Penalty multipliers estimated at platform: 1.14, 1.08, 0.98, 0.31, 1.42      Penalty multipliers estimated at platform: 1.16, 1.1, 0.96, 0.31, 1.44      Penalty multipliers estimated at platform: 1.18, 1.11, 0.95, 0.31, 1.46      Penalty multipliers estimated at platform: 1.2, 1.12, 0.94, 0.31, 1.48      Penalty multipliers estimated at platform: 1.22, 1.13, 0.93, 0.31, 1.5      Penalty multipliers estimated at platform: 1.23, 1.14, 0.92, 0.31, 1.52      Penalty multipliers estimated at platform: 1.25, 1.15, 0.91, 0.31, 1.54      Penalty multipliers estimated at platform: 1.26, 1.16, 0.9, 0.31, 1.56      Penalty multipliers estimated at platform: 1.28, 1.17, 0.89, 0.31, 1.58      Penalty multipliers estimated at platform: 1.29, 1.17, 0.89, 0.31, 1.59      Penalty multipliers estimated at platform: 1.31, 1.18, 0.88, 0.31, 1.61      Penalty multipliers estimated at platform: 1.32, 1.19, 0.87, 0.31, 1.63      Penalty multipliers estimated at platform: 1.33, 1.19, 0.86, 0.31, 1.65      Penalty multipliers estimated at platform: 1.34, 1.2, 0.86, 0.31, 1.67      Penalty multipliers estimated at platform: 1.35, 1.21, 0.85, 0.31, 1.68      Penalty multipliers estimated at platform: 1.37, 1.21, 0.85, 0.31, 1.7      Penalty multipliers estimated at platform: 1.38, 1.22, 0.84, 0.31, 1.72      Penalty multipliers estimated at platform: 1.39, 1.22, 0.83, 0.31, 1.74      Penalty multipliers estimated at platform: 1.39, 1.23, 0.83, 0.31, 1.75      Penalty multipliers estimated at platform: 1.4, 1.23, 0.83, 0.31, 1.77      Penalty multipliers estimated at platform: 1.41, 1.23, 0.82, 0.31, 1.78      Penalty multipliers estimated at platform: 1.42, 1.24, 0.82, 0.32, 1.8      Penalty multipliers estimated at platform: 1.43, 1.24, 0.81, 0.32, 1.82      Penalty multipliers estimated at platform: 1.44, 1.25, 0.81, 0.32, 1.83      Penalty multipliers estimated at platform: 1.44, 1.25, 0.8, 0.32, 1.85      Penalty multipliers estimated at platform: 1.45, 1.25, 0.8, 0.32, 1.86      Penalty multipliers estimated at platform: 1.46, 1.25, 0.8, 0.32, 1.87      Penalty multipliers estimated at platform: 1.46, 1.26, 0.79, 0.32, 1.89      Penalty multipliers estimated at platform: 1.47, 1.26, 0.79, 0.32, 1.9      Penalty multipliers estimated at platform: 1.47, 1.26, 0.79, 0.32, 1.92      Penalty multipliers estimated at platform: 1.48, 1.26, 0.79, 0.32, 1.93      Penalty multipliers estimated at platform: 1.48, 1.27, 0.78, 0.32, 1.94      Penalty multipliers estimated at platform: 1.49, 1.27, 0.78, 0.32, 1.95      Penalty multipliers estimated at platform: 1.49, 1.27, 0.78, 0.32, 1.97      Penalty multipliers estimated at platform: 1.5, 1.27, 0.78, 0.32, 1.98      Penalty multipliers estimated at platform: 1.5, 1.27, 0.77, 0.32, 1.99      Penalty multipliers estimated at platform: 1.51, 1.27, 0.77, 0.32, 2      Penalty multipliers estimated at platform: 1.51, 1.28, 0.77, 0.32, 2.01      Penalty multipliers estimated at platform: 1.51, 1.28, 0.77, 0.32, 2.02      Penalty multipliers estimated at platform: 1.52, 1.28, 0.76, 0.32, 2.04      Penalty multipliers estimated at platform: 1.52, 1.28, 0.76, 0.32, 2.05      Penalty multipliers estimated at platform: 1.52, 1.28, 0.76, 0.32, 2.06      Penalty multipliers estimated at platform: 1.53, 1.28, 0.76, 0.32, 2.07      Penalty multipliers estimated at platform: 1.53, 1.28, 0.76, 0.32, 2.08      Penalty multipliers estimated at platform: 1.53, 1.28, 0.76, 0.32, 2.09      Penalty multipliers estimated at platform: 1.54, 1.28, 0.76, 0.32, 2.09      Penalty multipliers estimated at platform: 1.54, 1.29, 0.75, 0.32, 2.1      Penalty multipliers estimated at platform: 1.54, 1.29, 0.75, 0.32, 2.11      Penalty multipliers estimated at platform: 1.54, 1.29, 0.75, 0.32, 2.12      Penalty multipliers estimated at platform: 1.54, 1.29, 0.75, 0.32, 2.13      Penalty multipliers estimated at platform: 1.55, 1.29, 0.75, 0.32, 2.14      Penalty multipliers estimated at platform: 1.55, 1.29, 0.75, 0.32, 2.15      Penalty multipliers estimated at platform: 1.55, 1.29, 0.75, 0.32, 2.15      Penalty multipliers estimated at platform: 1.55, 1.29, 0.75, 0.32, 2.16      Penalty multipliers estimated at platform: 1.55, 1.29, 0.74, 0.32, 2.17      Penalty multipliers estimated at platform: 1.56, 1.29, 0.74, 0.32, 2.18      Penalty multipliers estimated at platform: 1.56, 1.29, 0.74, 0.32, 2.18      Penalty multipliers estimated at platform: 1.56, 1.29, 0.74, 0.32, 2.19      Penalty multipliers estimated at platform: 1.56, 1.29, 0.74, 0.32, 2.2      Penalty multipliers estimated at platform: 1.56, 1.29, 0.74, 0.32, 2.2      Penalty multipliers estimated at platform: 1.56, 1.29, 0.74, 0.32, 2.21      Penalty multipliers estimated at platform: 1.56, 1.29, 0.74, 0.32, 2.21      Penalty multipliers estimated at platform: 1.56, 1.29, 0.74, 0.32, 2.22      Penalty multipliers estimated at platform: 1.57, 1.29, 0.74, 0.32, 2.23      Penalty multipliers estimated at platform: 1.57, 1.29, 0.74, 0.32, 2.23      Penalty multipliers estimated at platform: 1.57, 1.29, 0.74, 0.32, 2.24      Penalty multipliers estimated at platform: 1.57, 1.29, 0.74, 0.32, 2.24      Penalty multipliers estimated at platform: 1.57, 1.29, 0.73, 0.32, 2.25      Penalty multipliers estimated at platform: 1.57, 1.29, 0.73, 0.32, 2.25      Penalty multipliers estimated at platform: 1.57, 1.29, 0.73, 0.32, 2.26      Penalty multipliers estimated at platform: 1.57, 1.29, 0.73, 0.32, 2.26      Penalty multipliers estimated at platform: 1.57, 1.29, 0.73, 0.32, 2.27      Penalty multipliers estimated at platform: 1.57, 1.29, 0.73, 0.32, 2.27      Penalty multipliers estimated at platform: 1.57, 1.29, 0.73, 0.32, 2.28      Penalty multipliers estimated at platform: 1.58, 1.29, 0.73, 0.32, 2.28      Penalty multipliers estimated at platform: 1.58, 1.29, 0.73, 0.32, 2.29      Penalty multipliers estimated at platform: 1.58, 1.29, 0.73, 0.32, 2.29      Penalty multipliers estimated at platform: 1.58, 1.29, 0.73, 0.32, 2.29      Penalty multipliers estimated at platform: 1.58, 1.3, 0.73, 0.32, 2.3      Penalty multipliers estimated at platform: 1.58, 1.3, 0.73, 0.32, 2.3      Penalty multipliers estimated at platform: 1.58, 1.3, 0.73, 0.32, 2.3      Penalty multipliers estimated at platform: 1.58, 1.3, 0.73, 0.32, 2.31      Penalty multipliers estimated at platform: 1.58, 1.3, 0.73, 0.32, 2.31      Penalty multipliers estimated at platform: 1.58, 1.3, 0.73, 0.32, 2.31      Penalty multipliers estimated at platform: 1.58, 1.3, 0.73, 0.32, 2.32      Penalty multipliers estimated at platform: 1.58, 1.3, 0.73, 0.32, 2.32      Penalty multipliers estimated at platform: 1.58, 1.3, 0.73, 0.32, 2.32      Penalty multipliers estimated at platform: 1.58, 1.3, 0.73, 0.32, 2.33      Penalty multipliers estimated at platform: 1.58, 1.3, 0.73, 0.32, 2.33      Penalty multipliers estimated at platform: 1.58, 1.3, 0.73, 0.32, 2.33      Penalty multipliers estimated at platform: 1.58, 1.3, 0.73, 0.32, 2.34      Penalty multipliers estimated at platform: 1.58, 1.3, 0.73, 0.32, 2.34      Penalty multipliers estimated at platform: 1.58, 1.3, 0.73, 0.32, 2.34      Penalty multipliers estimated at platform: 1.58, 1.3, 0.72, 0.32, 2.34      Penalty multipliers estimated at platform: 1.58, 1.3, 0.72, 0.32, 2.35      Penalty multipliers estimated at platform: 1.58, 1.3, 0.72, 0.32, 2.35      Penalty multipliers estimated at platform: 1.58, 1.3, 0.72, 0.32, 2.35      Penalty multipliers estimated at platform: 1.58, 1.3, 0.72, 0.32, 2.35 in 32.2 seconds [1] "Summary of group sizes:"
-  1   2   3   4 
- 53  22 116  39 
-[1] "Grouping 1 contains mutually exclusive groups"
-[1] "Binary response, executing logistic ridge regression"
-1234
-[1] -138.4712
-[1] -138.4712
-[1] "Relative error: 0.158062577511348"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.0435463 1.0086397 1.0293774 0.8722762
-[1] -138.1802
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.175256952004315"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.0312277 0.9978360 1.0266642 0.8951123
-[1] -137.9384
-[1] "Partition platform CONVERGED after 2 iterations"
-[1] "All partitions CONVERGED after 2 iterations"
-[1] "Computation time for adaptive weigthing: 55.8910000000001"
-[1] "Final lambda multipliers (summary):"
-$platform
-        1         2         3         4 
-1.0435463 1.0086397 1.0293774 0.8722762 
-
-[1] "CVLs -138.47123366715"  "CVLs -138.180155708988"
-[1] "Total computation time: 55.8920000000001"
-[1] "Summary of group sizes:"
-  1   2   3   4   5 
- 53  22 116  13  26 
-[1] "Grouping 1 contains mutually exclusive groups"
-[1] "Binary response, executing logistic ridge regression"
-1234
-[1] -138.4712
-[1] -138.4712
-[1] "Relative error: 0.193998847817712"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.0435463 1.0086397 1.0293774 0.4363245 1.7430631
-[1] -136.4593
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.212542825418504"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.0097788 1.0244976 0.9719582 0.6006344 1.7277087
-[1] -135.577
-[1] "Partition platform CONVERGED after 2 iterations"
-[1] "All partitions CONVERGED after 2 iterations"
-[1] "Computation time for adaptive weigthing: 56.2439999999999"
-[1] "Final lambda multipliers (summary):"
-$platform
-        1         2         3         4         5 
-1.0435463 1.0086397 1.0293774 0.4363245 1.7430631 
-
-[1] "CVLs -138.47123366715"  "CVLs -136.459292470319"
-[1] "Total computation time: 56.2439999999999"
-[1] "Fold 10"
-
-Estimating penalty multipliers by empirical Bayes
-Penalty multipliers estimated at platform: 0.84, 0.81, 1.14, 0.97      Penalty multipliers estimated at platform: 0.9, 0.83, 1.12, 0.91      Penalty multipliers estimated at platform: 0.95, 0.84, 1.11, 0.86      Penalty multipliers estimated at platform: 1, 0.86, 1.1, 0.82      Penalty multipliers estimated at platform: 1.05, 0.87, 1.09, 0.78      Penalty multipliers estimated at platform: 1.1, 0.88, 1.08, 0.75      Penalty multipliers estimated at platform: 1.14, 0.89, 1.07, 0.73      Penalty multipliers estimated at platform: 1.19, 0.9, 1.06, 0.71      Penalty multipliers estimated at platform: 1.23, 0.9, 1.05, 0.69      Penalty multipliers estimated at platform: 1.27, 0.91, 1.04, 0.67      Penalty multipliers estimated at platform: 1.31, 0.92, 1.03, 0.66      Penalty multipliers estimated at platform: 1.35, 0.92, 1.02, 0.65      Penalty multipliers estimated at platform: 1.38, 0.93, 1.02, 0.64      Penalty multipliers estimated at platform: 1.42, 0.93, 1.01, 0.63      Penalty multipliers estimated at platform: 1.45, 0.93, 1, 0.62      Penalty multipliers estimated at platform: 1.48, 0.94, 0.99, 0.62      Penalty multipliers estimated at platform: 1.51, 0.94, 0.99, 0.61      Penalty multipliers estimated at platform: 1.54, 0.94, 0.98, 0.61      Penalty multipliers estimated at platform: 1.57, 0.94, 0.97, 0.61      Penalty multipliers estimated at platform: 1.6, 0.94, 0.97, 0.6      Penalty multipliers estimated at platform: 1.62, 0.95, 0.96, 0.6      Penalty multipliers estimated at platform: 1.65, 0.95, 0.96, 0.6      Penalty multipliers estimated at platform: 1.67, 0.95, 0.95, 0.6      Penalty multipliers estimated at platform: 1.69, 0.95, 0.95, 0.59      Penalty multipliers estimated at platform: 1.72, 0.95, 0.94, 0.59      Penalty multipliers estimated at platform: 1.74, 0.95, 0.94, 0.59      Penalty multipliers estimated at platform: 1.76, 0.95, 0.93, 0.59      Penalty multipliers estimated at platform: 1.78, 0.95, 0.93, 0.59      Penalty multipliers estimated at platform: 1.8, 0.95, 0.92, 0.59      Penalty multipliers estimated at platform: 1.82, 0.95, 0.92, 0.59      Penalty multipliers estimated at platform: 1.83, 0.95, 0.92, 0.59      Penalty multipliers estimated at platform: 1.85, 0.95, 0.91, 0.59      Penalty multipliers estimated at platform: 1.87, 0.95, 0.91, 0.59      Penalty multipliers estimated at platform: 1.88, 0.95, 0.91, 0.59      Penalty multipliers estimated at platform: 1.9, 0.95, 0.9, 0.59      Penalty multipliers estimated at platform: 1.91, 0.95, 0.9, 0.59      Penalty multipliers estimated at platform: 1.93, 0.95, 0.9, 0.59      Penalty multipliers estimated at platform: 1.94, 0.95, 0.89, 0.59      Penalty multipliers estimated at platform: 1.95, 0.95, 0.89, 0.59      Penalty multipliers estimated at platform: 1.97, 0.95, 0.89, 0.59      Penalty multipliers estimated at platform: 1.98, 0.94, 0.89, 0.59      Penalty multipliers estimated at platform: 1.99, 0.94, 0.88, 0.59      Penalty multipliers estimated at platform: 2, 0.94, 0.88, 0.59      Penalty multipliers estimated at platform: 2.01, 0.94, 0.88, 0.59      Penalty multipliers estimated at platform: 2.02, 0.94, 0.88, 0.59      Penalty multipliers estimated at platform: 2.03, 0.94, 0.88, 0.59      Penalty multipliers estimated at platform: 2.04, 0.94, 0.87, 0.59      Penalty multipliers estimated at platform: 2.05, 0.94, 0.87, 0.59      Penalty multipliers estimated at platform: 2.06, 0.94, 0.87, 0.59      Penalty multipliers estimated at platform: 2.07, 0.94, 0.87, 0.59      Penalty multipliers estimated at platform: 2.08, 0.94, 0.87, 0.59      Penalty multipliers estimated at platform: 2.09, 0.94, 0.87, 0.59      Penalty multipliers estimated at platform: 2.1, 0.94, 0.86, 0.59      Penalty multipliers estimated at platform: 2.1, 0.94, 0.86, 0.59      Penalty multipliers estimated at platform: 2.11, 0.94, 0.86, 0.59      Penalty multipliers estimated at platform: 2.12, 0.94, 0.86, 0.59      Penalty multipliers estimated at platform: 2.12, 0.94, 0.86, 0.59      Penalty multipliers estimated at platform: 2.13, 0.94, 0.86, 0.59      Penalty multipliers estimated at platform: 2.14, 0.94, 0.86, 0.59      Penalty multipliers estimated at platform: 2.14, 0.94, 0.86, 0.59      Penalty multipliers estimated at platform: 2.15, 0.94, 0.85, 0.59      Penalty multipliers estimated at platform: 2.15, 0.94, 0.85, 0.59      Penalty multipliers estimated at platform: 2.16, 0.94, 0.85, 0.59      Penalty multipliers estimated at platform: 2.16, 0.94, 0.85, 0.59      Penalty multipliers estimated at platform: 2.17, 0.94, 0.85, 0.59      Penalty multipliers estimated at platform: 2.17, 0.94, 0.85, 0.59      Penalty multipliers estimated at platform: 2.18, 0.94, 0.85, 0.59      Penalty multipliers estimated at platform: 2.18, 0.94, 0.85, 0.59      Penalty multipliers estimated at platform: 2.19, 0.94, 0.85, 0.58      Penalty multipliers estimated at platform: 2.19, 0.93, 0.85, 0.58      Penalty multipliers estimated at platform: 2.2, 0.93, 0.85, 0.58      Penalty multipliers estimated at platform: 2.2, 0.93, 0.85, 0.58      Penalty multipliers estimated at platform: 2.2, 0.93, 0.85, 0.58      Penalty multipliers estimated at platform: 2.21, 0.93, 0.85, 0.58      Penalty multipliers estimated at platform: 2.21, 0.93, 0.84, 0.58      Penalty multipliers estimated at platform: 2.21, 0.93, 0.84, 0.58      Penalty multipliers estimated at platform: 2.22, 0.93, 0.84, 0.58      Penalty multipliers estimated at platform: 2.22, 0.93, 0.84, 0.58      Penalty multipliers estimated at platform: 2.22, 0.93, 0.84, 0.58      Penalty multipliers estimated at platform: 2.23, 0.93, 0.84, 0.58      Penalty multipliers estimated at platform: 2.23, 0.93, 0.84, 0.58      Penalty multipliers estimated at platform: 2.23, 0.93, 0.84, 0.58      Penalty multipliers estimated at platform: 2.23, 0.93, 0.84, 0.58      Penalty multipliers estimated at platform: 2.24, 0.93, 0.84, 0.58      Penalty multipliers estimated at platform: 2.24, 0.93, 0.84, 0.58      Penalty multipliers estimated at platform: 2.24, 0.93, 0.84, 0.58      Penalty multipliers estimated at platform: 2.24, 0.93, 0.84, 0.58 in 29.34 seconds 
-Estimating penalty multipliers by empirical Bayes
-Penalty multipliers estimated at platform: 0.87, 0.84, 1.15, 0.62, 1.03      Penalty multipliers estimated at platform: 0.92, 0.85, 1.13, 0.49, 1.1      Penalty multipliers estimated at platform: 0.97, 0.86, 1.12, 0.4, 1.17      Penalty multipliers estimated at platform: 1.01, 0.87, 1.1, 0.34, 1.23      Penalty multipliers estimated at platform: 1.05, 0.88, 1.08, 0.3, 1.29      Penalty multipliers estimated at platform: 1.09, 0.88, 1.06, 0.28, 1.35      Penalty multipliers estimated at platform: 1.12, 0.89, 1.04, 0.26, 1.4      Penalty multipliers estimated at platform: 1.16, 0.89, 1.03, 0.25, 1.44      Penalty multipliers estimated at platform: 1.19, 0.9, 1.01, 0.24, 1.49      Penalty multipliers estimated at platform: 1.22, 0.9, 0.99, 0.24, 1.53      Penalty multipliers estimated at platform: 1.25, 0.9, 0.98, 0.24, 1.57      Penalty multipliers estimated at platform: 1.27, 0.9, 0.97, 0.23, 1.61      Penalty multipliers estimated at platform: 1.3, 0.91, 0.95, 0.23, 1.65      Penalty multipliers estimated at platform: 1.32, 0.91, 0.94, 0.23, 1.69      Penalty multipliers estimated at platform: 1.35, 0.91, 0.93, 0.23, 1.72      Penalty multipliers estimated at platform: 1.37, 0.91, 0.92, 0.23, 1.76      Penalty multipliers estimated at platform: 1.39, 0.91, 0.9, 0.23, 1.79      Penalty multipliers estimated at platform: 1.42, 0.91, 0.89, 0.23, 1.82      Penalty multipliers estimated at platform: 1.44, 0.91, 0.88, 0.23, 1.85      Penalty multipliers estimated at platform: 1.46, 0.92, 0.88, 0.23, 1.88      Penalty multipliers estimated at platform: 1.48, 0.92, 0.87, 0.23, 1.91      Penalty multipliers estimated at platform: 1.5, 0.92, 0.86, 0.23, 1.93      Penalty multipliers estimated at platform: 1.52, 0.92, 0.85, 0.23, 1.96      Penalty multipliers estimated at platform: 1.53, 0.92, 0.84, 0.23, 1.98      Penalty multipliers estimated at platform: 1.55, 0.92, 0.84, 0.23, 2.01      Penalty multipliers estimated at platform: 1.57, 0.92, 0.83, 0.23, 2.03      Penalty multipliers estimated at platform: 1.58, 0.92, 0.82, 0.23, 2.05      Penalty multipliers estimated at platform: 1.6, 0.92, 0.82, 0.23, 2.07      Penalty multipliers estimated at platform: 1.62, 0.92, 0.81, 0.23, 2.09      Penalty multipliers estimated at platform: 1.63, 0.92, 0.81, 0.23, 2.11      Penalty multipliers estimated at platform: 1.64, 0.92, 0.8, 0.23, 2.13      Penalty multipliers estimated at platform: 1.66, 0.93, 0.8, 0.23, 2.15      Penalty multipliers estimated at platform: 1.67, 0.93, 0.79, 0.23, 2.16      Penalty multipliers estimated at platform: 1.68, 0.93, 0.79, 0.23, 2.18      Penalty multipliers estimated at platform: 1.7, 0.93, 0.79, 0.23, 2.2      Penalty multipliers estimated at platform: 1.71, 0.93, 0.78, 0.23, 2.21      Penalty multipliers estimated at platform: 1.72, 0.93, 0.78, 0.23, 2.23      Penalty multipliers estimated at platform: 1.73, 0.93, 0.78, 0.23, 2.24      Penalty multipliers estimated at platform: 1.74, 0.93, 0.77, 0.23, 2.25      Penalty multipliers estimated at platform: 1.75, 0.93, 0.77, 0.23, 2.27      Penalty multipliers estimated at platform: 1.76, 0.93, 0.77, 0.23, 2.28      Penalty multipliers estimated at platform: 1.77, 0.93, 0.76, 0.23, 2.29      Penalty multipliers estimated at platform: 1.78, 0.93, 0.76, 0.23, 2.3      Penalty multipliers estimated at platform: 1.79, 0.93, 0.76, 0.23, 2.31      Penalty multipliers estimated at platform: 1.8, 0.93, 0.76, 0.23, 2.32      Penalty multipliers estimated at platform: 1.81, 0.93, 0.75, 0.23, 2.33      Penalty multipliers estimated at platform: 1.81, 0.93, 0.75, 0.23, 2.34      Penalty multipliers estimated at platform: 1.82, 0.93, 0.75, 0.23, 2.35      Penalty multipliers estimated at platform: 1.83, 0.93, 0.75, 0.23, 2.36      Penalty multipliers estimated at platform: 1.83, 0.93, 0.75, 0.23, 2.37      Penalty multipliers estimated at platform: 1.84, 0.93, 0.74, 0.23, 2.37      Penalty multipliers estimated at platform: 1.85, 0.93, 0.74, 0.23, 2.38      Penalty multipliers estimated at platform: 1.85, 0.93, 0.74, 0.23, 2.39      Penalty multipliers estimated at platform: 1.86, 0.93, 0.74, 0.23, 2.39      Penalty multipliers estimated at platform: 1.87, 0.93, 0.74, 0.23, 2.4      Penalty multipliers estimated at platform: 1.87, 0.93, 0.74, 0.23, 2.41      Penalty multipliers estimated at platform: 1.88, 0.93, 0.73, 0.23, 2.41      Penalty multipliers estimated at platform: 1.88, 0.93, 0.73, 0.23, 2.42      Penalty multipliers estimated at platform: 1.89, 0.93, 0.73, 0.23, 2.42      Penalty multipliers estimated at platform: 1.89, 0.93, 0.73, 0.23, 2.43      Penalty multipliers estimated at platform: 1.9, 0.93, 0.73, 0.23, 2.43      Penalty multipliers estimated at platform: 1.9, 0.93, 0.73, 0.23, 2.44      Penalty multipliers estimated at platform: 1.9, 0.93, 0.73, 0.23, 2.44      Penalty multipliers estimated at platform: 1.91, 0.93, 0.73, 0.23, 2.45      Penalty multipliers estimated at platform: 1.91, 0.93, 0.73, 0.23, 2.45      Penalty multipliers estimated at platform: 1.92, 0.93, 0.73, 0.23, 2.45      Penalty multipliers estimated at platform: 1.92, 0.93, 0.72, 0.23, 2.46      Penalty multipliers estimated at platform: 1.92, 0.93, 0.72, 0.23, 2.46      Penalty multipliers estimated at platform: 1.93, 0.93, 0.72, 0.23, 2.46      Penalty multipliers estimated at platform: 1.93, 0.93, 0.72, 0.23, 2.47      Penalty multipliers estimated at platform: 1.93, 0.93, 0.72, 0.23, 2.47      Penalty multipliers estimated at platform: 1.94, 0.93, 0.72, 0.23, 2.47      Penalty multipliers estimated at platform: 1.94, 0.93, 0.72, 0.23, 2.48      Penalty multipliers estimated at platform: 1.94, 0.93, 0.72, 0.23, 2.48      Penalty multipliers estimated at platform: 1.94, 0.93, 0.72, 0.23, 2.48      Penalty multipliers estimated at platform: 1.95, 0.93, 0.72, 0.23, 2.48      Penalty multipliers estimated at platform: 1.95, 0.93, 0.72, 0.23, 2.49      Penalty multipliers estimated at platform: 1.95, 0.93, 0.72, 0.23, 2.49      Penalty multipliers estimated at platform: 1.95, 0.93, 0.72, 0.23, 2.49      Penalty multipliers estimated at platform: 1.96, 0.93, 0.72, 0.23, 2.49      Penalty multipliers estimated at platform: 1.96, 0.93, 0.72, 0.23, 2.49      Penalty multipliers estimated at platform: 1.96, 0.93, 0.72, 0.23, 2.5      Penalty multipliers estimated at platform: 1.96, 0.93, 0.72, 0.23, 2.5      Penalty multipliers estimated at platform: 1.96, 0.93, 0.72, 0.23, 2.5 in 32.01 seconds [1] "Summary of group sizes:"
-  1   2   3   4 
- 53  22 116  39 
-[1] "Grouping 1 contains mutually exclusive groups"
-[1] "Binary response, executing logistic ridge regression"
-1234
-[1] -138.9155
-[1] -138.9155
-[1] "Relative error: 0.150420416247041"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.1764044 0.9313512 0.9985604 0.8636222
-[1] -138.5782
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.167010808249018"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.1559421 0.9258072 0.9899712 0.9025316
-[1] -138.3279
-[1] "Partition platform CONVERGED after 2 iterations"
-[1] "All partitions CONVERGED after 2 iterations"
-[1] "Computation time for adaptive weigthing: 55.6970000000001"
-[1] "Final lambda multipliers (summary):"
-$platform
-        1         2         3         4 
-1.1764044 0.9313512 0.9985604 0.8636222 
-
-[1] "CVLs -138.915535988076" "CVLs -138.578181807905"
-[1] "Total computation time: 55.6980000000001"
-[1] "Summary of group sizes:"
-  1   2   3   4   5 
- 53  22 116  13  26 
-[1] "Grouping 1 contains mutually exclusive groups"
-[1] "Binary response, executing logistic ridge regression"
-1234
-[1] -138.9155
-[1] -138.9155
-[1] "Relative error: 0.196545537792595"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.1764044 0.9313512 0.9985604 0.4285658 1.7538062
-[1] -136.5265
-1234
-[1] "Partition platform improved results"
-[1] "Relative error: 0.198700468728446"
-[1] "WARNING: large relative error (>=0.1). Consider using larger groups of variable."
-[1] "Shrink Factor coefficient matrix 1"
-[1] "exactstable"
-[1] 1.1445204 0.9602727 0.9458609 0.5738670 1.6785769
-[1] -135.2858
-[1] "Partition platform CONVERGED after 2 iterations"
-[1] "All partitions CONVERGED after 2 iterations"
-[1] "Computation time for adaptive weigthing: 56.2930000000001"
-[1] "Final lambda multipliers (summary):"
-$platform
-        1         2         3         4         5 
-1.1764044 0.9313512 0.9985604 0.4285658 1.7538062 
-
-[1] "CVLs -138.915535988076" "CVLs -136.526483318736"
-[1] "Total computation time: 56.2940000000001"
-> 
-> auc.ridge <- pROC::roc(y, pred.ridge)$auc
-> auc.en <- pROC::roc(y, pred.en)$auc
-> auc1.grEBEN <- pROC::roc(y, pred1.grEBEN)$auc
-> auc2.grEBEN <- pROC::roc(y, pred2.grEBEN)$auc
-> auc1.grridge <- pROC::roc(y, pred1.grridge)$auc
-> auc2.grridge <- pROC::roc(y, pred2.grridge)$auc
-> # auc1.SGL <- pROC::roc(y, pred1.SGL)$auc
-> 
-> pred <- cbind(ridge=pred.ridge, en=pred.en, grEBEN1=pred1.grEBEN, grEBEN2=pred2.grEBEN,
-+               grridge1=pred1.grridge, grridge2=pred2.grridge)# , SGL=pred1.SGL)
-> auc <- c(ridge=auc.ridge, en=auc.en, grEBEN1=auc1.grEBEN, grEBEN2=auc2.grEBEN, 
-+          grridge1=auc1.grridge, grridge2=auc2.grridge)# , SGL=auc1.SGL)
-> metabol <- list(pred=pred, auc=auc)
-> 
-> save(metabol, file=paste(path.res, "grEBEN_metabol_res1.Rdata", sep=""))
-> 
-> # load("/Users/magnusmunch/Documents/PhD/EBEN/results/grEBEN_metabol_res1.Rdata")
-> # str(metabol)
-> # metabol$auc
-> 
-> # # co-data
-> # # combining the two oxidative stress groups
-> # partitions1 <- list(platform=replace(as.numeric(fData(ESetMbolCSFPR2)$PlatformCode),
-> #                                      as.numeric(fData(ESetMbolCSFPR2)$PlatformCode)==5, 4))
-> # fit1.grEBEN <- grVBEM(x, y, m, partitions1, lambda1=NULL, lambda2=NULL, intercept=TRUE, eps=0.001, 
-> #                       maxiter=300, trace=TRUE, QNacc=FALSE)
-> # fit1.grridge <- grridge(t(x), y, list(platform=CreatePartition(as.factor(partitions1[[1]]))), 
-> #                         unpenal=~1)
-> # 
-> # # using the two oxidative stress levels seperately
-> # partitions2 <- list(platform=as.numeric(fData(ESetMbolCSFPR2)$PlatformCode))
-> # fit2.grEBEN <- grVBEM(x, y, m, partitions2, lambda1=NULL, lambda2=NULL, intercept=TRUE, eps=0.001, 
-> #                       maxiter=300, trace=TRUE, QNacc=FALSE)
-> # fit2.grridge <- grridge(t(x), y, list(platform=CreatePartition(as.factor(partitions2[[1]]))), 
-> #                         unpenal=~1)
-> # 
-> # ### plots
-> # # two oxidative stress groups combined
-> # xlabels1 <- levels(fData(ESetMbolCSFPR2)$Platform)[-5]
-> # xlabels1[4] <- "Oxidative Stress"
-> # barplot(rbind(fit1.grridge$lambdamults[[1]], 
-> #               fit1.grEBEN$lambdag[[1]][, fit1.grEBEN$nouteriter + 1]), beside=TRUE,
-> #         names.arg=xlabels1, legend.text=c("GRridge", "grEBEN"),
-> #         args.legend=list(x="topright"))
-> # abline(h=1, lty=2)
-> # 
-> # # separate oxidative stress groups
-> # xlabels2 <- gsub("\\s+Stress", " \n Stress", levels(fData(ESetMbolCSFPR2)$Platform))
-> # barplot(rbind(fit2.grridge$lambdamults[[1]], 
-> #               fit2.grEBEN$lambdag[[1]][, fit2.grEBEN$nouteriter + 1]), beside=TRUE,
-> #         names.arg=xlabels2, legend.text=c("GRridge", "grEBEN"),
-> #         args.legend=list(x="topleft"))
-> # abline(h=1, lty=2)
-> 
-> proc.time()
-    user   system  elapsed 
-1783.723    1.188 1787.312 
