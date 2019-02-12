@@ -1,12 +1,14 @@
 #!/usr/bin/env Rscript
 
 ### installation of packages
-# if(!("devtools" %in% installed.packages())) {
-#   install.packages("devtools")
-# }
-# library(devtools)
-# install_github("magnusmunch/gren/rpackage", local=FALSE,
-#                auth_token=Sys.getenv("GITHUB_PAT"))
+if(!("gren" %in% installed.packages())) {
+  if(!("devtools" %in% installed.packages())) {
+    install.packages("devtools")
+  }
+  library(devtools)
+  install_github("magnusmunch/gren/rpackage", local=FALSE,
+                 auth_token=Sys.getenv("GITHUB_PAT"))
+}
 
 ### libraries
 library(gren)
@@ -354,9 +356,10 @@ fit3.gren2 <- gren(x, y, partitions=list(part=part), alpha=0.5, trace=FALSE)
 fit3.gren3 <- gren(x, y, partitions=list(part=part), alpha=0.95, trace=FALSE)
 
 fit3.grridge <- grridge(t(x), y, list(part=split(1:p, part)))
-fit3.sgl1 <- cvSGL(list(x=x, y=y), part, type="logit", alpha=0.05)
-fit3.sgl2 <- cvSGL(list(x=x, y=y), part, type="logit", alpha=0.5)
-fit3.sgl3 <- cvSGL(list(x=x, y=y), part, type="logit", alpha=0.95)
+
+# fit3.sgl1 <- cvSGL(list(x=x, y=y), part, type="logit", alpha=0.05)
+# fit3.sgl2 <- cvSGL(list(x=x, y=y), part, type="logit", alpha=0.5)
+# fit3.sgl3 <- cvSGL(list(x=x, y=y), part, type="logit", alpha=0.95)
 
 fit3.cmcp1 <- cv.grpreg(x, y, part, penalty="cMCP", family="binomial", 
                         alpha=0.05)
@@ -369,8 +372,9 @@ fit3.gel1 <- cv.grpreg(x, y, part, penalty="gel", family="binomial", alpha=0.05)
 fit3.gel2 <- cv.grpreg(x, y, part, penalty="gel", family="binomial", alpha=0.5)
 fit3.gel3 <- cv.grpreg(x, y, part, penalty="gel", family="binomial", alpha=0.95)
 
-save(fit3.grridge, fit3.gren1, fit3.gren2, fit3.gren3, fit3.sgl1, fit3.sgl2,
-     fit3.sgl3, fit3.cmcp1, fit3.cmcp2, fit3.cmcp3, fit3.gel1, fit3.gel2,
+save(fit3.grridge, fit3.gren1, fit3.gren2, fit3.gren3, 
+     # fit3.sgl1, fit3.sgl2, fit3.sgl3, 
+     fit3.cmcp1, fit3.cmcp2, fit3.cmcp3, fit3.gel1, fit3.gel2,
      fit3.gel3, file="results/metabolomics_alzheimer_fit3.Rdata")
 
 ### cross-validation of performance
@@ -383,15 +387,16 @@ foldid <- sample(rep(1:nfolds, times=round(c(rep(
 pred3 <- data.frame(ridge=rep(NA, n), grridge=rep(NA, n),
                     gren1=rep(NA, n), gren2=rep(NA, n), gren3=rep(NA, n),
                     enet1=rep(NA, n), enet2=rep(NA, n), enet3=rep(NA, n),
-                    sgl1=rep(NA, n), sgl2=rep(NA, n), sgl3=rep(NA, n),
+                    # sgl1=rep(NA, n), sgl2=rep(NA, n), sgl3=rep(NA, n),
                     cmcp1=rep(NA, n), cmcp2=rep(NA, n), cmcp3=rep(NA, n),
                     gel1=rep(NA, n), gel2=rep(NA, n), gel3=rep(NA, n))
 psel3 <- data.frame(ridge=rep(p, nfolds), grridge=rep(p, nfolds),
                     gren1=rep(NA, nfolds), gren2=rep(NA, nfolds), 
                     gren3=rep(NA, nfolds), enet1=rep(NA, nfolds), 
                     enet2=rep(NA, nfolds), enet3=rep(NA, nfolds),
-                    sgl1=rep(NA, nfolds), sgl2=rep(NA, nfolds), 
-                    sgl3=rep(NA, nfolds), cmcp1=rep(NA, nfolds), 
+                    # sgl1=rep(NA, nfolds), sgl2=rep(NA, nfolds), 
+                    # sgl3=rep(NA, nfolds), 
+                    cmcp1=rep(NA, nfolds), 
                     cmcp2=rep(NA, nfolds), cmcp3=rep(NA, nfolds),
                     gel1=rep(NA, nfolds), gel2=rep(NA, nfolds), 
                     gel3=rep(NA, nfolds))
@@ -413,9 +418,9 @@ for(k in 1:nfolds) {
                     trace=FALSE)
   
   cv3.grridge <- grridge(t(xtrain), ytrain, list(part=split(1:p, part)))
-  cv3.sgl1 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.05)
-  cv3.sgl2 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.5)
-  cv3.sgl3 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.95)
+  # cv3.sgl1 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.05)
+  # cv3.sgl2 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.5)
+  # cv3.sgl3 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.95)
   
   cv3.cmcp1 <- cv.grpreg(xtrain, ytrain, part, penalty="cMCP", 
                          family="binomial", alpha=0.05)
@@ -442,12 +447,12 @@ for(k in 1:nfolds) {
   pred3$gren2[foldid==k] <- predict(cv3.gren2, xtest, type="groupreg")
   pred3$gren3[foldid==k] <- predict(cv3.gren3, xtest, type="groupreg")
   
-  pred3$sgl1[foldid==k] <- 1/(1 + exp(-xtest %*% cv3.sgl1$fit$beta[, which.min(
-    cv3.sgl1$lldiff)]))
-  pred3$sgl2[foldid==k] <- 1/(1 + exp(-xtest %*% cv3.sgl2$fit$beta[, which.min(
-    cv3.sgl2$lldiff)]))
-  pred3$sgl3[foldid==k] <- 1/(1 + exp(-xtest %*% cv3.sgl3$fit$beta[, which.min(
-    cv3.sgl3$lldiff)]))
+  # pred3$sgl1[foldid==k] <- 1/(1 + exp(-xtest %*% cv3.sgl1$fit$beta[, which.min(
+  #   cv3.sgl1$lldiff)]))
+  # pred3$sgl2[foldid==k] <- 1/(1 + exp(-xtest %*% cv3.sgl2$fit$beta[, which.min(
+  #   cv3.sgl2$lldiff)]))
+  # pred3$sgl3[foldid==k] <- 1/(1 + exp(-xtest %*% cv3.sgl3$fit$beta[, which.min(
+  #   cv3.sgl3$lldiff)]))
   
   pred3$cmcp1[foldid==k] <- predict(cv3.cmcp1, xtest, type="response")
   pred3$cmcp2[foldid==k] <- predict(cv3.cmcp2, xtest, type="response")
@@ -465,9 +470,9 @@ for(k in 1:nfolds) {
   psel3$gren2[k] <- sum(coef(cv3.gren2, type="groupreg")!=0) - 1
   psel3$gren3[k] <- sum(coef(cv3.gren3, type="groupreg")!=0) - 1
   
-  psel3$sgl1[k] <- sum(cv3.sgl1$fit$beta[, which.min(cv3.sgl1$lldiff)]!=0)
-  psel3$sgl2[k] <- sum(cv3.sgl2$fit$beta[, which.min(cv3.sgl2$lldiff)]!=0)
-  psel3$sgl3[k] <- sum(cv3.sgl3$fit$beta[, which.min(cv3.sgl3$lldiff)]!=0)
+  # psel3$sgl1[k] <- sum(cv3.sgl1$fit$beta[, which.min(cv3.sgl1$lldiff)]!=0)
+  # psel3$sgl2[k] <- sum(cv3.sgl2$fit$beta[, which.min(cv3.sgl2$lldiff)]!=0)
+  # psel3$sgl3[k] <- sum(cv3.sgl3$fit$beta[, which.min(cv3.sgl3$lldiff)]!=0)
   
   psel3$cmcp1[k] <- sum(cv3.cmcp1$fit$beta[, cv3.cmcp1$min]!=0) - 1
   psel3$cmcp2[k] <- sum(cv3.cmcp2$fit$beta[, cv3.cmcp2$min]!=0) - 1
