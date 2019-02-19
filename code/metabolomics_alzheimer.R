@@ -39,8 +39,6 @@ id.train <- c(sample(which(pheno.apoe$D_diag_name=="Probable AD"),
               sample(which(pheno.apoe$D_diag_name=="Subjectieve klachten"), 
                      size=floor(sum(
                        pheno.apoe$D_diag_name=="Subjectieve klachten")/2)))
-train <- pheno.apoe[id.train, ]     
-test <- pheno.apoe[-id.train, ]     
 
 ### create co-data
 feat <- fData(ESetMbolCSFPR2)
@@ -53,30 +51,35 @@ part.RSDqc <- CreatePartition(feat$RSDqc, ngroup=3)
 quality <- rep(c(1:3), sapply(part.RSDqc, length))[unlist(part.RSDqc)]
 
 # sds gives groups based on the standard deviations of the features
-part.sds.apoe <- CreatePartition(apply(metabol.apoe, 1, sd), ngroup=3)
-sds.apoe <- rep(c(1:3), sapply(part.sds.apoe, length))[unlist(part.sds.apoe)]
+part.sds.apoe.train <- CreatePartition(apply(metabol.apoe[id.train, ], 1, sd), 
+                                       ngroup=3)
+sds.apoe.train <- rep(c(1:3), sapply(part.sds.apoe.train, 
+                                     length))[unlist(part.sds.apoe.train)]
 
 # degree gives the degree classes of the differential network
 degree <- NetworkDegreeClass[, 2]
 
 ### transform data
 alzheim.apoe <- as.numeric(pheno.apoe$D_diag_name) - 1
-metabol.apoe.scaled <- scale(metabol.apoe)
 
 ################################### model 1 ####################################
 ### fitting the models
 set.seed(2018)
-y <- alzheim.apoe
-x <- metabol.apoe.scaled
+y.train <- alzheim.apoe[id.train]
+x.train <- scale(metabol.apoe[id.train, ])
+y.test <- alzheim.apoe[-id.train]
+x.test <- scale(metabol.apoe[-id.train, ])
 part <- platformcode
-n <- nrow(x)
-p <- ncol(x)
+p <- ncol(x.train)
 
-fit1.gren1 <- gren(x, y, partitions=list(part=part), alpha=0.05, trace=FALSE)
-fit1.gren2 <- gren(x, y, partitions=list(part=part), alpha=0.5, trace=FALSE)
-fit1.gren3 <- gren(x, y, partitions=list(part=part), alpha=0.95, trace=FALSE)
+fit1.gren1 <- gren(x.train, y.train, partitions=list(part=part), alpha=0.05, 
+                   trace=FALSE)
+fit1.gren2 <- gren(x.train, y.train, partitions=list(part=part), alpha=0.5, 
+                   trace=FALSE)
+fit1.gren3 <- gren(x.train, y.train, partitions=list(part=part), alpha=0.95, 
+                   trace=FALSE)
 
-fit1.grridge <- grridge(t(x), y, list(part=split(1:p, part)))
+fit1.grridge <- grridge(t(x.train), y.train, list(part=split(1:p, part)))
 fit1.sgl1 <- cvSGL(list(x=x, y=y), part, type="logit", alpha=0.05)
 fit1.sgl2 <- cvSGL(list(x=x, y=y), part, type="logit", alpha=0.5)
 fit1.sgl3 <- cvSGL(list(x=x, y=y), part, type="logit", alpha=0.95)
