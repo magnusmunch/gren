@@ -127,6 +127,5 @@ psel1 <- c(ridge=p, grridge=p,
            gel3=colSums(fit1.gel1$fit$beta[-1, ]!=0))
 
 res1 <- rbind(pred1, psel1)
-rownames(res1) <- c(paste0("pred", c(1:length(ytest))), 
-                    paste0("psel", 1:nfolds))
+rownames(res1) <- c(paste0("pred", c(1:length(ytest))), paste0("psel", 1))
 write.table(res1, file="results/rnaseq_lymph_node_metastasis_res1.csv")

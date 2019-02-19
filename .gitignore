@@ -32,7 +32,7 @@
 *.Rdata
 *.Rhistory
 *.Rout
-*.Rproj.user
+.Rproj.user
 *.run.xml
 *.Ruserdata
 *.snm

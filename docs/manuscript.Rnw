@@ -53,6 +53,19 @@ titlesec,multicol,hyperref,verbatim,threeparttable,booktabs,dsfont,parskip}
 Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 
 \begin{document}
+
+% load packages and set options
+<<settings, include=FALSE, echo=FALSE>>=
+library(cambridge)
+opts_knit$set(base.dir="../figs")
+opts_chunk$set(fig.align='center', echo=FALSE, fig.path="../figs/", cache=FALSE,
+               message=FALSE)
+@
+
+% read figure code
+<<figures, include=FALSE>>=
+read_chunk("../code/figures.R")
+@
 	
 	\maketitle
 
@@ -338,7 +351,22 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 
 	\subsection{Results}\label{sec:results}
 
-	\section{Application}\label{sec:app}
+	\section{Application to metabolomics in alzheimer}\label{sec:app}
+	
+<<lines_metabolomics_alzheimer_res1_auc, fig.cap="Cross-validated AUC in alzheimer example using metabolomics class co-data, with a) the full range and b) cut-out", out.width="100%", fig.asp=2/3>>=
+@
+
+<<lines_metabolomics_alzheimer_res2_auc, fig.cap="Cross-validated AUC in alzheimer example using quality score co-data, with a) the full range and b) cut-out", out.width="100%", fig.asp=2/3>>=
+@
+
+<<lines_metabolomics_alzheimer_res3_auc, fig.cap="Cross-validated AUC in alzheimer example using node degree co-data, with a) the full range and b) cut-out", out.width="100%", fig.asp=2/3>>=
+@
+
+<<lines_metabolomics_alzheimer_res4_auc, fig.cap="Cross-validated AUC in alzheimer example using all co-data, with a) the full range and b) cut-out", out.width="100%", fig.asp=2/3>>=
+@
+
+<<barplots_metabolomics_alzheimer_res4_auc, fig.cap="Estimated penalty multipliers in alzheimer example using all co-data for a) metabolomics class, b) quality score, and c) node degree", out.width="100%", fig.asp=1>>=
+@
 
 	\section{Discussion}\label{sec:discussion}
 	In a taxonomy of Bayesian methods, the proposed method may be considered a local shrinkage model, as opposed to the global-local shrinkage priors that \cite{polson_local_2012,bernardo_shrink_2011} discuss. They characterise certain desirable properties of these global-local shrinkage priors in high dimensions, which, for example, the horseshoe possesses \cite[]{carvalho_horseshoe_2010,carvalho_handling_2009}. In our case, global shrinkage would imply adding another hyperprior for the global $\lambda_1$ and $\lambda_2$ (or $\alpha$ and $\lambda$) hyperparameters. We argue however, that if the groups are informative, the empirical Bayes estimation of the (semi-)global shrinkage parameters $\lambda'_g$ may be more beneficial than full Bayes shrinkage of the global penalty parameters, because the latter does not use any known structure to model the variability in the hyperparameters. Nonetheless, an interesting direction of future research is the extension of the group-regularized elastic net to a group-regularized horseshoe model, since the horseshoe has been shown to handle sparsity well and render better coverage of credibility intervals than lasso-type priors \cite[]{van_der_pas_horseshoe_2014}.
