@@ -24,16 +24,16 @@
   }
   
   # if only one control is set, replace the rest
-  if("epsilon"!=names(control)) {
+  if(!("epsilon" %in% names(control))) {
     control$epsilon <- 0.001
   }
-  if("maxit"!=names(control)) {
+  if(!("maxit" %in% names(control))) {
     control$maxit <- 500
   }
-  if("maxit.opt"!=names(control)) {
+  if(!("maxit.opt" %in% names(control))) {
     control$maxit.opt <- 1000
   }
-  if("maxit.vb"!=names(control)) {
+  if(!("maxit.vb" %in% names(control))) {
     control$maxit.vb <- 100
   }
   
