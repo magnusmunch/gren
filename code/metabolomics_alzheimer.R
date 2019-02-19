@@ -14,7 +14,6 @@ if(!("gren" %in% installed.packages())) {
 library(gren)
 library(GRridge)
 library(grpreg)
-library(SGL)
 library(Biobase)
 
 ### load data
@@ -27,13 +26,22 @@ pheno.apoe <- pheno[(pheno$D_diag_name=="Probable AD" & pheno$APOE=="E4YES") |
                       (pheno$D_diag_name=="Subjectieve klachten" & 
                          pheno$APOE=="E4NO"), ]
 
-
 metabol <- t(exprs(ESetMbolCSFPR2))
 metabol.apoe <- metabol[(pheno$D_diag_name=="Probable AD" & 
                            pheno$APOE=="E4YES") |
                           (pheno$D_diag_name=="Subjectieve klachten" & 
                              pheno$APOE=="E4NO"), ]
-      
+
+### randomly split in test and train data
+set.seed(2019)
+id.train <- c(sample(which(pheno.apoe$D_diag_name=="Probable AD"), 
+                     size=floor(sum(pheno.apoe$D_diag_name=="Probable AD")/2)),
+              sample(which(pheno.apoe$D_diag_name=="Subjectieve klachten"), 
+                     size=floor(sum(
+                       pheno.apoe$D_diag_name=="Subjectieve klachten")/2)))
+train <- pheno.apoe[id.train, ]     
+test <- pheno.apoe[-id.train, ]     
+
 ### create co-data
 feat <- fData(ESetMbolCSFPR2)
 
@@ -356,10 +364,6 @@ fit3.gren2 <- gren(x, y, partitions=list(part=part), alpha=0.5, trace=FALSE)
 fit3.gren3 <- gren(x, y, partitions=list(part=part), alpha=0.95, trace=FALSE)
 
 fit3.grridge <- grridge(t(x), y, list(part=split(1:p, part)))
-
-# fit3.sgl1 <- cvSGL(list(x=x, y=y), part, type="logit", alpha=0.05)
-# fit3.sgl2 <- cvSGL(list(x=x, y=y), part, type="logit", alpha=0.5)
-# fit3.sgl3 <- cvSGL(list(x=x, y=y), part, type="logit", alpha=0.95)
 
 fit3.cmcp1 <- cv.grpreg(x, y, part, penalty="cMCP", family="binomial", 
                         alpha=0.05)
