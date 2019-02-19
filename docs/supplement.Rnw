@@ -101,12 +101,27 @@
 \author{Magnus M. M\"unch$^{1,2}$\footnote{Correspondence to: \href{mailto:m.munch@vumc.nl}{m.munch@vumc.nl}}, Carel F.W. Peeters$^{1}$, Aad W. van der Vaart$^{2}$ \\ and Mark A. van de Wiel$^{1,3}$}
 
 \begin{document}
-\maketitle
-\noindent
-1. Department of Epidemiology \& Biostatistics, Amsterdam Public Health research institute, VU University Medical Center, PO Box 7057, 1007 MB
-Amsterdam, The Netherlands\\
-2. Mathematical Institute, Leiden University, Leiden, The Netherlands \\
-3. Department of Mathematics, VU University, Amsterdam, The Netherlands \\
+
+% load packages and set options
+<<settings, include=FALSE, echo=FALSE>>=
+library(cambridge)
+opts_knit$set(base.dir="../figs")
+opts_chunk$set(fig.align='center', echo=FALSE, fig.path="../figs/", cache=FALSE,
+               message=FALSE)
+@
+
+% read figure code
+<<figures, include=FALSE>>=
+read_chunk("../code/figures.R")
+@
+
+  \maketitle
+  \noindent
+  1. Department of Epidemiology \& Biostatistics, Amsterdam Public Health
+  research institute, VU University Medical Center, PO Box 7057, 1007 MB
+  Amsterdam, The Netherlands\\
+  2. Mathematical Institute, Leiden University, Leiden, The Netherlands \\
+  3. Department of Mathematics, VU University, Amsterdam, The Netherlands \\
 
 \textbf{Keywords}: Empirical Bayes; High-dimensional data; Prediction; Variational Bayes
 
@@ -484,6 +499,27 @@ Predictive performance of the methods is measured by AUC and BSS, both estimated
 	\caption{Cross-validated performance as (a) AUC in the two-group setting, (b) Brier skill score in the two-group setting, (c) AUC in the three-group setting, and (d) Brier skill score in the three-group setting against the number of selected features for each method.}
 	\label{fig:col_per}
 \end{figure}
+\begin{figure}[!h]
+	\centering
+	\includegraphics[width=0.83\linewidth]{grEBEN_mirseq_Maarten_bar1.png}
+	\caption{Estimated penalty multipliers for (a) the two-group setting and (b) the three-group setting.}
+	\label{fig:col_bar}
+\end{figure}
+
+Predictive performance of the methods is measured by AUC and BSS, both estimated by leave-one-out cross-validation (LOOCV), and shown in Figure \ref{fig:col_per}. All group-regularized elastic net models consistently outperform their non-group-regularized counterparts in both settings, in terms of AUC and BSS. In both settings, \texttt{gren} with $\alpha=0.5$ and $\alpha=0.95$ outperforms the other methods for a large range of model sizes in terms of AUC. This is especially true for the larger models. \texttt{gren} with $\alpha=0.5$ outperforms the other methods with respect to BSS in the smaller model ranges, while \texttt{gren} with $\alpha=0.05$ becomes competitive for the larger models. A general pattern in both settings is that \texttt{GRridge} and \texttt{gren} with $\alpha=0.05$ perform similarly. This is not surprising, because an elastic net model with $\alpha=0.05$ is close to a ridge model, in terms of penalisation. In general, the classifiers with three group penalties are better than the ones with two group penalties when relatively few features are used. Comparing, for example, the models of size 20 for \texttt{gren} with $\alpha=0.5$, we have an AUC of 0.68 for the two-group setting, versus an AUC of 0.78 for the three-group setting. Note that models with few features are often desirable for clinical implementation.
+\begin{figure}[!h]
+	\centering
+	\includegraphics[width=1\linewidth]{grEBEN_mirseq_Maarten_combined_performance.png}
+	\caption{Cross-validated performance as (a) AUC in the two-group setting, (b) Brier skill score in the two-group setting, (c) AUC in the three-group setting, and (d) Brier skill score in the three-group setting against the number of selected features for each method.}
+	\label{fig:col_per}
+\end{figure}
+
+\section{Application to RNAseq in lymph node cancer}\label{sec:applymph}
+
+CoRF data:
+
+<<lines_rnaseq_lymph_node_metastasis_res1_auc, fig.cap="Cross-validated AUC in lymph node metastasis example, with a) the full range and b) cut-out", out.width="100%", fig.asp=2/3>>=
+@
 
 \subsection{Random groups}
 Considering that the features may be partitioned into many groups, with one parameter per group, we have to be aware of overfitting risks. We investigated this using the data introduced in Section \ref{sec:mirna}, randomly dividing the features into three groups. We fixed the group sizes to the group sizes used in the three-group setting in Section \ref{sec:mirna}. Under this random partitioning of the features, we expect all penalty multipliers to be estimated as one if overfitting does not occur.
