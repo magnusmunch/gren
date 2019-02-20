@@ -35,13 +35,14 @@ metabol.apoe <- metabol[(pheno$D_diag_name=="Probable AD" &
                           (pheno$D_diag_name=="Subjectieve klachten" & 
                              pheno$APOE=="E4NO"), ]
 
-### randomly split in test and train data
+### randomly split in test and train data (30% and 70%, respectively)
 set.seed(2019)
 id.train <- c(sample(which(pheno.apoe$D_diag_name=="Probable AD"), 
-                     size=floor(sum(pheno.apoe$D_diag_name=="Probable AD")/2)),
+                     size=floor(sum(pheno.apoe$D_diag_name=="Probable AD")*
+                                  0.7)),
               sample(which(pheno.apoe$D_diag_name=="Subjectieve klachten"), 
                      size=floor(sum(
-                       pheno.apoe$D_diag_name=="Subjectieve klachten")/2)))
+                       pheno.apoe$D_diag_name=="Subjectieve klachten")*0.7)))
 
 ### create co-data
 feat <- fData(ESetMbolCSFPR2)
@@ -356,7 +357,7 @@ part.ogl <- unlist(lapply(part.grridge, function(part) {
   lapply(part, function(s) {colnames(xtrain)[s]})}), recursive=FALSE)
 
 fit4.gren1 <- gren(xtrain, ytrain, partitions=part.gren, alpha=0.05, 
-                   trace=TRUE)
+                   trace=FALSE)
 fit4.gren2 <- gren(xtrain, ytrain, partitions=part.gren, alpha=0.5, 
                    trace=FALSE)
 fit4.gren3 <- gren(xtrain, ytrain, partitions=part.gren, alpha=0.95, 

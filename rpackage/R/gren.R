@@ -1,12 +1,12 @@
 # group-regularized elastic net function
-  gren <- function(x, y, m=rep(1, nrow(x)), unpenalized=NULL, partitions=NULL, 
-                   alpha=0.5, lambda=NULL, intercept=TRUE, monotone=NULL, 
-                   psel=TRUE, compare=TRUE, posterior=FALSE, nfolds=nrow(x), 
-                   foldid=NULL, trace=TRUE,
-                   init=list(lambdag=NULL, mu=NULL, sigma=NULL, 
-                             chi=NULL, ci=NULL),
-                   control=list(epsilon=0.001, maxit=500, maxit.opt=1000, 
-                                maxit.vb=100)) {
+gren <- function(x, y, m=rep(1, nrow(x)), unpenalized=NULL, partitions=NULL, 
+                 alpha=0.5, lambda=NULL, standardize=FALSE, intercept=TRUE, 
+                 monotone=NULL, psel=TRUE, compare=TRUE, posterior=FALSE, 
+                 nfolds=nrow(x), foldid=NULL, trace=TRUE,
+                 init=list(lambdag=NULL, mu=NULL, sigma=NULL, 
+                           chi=NULL, ci=NULL),
+                 control=list(epsilon=0.001, maxit=500, maxit.opt=1000, 
+                              maxit.vb=100)) {
   
   # save argument list and call
   argum <- formals(gren)
@@ -123,7 +123,9 @@
     xu <- as.matrix(cbind(1, unpenalized))
   }
   xr <- x
-  xr <- scale(xr)
+  if(standardize) {
+    xr <- scale(xr)
+  }
   if(is.null(unpenalized)) {
     x <- xr
   } else {
@@ -147,6 +149,8 @@
     y <- y[, 2]
   }
   
+  browser()
+  
   # if no penalty parameter lambda is given we estimate it by cross-validation
   if(is.null(lambda)) {
     if(is.null(foldid)) {
@@ -159,9 +163,9 @@
     if(trace) {cat("\r", "Estimating global lambda by cross-validation", 
                    sep="")}
     srt <- proc.time()[3]
-    cv.fit <- cv.glmnet(x, y, family="binomial", alpha=alpha, standardize=FALSE,
-                        intercept=intercept, foldid=foldid, grouped=FALSE,
-                        penalty.factor=c(rep(0, u), rep(1, r)))
+    cv.fit <- cv.glmnet(x, ymat, family="binomial", alpha=alpha, 
+                        standardize=FALSE, intercept=intercept, foldid=foldid, 
+                        grouped=FALSE, penalty.factor=c(rep(0, u), rep(1, r)))
     lambda <- cv.fit$lambda.min
     cv.time <- proc.time()[3] - srt
     

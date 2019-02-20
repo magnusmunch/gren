@@ -1,0 +1,27 @@
+forMagnusN88.Rdata contains 6 objects:
+- datfr is a data.frame of 88 observations with 4 clinical covariates: a binary 
+  factor adjth with prior use of adjuvant therapy (binary), a ternary factor 
+  thscheme with the type of systemic treatment regimen, an integer age, and   
+  binary factor pcrcdiff with primary tumor differentiation.
+- mirnormcen_resp is a data.frame of 88 observations of 2114 micrornas 
+  (pre-processed).
+- TumMirs is a data.frame of 222 observations that contains several statistics
+  calculated on a set of micrornas that were selected for further investigation.
+- resp is a binary factor that contains the target of classification: "Progr"
+  and "TherBenefit", which indicates whether a patient benefited from treatment
+  or progressed in disease.
+- whichin is a integer of length 2114 that is NA if the microRNA was not 
+  selected and an integer otherwise.
+- partkeep is a list of length 4 with different partitions of the microRNAs, 
+  based on abundance, standard deviations, selection of microRNAs that were 
+  expressed differently (FDR <= 0.05) in two comparisons: metastatatic tissue
+  versus normal non-colorectal tissue and primary tumour versus primary normal
+  colorectal tissue, and a partition based on FDRS.
+  
+The main references are:
+- Neerincx, M. et al. (2015). MiR expression profiles of paired primary 
+  colorectal cancer and metastases by next-generation sequencing. Oncogenesis, 
+  4, e170.
+- Neerincx, M. et al. (2018). Combination of a six microRNA expression profile
+  with four clinicopathological factors improves response prediction to systemic
+  treatment in patients with advanced colorectal cancer. Submitted.
