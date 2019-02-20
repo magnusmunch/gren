@@ -1,6 +1,6 @@
 # group-regularized elastic net function
 gren <- function(x, y, m=rep(1, nrow(x)), unpenalized=NULL, partitions=NULL, 
-                 alpha=0.5, lambda=NULL, standardize=FALSE, intercept=TRUE, 
+                 alpha=0.5, lambda=NULL, standardize=TRUE, intercept=TRUE, 
                  monotone=NULL, psel=TRUE, compare=TRUE, posterior=FALSE, 
                  nfolds=nrow(x), foldid=NULL, trace=TRUE,
                  init=list(lambdag=NULL, mu=NULL, sigma=NULL, 

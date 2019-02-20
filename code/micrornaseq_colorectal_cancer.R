@@ -40,7 +40,7 @@ diff.threegroup <- miRNA %in% miRNA.BFDR + miRNA %in% miRNA.TumMirs + 1
 benefit <- as.numeric(resp) - 1
 
 ### mirna data
-micrornas <- scale(t(mirnormcen_resp))
+micrornas <- t(mirnormcen_resp)
 colnames(micrornas) <- miRNA
 
 ### randomly split in test and train data (30% and 70%, respectively)
@@ -52,20 +52,23 @@ id.train <- c(sample(which(benefit==0), size=floor(sum(benefit==0)*0.7)),
 ### fitting the models
 set.seed(2019)
 ytrain <- benefit[id.train]
-xtrain <- micrornas[id.train, ]
+# we remove the constant micrornas
+xtrain <- scale(micrornas[id.train, ])[, apply(micrornas[id.train, ], 2, sd)!=0]
 utrain <- unpenal[id.train, ]
 ytest <- benefit[-id.train]
-xtest <- scale(micrornas[-id.train, ])
+xtest <- scale(micrornas[-id.train, ])[, apply(micrornas[id.train, ], 2, sd)!=0]
+# set the constant micrornas to 0
+xtest[is.nan(xtest)] <- 0
 utest <- utrain[-id.train, ]
-part <- diff.threegroup
+part <- diff.threegroup[apply(micrornas[id.train, ], 2, sd)!=0]
 p <- ncol(xtrain)
 
 fit1.gren1 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.05, 
-                   standardize=FALSE, trace=FALSE)
+                   standardize=TRUE, trace=FALSE)
 fit1.gren2 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.5, 
-                   standardize=FALSE, trace=FALSE)
+                   standardize=TRUE, trace=FALSE)
 fit1.gren3 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.95, 
-                   standardize=FALSE, trace=FALSE)
+                   standardize=TRUE, trace=FALSE)
 
 fit1.grridge <- grridge(t(xtrain), ytrain, list(part=split(1:p, part)))
 
@@ -92,101 +95,116 @@ fit1.gel3 <- cv.grpreg(xtrain, ytrain, part, penalty="gel", family="binomial",
 
 save(fit1.grridge, fit1.gren1, fit1.gren2, fit1.gren3, fit1.sgl1, fit1.sgl2,
      fit1.sgl3, fit1.cmcp1, fit1.cmcp2, fit1.cmcp3, fit1.gel1, fit1.gel2,
-     fit1.gel3, file="results/metabolomics_alzheimer_fit1.Rdata")
+     fit1.gel3, file="results/micrornaseq_colorectal_cancer_fit1.Rdata")
 
-### cross validation
-set.seed(2019)
-nfolds <- n
-rest <- n %% nfolds
-foldid <- sample(rep(1:nfolds, times=round(c(rep(
-  n %/% nfolds + as.numeric(rest!=0), times=rest),
-  rep(n %/% nfolds, times=nfolds - rest)))))
+### prediction on test set
+pred1 <- data.frame(ridge=predict.grridge(fit1.grridge, t(xtest))[, 1], 
+                    grridge=predict.grridge(fit1.grridge, t(xtest))[, 2],
+                    gren1=predict(fit1.gren1$freq.model$groupreg, xtest, 
+                                  type="response"),
+                    
+                    enet1=predict(fit1.gren1$freq.model$regular, xtest, 
+                                  type="response"),
+                    
+                    sgl1=predictSGL(fit1.sgl1$fit, xtest),
+                    
+                    cmcp1=predict(fit1.cmcp1$fit, xtest, type="response"), 
+                    
+                    gel1=predict(fit1.gel1$fit, xtest, type="response")
+                    )
+psel1 <- c(ridge=p, grridge=p,
+           gren1=fit1.gren1$freq.model$groupreg$df,
+           
+           enet1=fit1.gren1$freq.model$regular$df,
+           
+           sgl1=colSums(fit1.sgl1$fit$beta!=0),
+           
+           cmcp1=colSums(fit1.cmcp1$fit$beta[-1, ]!=0), 
+           
+           gel1=colSums(fit1.gel1$fit$beta[-1, ]!=0))
+auc1 <- apply(pred1, 2, function(m) {pROC::auc(ytest, m)})
+auc1.gren1 <- auc1[substr(names(auc1), 1, 4)=="gren"]
+auc1.enet1 <- auc1[substr(names(auc1), 1, 4)=="enet"]
+auc1.sgl1 <- auc1[substr(names(auc1), 1, 3)=="sgl"]
+auc1.cmcp1 <- auc1[substr(names(auc1), 1, 4)=="cmcp"]
+auc1.gel1 <- auc1[substr(names(auc1), 1, 3)=="gel"]
+auc1.ridge <- auc1[substr(names(auc1), 1, 5)=="ridge"]
+auc1.grridge <- auc1[substr(names(auc1), 1, 7)=="grridge"]
 
-psel <- c(seq(1, 5, 1), seq(7, 15, 2), seq(20, 40, 5), seq(50, 90, 10))
-methods <- c("ridge", "grridge", "enet1", "enet2", "enet3", "greben1",
-             "greben2", "greben3")
-pred.ridge <- numeric(n)
-for(m in 2:length(methods)) {
-  assign(paste("pred.", methods[m], sep=""), matrix(NA, nrow=n,
-                                                    ncol=length(psel)))
-  assign(paste("psel.", methods[m], sep=""), matrix(NA, nrow=n,
-                                                    ncol=length(psel)))
-}
-for(k in sort(unique(foldid))) {
-  cat(paste("Fold ", k, "\n"))
-  
-  xtrain <- t(mirnormcen_resp)[foldid!=k, ]
-  xtest <- matrix(t(mirnormcen_resp)[foldid==k, ], ncol=p, byrow=TRUE)
-  ytrain <- (as.numeric(resp) - 1)[foldid!=k]
-  utrain1 <- datfr[foldid!=k, ]
-  utest1 <- datfr[foldid==k, ]
-  utrain2 <- unpenal[foldid!=k, ]
-  utest2 <- matrix(unpenal[foldid==k, ], ncol=u, byrow=TRUE)
-  
-  cv.ridge <- cv.glmnet(cbind(utrain2, xtrain), ytrain, alpha=0,
-                        standardize=FALSE, family="binomial", intercept=TRUE,
-                        penalty.factor=c(rep(0, u), rep(1, p)))
-  cv.grridge <- vector("list", length(psel))
-  cv.grridge[[1]] <- grridge(mirnormcen_resp, resp, part.grridge3, optl=NULL,
-                             unpenal = ~1 + adjth + thscheme + age + pcrcdiff,
-                             niter=1, method="exact", dataunpen=datfr,
-                             innfold=10, savepredobj="all", comparelasso=FALSE,
-                             optllasso=NULL, compareunpenal=TRUE,
-                             selection=TRUE, maxsel=psel[1])
-  for(s in 2:length(psel)) {
-    cv.grridge[[s]] <- grridge(mirnormcen_resp, resp, part.grridge3,
-                               optl=cv.grridge[[1]]$optl,
-                               unpenal = ~1 + adjth + thscheme + age + pcrcdiff,
-                               niter=1, method="exact", dataunpen=datfr,
-                               innfold=10, savepredobj="all",
-                               comparelasso=FALSE, optllasso=NULL,
-                               compareunpenal=TRUE, selection=TRUE,
-                               maxsel=psel[s])
-  }
-  cv1.greben <- grEBEN3(xtrain, ytrain, rep(1, length(ytrain)),
-                        unpenalized=utrain2, partitions=part.greben3, alpha=0.05,
-                        psel=psel, nfolds=10, trace=TRUE)
-  cv2.greben <- grEBEN3(xtrain, ytrain, rep(1, length(ytrain)),
-                        unpenalized=utrain2, partitions=part.greben3, alpha=0.5,
-                        psel=psel, nfolds=10, trace=TRUE) # 0.251227 1.175005
-  cv3.greben <- grEBEN3(xtrain, ytrain, rep(1, length(ytrain)),
-                        unpenalized=utrain2, partitions=part.greben3, alpha=0.95,
-                        psel=psel, nfolds=10, trace=TRUE)
-  
-  pred.enet1[foldid==k, ] <- 1/(1 + exp(-cbind(1, utest2, xtest) %*%
-                                          cv1.greben$beta.nogroups))
-  pred.greben1[foldid==k, ] <- 1/(1 + exp(-cbind(1, utest2, xtest) %*%
-                                            cv1.greben$beta))
-  pred.enet2[foldid==k, ] <- 1/(1 + exp(-cbind(1, utest2, xtest) %*%
-                                          cv2.greben$beta.nogroups))
-  pred.greben2[foldid==k, ] <- 1/(1 + exp(-cbind(1, utest2, xtest) %*%
-                                            cv2.greben$beta))
-  pred.enet3[foldid==k, ] <- 1/(1 + exp(-cbind(1, utest2, xtest) %*%
-                                          cv3.greben$beta.nogroups))
-  pred.greben3[foldid==k, ] <- 1/(1 + exp(-cbind(1, utest2, xtest) %*%
-                                            cv3.greben$beta))
-  pred.grridge[foldid==k, ] <- sapply(cv.grridge, function(s) {
-    predict.grridge(s, t(xtest), dataunpennew=utest1)[, 3]})
-  pred.ridge[foldid==k] <- predict(cv.ridge, cbind(utest2, xtest),
-                                   type="response", s="lambda.min")
-  
-  psel.grridge[foldid==k, ] <- sapply(cv.grridge, function(s) {
-    length(s$resEN$whichEN)})
-  psel.enet1[foldid==k, ] <- colSums(cv1.greben$beta.nogroups!=0) - u - 1
-  psel.greben1[foldid==k, ] <- colSums(cv1.greben$beta!=0) - u - 1
-  psel.enet2[foldid==k, ] <- colSums(cv2.greben$beta.nogroups!=0) - u - 1
-  psel.greben2[foldid==k, ] <- colSums(cv2.greben$beta!=0) - u - 1
-  psel.enet3[foldid==k, ] <- colSums(cv3.greben$beta.nogroups!=0) - u - 1
-  psel.greben3[foldid==k, ] <- colSums(cv3.greben$beta!=0) - u - 1
-  
-}
+psel1.gren1 <- psel1[substr(names(psel1), 1, 4)=="gren"]
+psel1.enet1 <- psel1[substr(names(psel1), 1, 4)=="enet"]
+psel1.sgl1 <- psel1[substr(names(psel1), 1, 3)=="sgl"]
+psel1.cmcp1 <- psel1[substr(names(psel1), 1, 4)=="cmcp"]
+psel1.gel1 <- psel1[substr(names(psel1), 1, 3)=="gel"]
+psel1.ridge <- psel1[substr(names(psel1), 1, 5)=="ridge"]
+psel1.grridge <- psel1[substr(names(psel1), 1, 7)=="grridge"]
 
-results5 <- list(pred=list(pred.ridge, pred.grridge, pred.enet1, pred.enet2,
-                           pred.enet3, pred.greben1, pred.greben2,
-                           pred.greben3),
-                 psel=list(psel.grridge, psel.enet1, psel.enet2, psel.enet3,
-                           psel.greben1, psel.greben2, psel.greben3))
-save(results5, file=paste(path.res, "grEBEN_mirseq_Maarten_res5.Rdata", sep=""))
+plot(psel1.gren1, auc1.gren1, col=1, type="l", xlim=range(c(psel1.gren1 ,
+                                                            psel1.enet1 ,
+                                                            psel1.sgl1 ,
+                                                            psel1.cmcp1 ,
+                                                            psel1.gel1 ,
+                                                            psel1.ridge ,
+                                                            psel1.grridge)),
+     ylim=range(c(auc1.gren1 ,
+                  auc1.enet1 ,
+                  auc1.sgl1 , 
+                  auc1.cmcp1 ,
+                  auc1.gel1 , 
+                  auc1.ridge ,
+                  auc1.grridge)))
+lines(psel1.enet1, auc1.enet1, col=2)
+lines(psel1.sgl1, auc1.sgl1, col=3)
+lines(psel1.cmcp1, auc1.cmcp1, col=4)
+lines(psel1.gel1, auc1.gel1, col=5)
+abline(h=auc1.ridge, lty=2, col=6)
+abline(h=auc1.grridge, lty=2, col=7)
+
+
+pred1 <- data.frame(ridge=predict.grridge(fit1.grridge, t(xtest))[, 1], 
+                    grridge=predict.grridge(fit1.grridge, t(xtest))[, 2],
+                    gren1=predict(fit1.gren1$freq.model$groupreg, xtest, 
+                                  type="response"),
+                    gren2=predict(fit1.gren2$freq.model$groupreg, xtest, 
+                                  type="response"), 
+                    gren3=predict(fit1.gren3$freq.model$groupreg, xtest, 
+                                  type="response"), 
+                    enet1=predict(fit1.gren1$freq.model$regular, xtest, 
+                                  type="response"),
+                    enet2=predict(fit1.gren2$freq.model$regular, xtest, 
+                                  type="response"), 
+                    enet3=predict(fit1.gren3$freq.model$regular, xtest, 
+                                  type="response"), 
+                    sgl1=predictSGL(fit1.sgl1$fit, xtest),
+                    sgl2=predictSGL(fit1.sgl2$fit, xtest),
+                    sgl3=predictSGL(fit1.sgl3$fit, xtest),
+                    cmcp1=predict(fit1.cmcp1$fit, xtest, type="response"), 
+                    cmcp2=predict(fit1.cmcp2$fit, xtest, type="response"), 
+                    cmcp3=predict(fit1.cmcp2$fit, xtest, type="response"),
+                    gel1=predict(fit1.gel1$fit, xtest, type="response"), 
+                    gel2=predict(fit1.gel2$fit, xtest, type="response"), 
+                    gel3=predict(fit1.gel3$fit, xtest, type="response"))
+psel1 <- c(ridge=p, grridge=p,
+           gren1=fit1.gren1$freq.model$groupreg$df,
+           gren2=fit1.gren2$freq.model$groupreg$df,
+           gren3=fit1.gren3$freq.model$groupreg$df,
+           enet1=fit1.gren1$freq.model$regular$df,
+           enet2=fit1.gren2$freq.model$regular$df,
+           enet3=fit1.gren3$freq.model$regular$df,
+           sgl1=colSums(fit1.sgl1$fit$beta!=0),
+           sgl2=colSums(fit1.sgl2$fit$beta!=0),
+           sgl3=colSums(fit1.sgl3$fit$beta!=0),
+           cmcp1=colSums(fit1.cmcp1$fit$beta[-1, ]!=0), 
+           cmcp2=colSums(fit1.cmcp2$fit$beta[-1, ]!=0), 
+           cmcp3=colSums(fit1.cmcp3$fit$beta[-1, ]!=0),
+           gel1=colSums(fit1.gel1$fit$beta[-1, ]!=0), 
+           gel2=colSums(fit1.gel1$fit$beta[-1, ]!=0), 
+           gel3=colSums(fit1.gel1$fit$beta[-1, ]!=0))
+auc1 <- apply(pred1, 2, function(m) {pROC::auc(ytest, m)})
+res1 <- rbind(pred1, psel1, auc1)
+rownames(res1) <- c(paste0("pred", c(1:length(ytest))), paste0("psel", 1),
+                    paste0("auc", 1))
+write.table(res1, file="results/metabolomics_alzheimer_res1.csv")
 
 ### cross-validation results
 load(paste(path.res, "grEBEN_mirseq_Maarten_res4.Rdata", sep=""))
