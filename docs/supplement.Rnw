@@ -1,5 +1,20 @@
+% set options
+<<settings, include=FALSE, echo=FALSE>>=
+opts_knit$set(root.dir="..", base.dir="../figs")
+opts_chunk$set(fig.align='center', fig.path="../figs/", 
+               echo=FALSE, cache=FALSE, message=FALSE)
+@
+
+% read figure code
+<<figures, include=FALSE>>=
+read_chunk("code/figures.R")
+@
+
 \documentclass[a4paper,hidelinks]{article}
-\usepackage{bm,amsmath,amssymb,amsthm,amsfonts,graphics,graphicx,epsfig,rotating,caption,subcaption,natbib,appendix,titlesec,multicol,hyperref,verbatim,bbm,algorithm,algpseudocode,pgfplotstable,threeparttable, booktabs,mathtools,dsfont,parskip}
+\usepackage{bm,amsmath,amssymb,amsthm,amsfonts,graphics,graphicx,epsfig,
+rotating,caption,subcaption,natbib,appendix,titlesec,multicol,hyperref,verbatim,
+bbm,algorithm,algpseudocode,pgfplotstable,threeparttable,booktabs,mathtools,
+dsfont,parskip}
 
 % vectors and matrices
 \newcommand{\bbeta}{\bm{\beta}}
@@ -96,24 +111,14 @@
 \setlength{\evensidemargin}{.5cm} \setlength{\oddsidemargin}{.5cm}
 \setlength{\textwidth}{15cm}
 \setlength{\parindent}{0pt}
-\title{Adaptive group-regularized logistic elastic net regression Supplementary material}
+\title{Adaptive group-regularized logistic elastic net regression Supplementary 
+material}
 \date{}
-\author{Magnus M. M\"unch$^{1,2}$\footnote{Correspondence to: \href{mailto:m.munch@vumc.nl}{m.munch@vumc.nl}}, Carel F.W. Peeters$^{1}$, Aad W. van der Vaart$^{2}$ \\ and Mark A. van de Wiel$^{1,3}$}
+\author{Magnus M. M\"unch$^{1,2}$\footnote{Correspondence to: 
+\href{mailto:m.munch@vumc.nl}{m.munch@vumc.nl}}, Carel F.W. Peeters$^{1}$, 
+Aad W. van der Vaart$^{2}$ \\ and Mark A. van de Wiel$^{1,3}$}
 
 \begin{document}
-
-% load packages and set options
-<<settings, include=FALSE, echo=FALSE>>=
-library(cambridge)
-opts_knit$set(base.dir="../figs")
-opts_chunk$set(fig.align='center', echo=FALSE, fig.path="../figs/", cache=FALSE,
-               message=FALSE)
-@
-
-% read figure code
-<<figures, include=FALSE>>=
-read_chunk("../code/figures.R")
-@
 
   \maketitle
   \noindent
@@ -123,31 +128,62 @@ read_chunk("../code/figures.R")
   2. Mathematical Institute, Leiden University, Leiden, The Netherlands \\
   3. Department of Mathematics, VU University, Amsterdam, The Netherlands \\
 
-\textbf{Keywords}: Empirical Bayes; High-dimensional data; Prediction; Variational Bayes
+  \textbf{Keywords}: Empirical Bayes; High-dimensional data; Prediction; 
+  Variational Bayes
 
-\textbf{Software available from}: \url{https://CRAN.R-project.org/package=gren}
+  \textbf{Software available from}: 
+  \url{https://CRAN.R-project.org/package=gren}
 
-\section{Introduction}
-This document contains supplementary material to the paper `Adaptive group-regularized logistic elastic net regression'. Section \ref{sec:enetprior} contains extra details on the elastic net prior distribution. Section \ref{sec:objectivefunction} gives the objective function that is maximised in the variational Bayes procedure introduced in Section 3 of the Main Document. Section \ref{sec:polyagamma} gives details on the P{\'o}lya-Gamma parametrisation introduced in Section 3 of the Main Document. The derivations of the variational posterior used in the Main Document are shown in Section \ref{sec:variationaldistributions}. Section \ref{sec:computationalcomplexity} shows how we may reduce the computational complexity of our variational Bayes procedure. Section \ref{sec:expectedloglikelihood} elaborates on the Variational Bayes expected joint log likelihood that is maximised to estimate the penalty multipliers as explained in Section 3 of the Main Document. The full procedure of the proposed method is shown in Section \ref{sec:fullestimationprocedure}. We apply our method to a study on microRNAs in colorectal cancer data \cite[]{neerincx_combination_2018} in Section \ref{sec:appcolon} . Finally, we introduce the ridge and lasso versions of the proposed method in Section \ref{sec:evbridgelasso}. 
+  \section{Introduction}
+  This document contains supplementary material to the paper `Adaptive 
+  group-regularized logistic elastic net regression'. Section 
+  \ref{sec:enetprior} contains extra details on the elastic net prior 
+  distribution. Section \ref{sec:objectivefunction} gives the objective 
+  function that is maximised in the variational Bayes procedure introduced in
+  Section 3 of the Main Document. Section \ref{sec:polyagamma} gives details on
+  the P{\'o}lya-Gamma parametrisation introduced in Section 3 of the Main
+  Document. The derivations of the variational posterior used in the Main
+  Document are shown in Section \ref{sec:variationaldistributions}. Section
+  \ref{sec:computationalcomplexity} shows how we may reduce the computational
+  complexity of our variational Bayes procedure. Section 
+  \ref{sec:expectedloglikelihood} elaborates on the Variational Bayes expected
+  joint log likelihood that is maximised to estimate the penalty multipliers as
+  explained in Section 3 of the Main Document. The full procedure of the
+  proposed method is shown in Section \ref{sec:fullestimationprocedure}. We
+  apply our method to a study on microRNAs in colorectal cancer data 
+  \cite[]{neerincx_combination_2018} in Section \ref{sec:appcolon} . Finally, we
+  introduce the ridge and lasso versions of the proposed method in Section
+  \ref{sec:evbridgelasso}. 
 
-\section{The elastic net prior}\label{sec:enetprior}
-\subsection{Density function}
-The density function of $\beta$, drawn from an elastic net prior distribution, is given by:
-$$
-f(\beta) = g(\lambda_1,\lambda_2) \exp\[-\frac{1}{2} (\lambda_1 |\beta| + \lambda_2 \beta^2)\].
-$$
-The normalizing constant here is calculated as:
-$$
-g(\lambda_1,\lambda_2) =\left\{ \int_{-\infty}^{\infty} \exp\[-\frac{1}{2} (\lambda_1 |\beta| + \lambda_2 \beta^2)\] d\beta \right\}^{-1}= \frac{\sqrt{\lambda_2}}{2} \phi \( \frac{\lambda_1}{2 \sqrt{\lambda_2}} \) \Phi \(\frac{-\lambda_1}{2 \sqrt{\lambda_2}} \)^{-1},
-$$
-with $\phi(x)$ and $\Phi(x)$ the standard normal density and distribution functions of $x$, respectively. 
+  \section{The elastic net prior}\label{sec:enetprior}
+  \subsection{Density function}
+  The density function of $\beta$, drawn from an elastic net prior distribution,
+  is given by:
+  $$
+  f(\beta) = g(\lambda_1,\lambda_2) \exp\[-\frac{1}{2} (\lambda_1 |\beta| + 
+  \lambda_2 \beta^2)\].
+  $$
+  The normalizing constant here is calculated as:
+  $$
+  g(\lambda_1,\lambda_2) =\left\{ \int_{-\infty}^{\infty} \exp\[-\frac{1}{2} 
+  (\lambda_1 |\beta| + \lambda_2 \beta^2)\] d\beta \right\}^{-1}= 
+  \frac{\sqrt{\lambda_2}}{2} \phi \( \frac{\lambda_1}{2 \sqrt{\lambda_2}} \)
+  \Phi \(\frac{-\lambda_1}{2 \sqrt{\lambda_2}} \)^{-1},
+  $$
+  with $\phi(x)$ and $\Phi(x)$ the standard normal density and distribution 
+  functions of $x$, respectively. 
 
-\subsection{Expectation and variance}
-The expectation and variance of $\beta$ are:
-\begin{align*}
-\E[\beta] &= g(\lambda_1,\lambda_2) \int_{-\infty}^{\infty} \beta \cdot \exp\[-\frac{1}{2} (\lambda_1 |\beta| + \lambda_2 \beta^2)\] d\beta=0, \\
-\V[\beta] &= g(\lambda_1,\lambda_2) \int_{-\infty}^{\infty} \beta^2 \cdot \exp\[-\frac{1}{2} (\lambda_1 |\beta| + \lambda_2 \beta^2)\] d\beta - \E[\beta]^2\\ &= \frac{\lambda_1^2}{4 \lambda_2^2} + \frac{1}{\lambda_2} - \frac{\lambda_1}{2 \lambda_2^{3/2}} \phi \( \frac{\lambda_1}{2 \sqrt{\lambda_2}} \) \Phi \(\frac{-\lambda_1}{2 \sqrt{\lambda_2}} \)^{-1}.
-\end{align*}
+  \subsection{Expectation and variance}
+  The expectation and variance of $\beta$ are:
+  \begin{align*}
+  \E[\beta] &= g(\lambda_1,\lambda_2) \int_{-\infty}^{\infty} \beta \cdot \exp\
+  -\frac{1}{2} (\lambda_1 |\beta| + \lambda_2 \beta^2)\] d\beta=0, \\
+  \V[\beta] &= g(\lambda_1,\lambda_2) \int_{-\infty}^{\infty} \beta^2 \cdot
+  \exp\[-\frac{1}{2} (\lambda_1 |\beta| + \lambda_2 \beta^2)\] d\beta -
+  \E[\beta]^2\\ &= \frac{\lambda_1^2}{4 \lambda_2^2} + \frac{1}{\lambda_2} -
+  \frac{\lambda_1}{2 \lambda_2^{3/2}} \phi \( \frac{\lambda_1}{2 
+  \sqrt{\lambda_2}} \) \Phi \(\frac{-\lambda_1}{2 \sqrt{\lambda_2}} \)^{-1}.
+  \end{align*}
 
 \subsection{Simulation}
 Generating samples from the elastic net prior is not straightforward. \cite{li_bayesian_2010} show that the elastic net prior may be written as a scale mixture of normals, with mixing parameter $\btau = \begin{bmatrix} \tau_1 & \cdots & \tau_p \end{bmatrix} \tr$: 
@@ -620,6 +656,11 @@ Note that the $\phi_g$ are updated after every penalty multiplier update iterati
 
 \bibliographystyle{author_short3.bst} 
 \bibliography{refs}
+
+\section*{Session info}
+<<r session-info, eval=TRUE, echo=TRUE, tidy=TRUE>>=
+devtools::session_info()
+@
 
 \end{document}
 
