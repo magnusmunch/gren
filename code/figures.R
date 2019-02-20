@@ -3,8 +3,8 @@
 # ---- lines_metabolomics_alzheimer_res1_auc ----
 library(pROC)
 library(grpreg)
-load("../results/metabolomics_alzheimer_fit1.Rdata")
-res1 <- read.table("../results/metabolomics_alzheimer_res1.csv", 
+load("results/metabolomics_alzheimer_fit1.Rdata")
+res1 <- read.table("results/metabolomics_alzheimer_res1.csv", 
                    stringsAsFactors=FALSE)
 
 methods2 <- c("ridge", "grridge", "gren", "enet", "sgl", "cmcp", "gel")
@@ -97,11 +97,39 @@ points(t(sapply(1:length(plot.data1), function(m) {
   col=rep(col1[-c(1, 2)], each=3), pch=1)
 par(mfrow=c(1, 1))
 
+# ---- barplots_metabolomics_alzheimer_res1_auc ----
+library(Biobase)
+load("data/ESetMbolCSFPR2.Rdata")
+load("results/metabolomics_alzheimer_fit1.Rdata")
+
+methods1 <- c("grridge", paste0("gren", 1:3))
+col1 <- grey.colors(length(methods1), start=0.3, end=0.9, gamma=2.2, alpha=NULL)
+lty1 <- c(1:4)
+labels1 <- list(platform=replace(unique(as.character(fData(
+  ESetMbolCSFPR2)$Platform))[-5], 4, "Oxidative Stress"))
+
+plot.data1 <- lapply(1:length(fit1.gren1$lambdag), function(s) {
+  rbind(fit1.grridge$lambdamults[[s]], fit1.gren1$lambdag[[s]],
+        fit1.gren2$lambdag[[s]], fit1.gren3$lambdag[[s]])})
+opar <- par(no.readonly=TRUE)
+par(mar=opar$mar*c(1, 1.3, 1, 1))
+barplot(plot.data1[[1]], beside=TRUE, col=col1,
+        legend.text=c(methods1[1],
+                      expression("gren, "~alpha==0.05, "gren, "~alpha==0.5,
+                                 "gren, "~alpha==0.95), "no co-data"),
+        args.legend=list(x="topleft", fill=c(col1, NA),
+                         border=c(rep(1, length(methods1)), NA),
+                         lty=c(rep(NA, length(methods1)), 2),
+                         seg.len=1, merge=TRUE),
+        names.arg=labels1[[1]], ylab=expression(hat(lambda)~"'"[g]))
+abline(h=1, lty=2)
+par(opar)
+
 # ---- lines_metabolomics_alzheimer_res2_auc ----
 library(pROC)
 library(grpreg)
-load("../results/metabolomics_alzheimer_fit2.Rdata")
-res2 <- read.table("../results/metabolomics_alzheimer_res2.csv", 
+load("results/metabolomics_alzheimer_fit2.Rdata")
+res2 <- read.table("results/metabolomics_alzheimer_res2.csv", 
                    stringsAsFactors=FALSE)
 
 methods2 <- c("ridge", "grridge", "gren", "enet", "sgl", "cmcp", "gel")
@@ -194,11 +222,46 @@ points(t(sapply(1:length(plot.data2), function(m) {
   col=rep(col2[-c(1, 2)], each=3), pch=1)
 par(mfrow=c(1, 1))
 
+# ---- barplots_metabolomics_alzheimer_res2_auc ----
+library(Biobase)
+load("data/ESetMbolCSFPR2.Rdata")
+load("results/metabolomics_alzheimer_fit2.Rdata")
+
+methods2 <- c("grridge", paste0("gren", 1:3))
+col2 <- grey.colors(length(methods2), start=0.3, end=0.9, gamma=2.2, alpha=NULL)
+lty2 <- c(1:4)
+quality <- rep(c(1:length(fit2.grridge$arguments$partitions$part)), 
+               times=sapply(fit2.grridge$arguments$partitions$part, 
+                            length))[order(unlist(
+                              fit2.grridge$arguments$partitions$part))]
+feat <- fData(ESetMbolCSFPR2)
+labels2 <- list(quality=c(
+  paste("RSDqc >", round(min(feat$RSDqc[quality==1]), 3)), 
+  paste(round(min(feat$RSDqc[quality==1]), 3), ">= RSDqc >", 
+        round(min(feat$RSDqc[quality==2]), 3)),
+  paste(round(min(feat$RSDqc[quality==2]), 3), ">= RSDqc")))
+plot.data2 <- lapply(1:length(fit2.gren1$lambdag), function(s) {
+  rbind(fit2.grridge$lambdamults[[s]], fit2.gren1$lambdag[[s]],
+        fit2.gren2$lambdag[[s]], fit2.gren3$lambdag[[s]])})
+opar <- par(no.readonly=TRUE)
+par(mar=opar$mar*c(1, 1.3, 1, 1))
+barplot(plot.data2[[1]], beside=TRUE, col=col2,
+        legend.text=c(methods2[1],
+                      expression("gren, "~alpha==0.05, "gren, "~alpha==0.5,
+                                 "gren, "~alpha==0.95), "no co-data"),
+        args.legend=list(x="topleft", fill=c(col2, NA),
+                         border=c(rep(1, length(methods2)), NA),
+                         lty=c(rep(NA, length(methods2)), 2),
+                         seg.len=1, merge=TRUE),
+        names.arg=labels2[[1]], ylab=expression(hat(lambda)~"'"[g]))
+abline(h=1, lty=2)
+par(opar)
+
 # ---- lines_metabolomics_alzheimer_res3_auc ----
 library(pROC)
 library(grpreg)
-load("../results/metabolomics_alzheimer_fit3.Rdata")
-res3 <- read.table("../results/metabolomics_alzheimer_res3.csv", 
+load("results/metabolomics_alzheimer_fit3.Rdata")
+res3 <- read.table("results/metabolomics_alzheimer_res3.csv", 
                    stringsAsFactors=FALSE)
 
 methods3 <- c("ridge", "grridge", "gren", "enet", "sgl", "cmcp", "gel")
@@ -291,14 +354,47 @@ points(t(sapply(1:length(plot.data3), function(m) {
   col=rep(col3[-c(1, 2)], each=3), pch=1)
 par(mfrow=c(1, 1))
 
+# ---- barplots_metabolomics_alzheimer_res3_auc ----
+library(Biobase)
+load("data/ESetMbolCSFPR2.Rdata")
+load("results/metabolomics_alzheimer_fit3.Rdata")
+
+methods3 <- c("grridge", paste0("gren", 1:3))
+col3 <- grey.colors(length(methods3), start=0.3, end=0.9, gamma=2.2, alpha=NULL)
+lty3 <- c(1:4)
+quality <- rep(c(1:length(fit3.grridge$arguments$partitions$part)), 
+               times=sapply(fit3.grridge$arguments$partitions$part, 
+                            length))[order(unlist(
+                              fit3.grridge$arguments$partitions$part))]
+feat <- fData(ESetMbolCSFPR2)
+labels3 <- list(degree=c("degree 0", "0 <= degree < average", 
+                         "average < degree"))
+plot.data3 <- lapply(1:length(fit3.gren1$lambdag), function(s) {
+  rbind(fit3.grridge$lambdamults[[s]], fit3.gren1$lambdag[[s]],
+        fit3.gren2$lambdag[[s]], fit3.gren3$lambdag[[s]])})
+opar <- par(no.readonly=TRUE)
+par(mar=opar$mar*c(1, 1.3, 1, 1))
+barplot(plot.data3[[1]], beside=TRUE, col=col3,
+        legend.text=c(methods3[1],
+                      expression("gren, "~alpha==0.05, "gren, "~alpha==0.5,
+                                 "gren, "~alpha==0.95), "no co-data"),
+        args.legend=list(x="topright", fill=c(col3, NA),
+                         border=c(rep(1, length(methods3)), NA),
+                         lty=c(rep(NA, length(methods3)), 2),
+                         seg.len=1, merge=TRUE),
+        names.arg=labels3[[1]], ylab=expression(hat(lambda)~"'"[g]))
+abline(h=1, lty=2)
+par(opar)
+
 # ---- lines_metabolomics_alzheimer_res4_auc ----
 library(pROC)
 library(grpreg)
-load("../results/metabolomics_alzheimer_fit4.Rdata")
-res4 <- read.table("../results/metabolomics_alzheimer_res4.csv", 
+load("results/metabolomics_alzheimer_fit4.Rdata")
+res4 <- read.table("results/metabolomics_alzheimer_res4.csv", 
                    stringsAsFactors=FALSE)
 
-methods4 <- c("ridge", "grridge", "gren", "enet", "sgl", "cmcp", "gel")
+methods4 <- c("ridge", "grridge", "gren", "enet", "sgl", "cmcp", "gel", "ocmcp",
+              "ogel")
 pred4 <- as.matrix(res4[substr(rownames(res4), 1, 4)=="pred", ])
 psel4 <- as.matrix(res4[substr(rownames(res4), 1, 4)=="psel", ])
 auc4 <- as.matrix(res4[substr(rownames(res4), 1, 3)=="auc", ])
@@ -329,7 +425,13 @@ cv.psel4 <- c(sum(coef(fit4.gren1$freq.model$groupreg,
               psel4[, grepl("cmcp3", colnames(psel4))][fit4.cmcp3$min],
               psel4[, grepl("gel1", colnames(psel4))][fit4.gel1$min],
               psel4[, grepl("gel2", colnames(psel4))][fit4.gel2$min],
-              psel4[, grepl("gel3", colnames(psel4))][fit4.gel3$min])
+              psel4[, grepl("gel3", colnames(psel4))][fit4.gel3$min],
+              psel4[, grepl("ocmcp1", colnames(psel4))][fit4.ocmcp1$min],
+              psel4[, grepl("ocmcp2", colnames(psel4))][fit4.ocmcp2$min],
+              psel4[, grepl("ocmcp3", colnames(psel4))][fit4.ocmcp3$min],
+              psel4[, grepl("ogel1", colnames(psel4))][fit4.ogel1$min],
+              psel4[, grepl("ogel2", colnames(psel4))][fit4.ogel2$min],
+              psel4[, grepl("ogel3", colnames(psel4))][fit4.ogel3$min])
 col4 <- c(1:length(methods4))
 lty4 <- c(1:4)
 
@@ -348,8 +450,14 @@ lines(plot.data4[[10]], col=col4[6], lty=lty4[1])
 lines(plot.data4[[11]], col=col4[6], lty=lty4[2])
 lines(plot.data4[[12]], col=col4[6], lty=lty4[3])
 lines(plot.data4[[13]], col=col4[7], lty=lty4[1])
-lines(plot.data4[[14]], col=col4[8], lty=lty4[2])
-lines(plot.data4[[15]], col=col4[9], lty=lty4[3])
+lines(plot.data4[[14]], col=col4[7], lty=lty4[2])
+lines(plot.data4[[15]], col=col4[7], lty=lty4[3])
+lines(plot.data4[[16]], col=col4[8], lty=lty4[1])
+lines(plot.data4[[17]], col=col4[8], lty=lty4[2])
+lines(plot.data4[[18]], col=col4[8], lty=lty4[3])
+lines(plot.data4[[19]], col=col4[9], lty=lty4[1])
+lines(plot.data4[[20]], col=col4[9], lty=lty4[2])
+lines(plot.data4[[21]], col=col4[9], lty=lty4[3])
 abline(h=auc4[colnames(auc4)=="ridge"], col=col4[1], lty=lty4[4])
 abline(h=auc4[colnames(auc4)=="grridge"], col=col4[2], lty=lty4[4])
 points(t(sapply(1:length(plot.data4), function(m) {
@@ -379,8 +487,14 @@ lines(plot.data4[[10]], col=col4[6], lty=lty4[1])
 lines(plot.data4[[11]], col=col4[6], lty=lty4[2])
 lines(plot.data4[[12]], col=col4[6], lty=lty4[3])
 lines(plot.data4[[13]], col=col4[7], lty=lty4[1])
-lines(plot.data4[[14]], col=col4[8], lty=lty4[2])
-lines(plot.data4[[15]], col=col4[9], lty=lty4[3])
+lines(plot.data4[[14]], col=col4[7], lty=lty4[2])
+lines(plot.data4[[15]], col=col4[7], lty=lty4[3])
+lines(plot.data4[[16]], col=col4[8], lty=lty4[1])
+lines(plot.data4[[17]], col=col4[8], lty=lty4[2])
+lines(plot.data4[[18]], col=col4[8], lty=lty4[3])
+lines(plot.data4[[19]], col=col4[9], lty=lty4[1])
+lines(plot.data4[[20]], col=col4[9], lty=lty4[2])
+lines(plot.data4[[21]], col=col4[9], lty=lty4[3])
 abline(h=auc4[colnames(auc4)=="ridge"], col=col4[1], lty=lty4[4])
 abline(h=auc4[colnames(auc4)=="grridge"], col=col4[2], lty=lty4[4])
 points(t(sapply(1:length(plot.data4), function(m) {
@@ -390,8 +504,8 @@ par(mfrow=c(1, 1))
 
 # ---- barplots_metabolomics_alzheimer_res4_auc ----
 library(Biobase)
-load("../data/ESetMbolCSFPR2.Rdata")
-load("../results/metabolomics_alzheimer_fit4.Rdata")
+load("data/ESetMbolCSFPR2.Rdata")
+load("results/metabolomics_alzheimer_fit4.Rdata")
 
 methods4 <- c("grridge", paste0("gren", 1:3))
 col4 <- grey.colors(length(methods4), start=0.3, end=0.9, gamma=2.2, alpha=NULL)
@@ -440,8 +554,8 @@ par(opar)
 library(CoRF)
 library(pROC)
 library(grpreg)
-load("../results/rnaseq_lymph_node_metastasis_fit1.Rdata")
-res1 <- read.table("../results/rnaseq_lymph_node_metastasis_res1.csv", 
+load("results/rnaseq_lymph_node_metastasis_fit1.Rdata")
+res1 <- read.table("results/rnaseq_lymph_node_metastasis_res1.csv", 
                    stringsAsFactors=FALSE)
 
 methods1 <- c("ridge", "grridge", "gren", "enet", "cmcp", "gel")
