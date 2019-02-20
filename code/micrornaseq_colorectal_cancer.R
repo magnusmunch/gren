@@ -60,14 +60,12 @@ utest <- utrain[-id.train, ]
 part <- diff.threegroup
 p <- ncol(xtrain)
 
-sum(apply(xtrain, 2, sd)==0)
-test <- glmnet(xtrain, ytrain, family="binomial")
 fit1.gren1 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.05, 
-                   trace=FALSE)
+                   standardize=FALSE, trace=FALSE)
 fit1.gren2 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.5, 
-                   trace=FALSE)
+                   standardize=FALSE, trace=FALSE)
 fit1.gren3 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.95, 
-                   trace=FALSE)
+                   standardize=FALSE, trace=FALSE)
 
 fit1.grridge <- grridge(t(xtrain), ytrain, list(part=split(1:p, part)))
 
