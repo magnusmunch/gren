@@ -456,10 +456,14 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	A possible weak point of the proposed method is the double EM loop. The double loop increases the chance of ending up in a local optimum. In the application discussed above we investigated the occurrence of multiple optima, but never encountered them. This does not guarantee that local optima do not occur, but it provides some evidence that local optima are not ubiquitous. Local optima can often be avoided by an informed choice of starting values. In our experience, reasonable starting values are obtained by running a group-regularized ridge regression and using the estimated penalty multipliers as starting values for \texttt{gren}. In addition, we note that even a local optimum might give `good enough' predictions in many practical settings.
 
 	\section*{Software}
-	The method is available as an \texttt{R} package from \url{https://CRAN.R-project.org/package=gren}.
+	A (stable) \texttt{R} package is available from 
+	\url{https://CRAN.R-project.org/package=gren}.
 
 	\section*{Supplementary Material}
-	Supplementary Material is available online from \url{http://pub.math.leidenuniv.nl/~munchmm/}.
+	Supplementary Material is available online from 
+	\url{http://pub.math.leidenuniv.nl/~munchmm/}. All materials needed to   
+	recreate this document are available from 
+	\url{https://github.com/magnusmunch/gren}.
 
 	\section*{Acknowledgements}
 	\textit{Conflict of Interest}: None declared.
