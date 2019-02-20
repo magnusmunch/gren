@@ -149,8 +149,6 @@ gren <- function(x, y, m=rep(1, nrow(x)), unpenalized=NULL, partitions=NULL,
     y <- y[, 2]
   }
   
-  browser()
-  
   # if no penalty parameter lambda is given we estimate it by cross-validation
   if(is.null(lambda)) {
     if(is.null(foldid)) {
