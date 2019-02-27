@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-### installation of packages
+### installation of gren if updated on github
 if(substr(system('git log -n 1 --format="%h %aN %s %ad"', intern=TRUE), 1, 7)!=
    substr(packageDescription("gren")$GithubSHA1, 1, 7)) {
   if(!("devtools" %in% installed.packages())) {
@@ -59,18 +59,31 @@ ytest <- benefit[-id.train]
 xtest <- scale(micrornas[-id.train, ])[, apply(micrornas[id.train, ], 2, sd)!=0]
 # set the constant micrornas to 0
 xtest[is.nan(xtest)] <- 0
-utest <- utrain[-id.train, ]
-part <- diff.threegroup[apply(micrornas[id.train, ], 2, sd)!=0]
+utest <- unpenal[-id.train, ]
+part <- diff.twogroup[apply(micrornas[id.train, ], 2, sd)!=0]
 p <- ncol(xtrain)
+u <- ncol(utrain)
 
-fit1.gren1 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.05, 
-                   standardize=TRUE, trace=FALSE)
-fit1.gren2 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.5, 
-                   standardize=TRUE, trace=FALSE)
-fit1.gren3 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.95, 
-                   standardize=TRUE, trace=FALSE)
+fit1.gren1 <- gren(xtrain, ytrain, unpenalized=utrain, 
+                   partitions=list(part=part), alpha=0.05, standardize=TRUE, 
+                   trace=FALSE)
+fit1.gren2 <- gren(xtrain, ytrain, unpenalized=utrain, 
+                   partitions=list(part=part), alpha=0.5, standardize=TRUE, 
+                   trace=FALSE)
+fit1.gren3 <- gren(xtrain, ytrain, unpenalized=utrain, 
+                   partitions=list(part=part), alpha=0.95, standardize=TRUE, 
+                   trace=FALSE)
 
-fit1.grridge <- grridge(t(xtrain), ytrain, list(part=split(1:p, part)))
+init1.grridge <- grridge(t(scale(micrornas)), benefit, 
+                         list(part=split(1:ncol(micrornas), diff.twogroup)),
+                         unpenal= ~ 1 + adjth2 + thscheme2 + thscheme3 + age + 
+                           pcrcdiff3, 
+                         optl=NULL, dataunpen=as.data.frame(unpenal))
+
+fit1.grridge <- grridge(t(xtrain), ytrain, list(part=split(1:p, part)),
+                        unpenal= ~ 1 + adjth2 + thscheme2 + thscheme3 + age + 
+                          pcrcdiff3, optl=init1.grridge$optl, 
+                        dataunpen=as.data.frame(utrain))
 
 fit1.sgl1 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.05)
 fit1.sgl1$fit$type <- "logit"
@@ -79,179 +92,319 @@ fit1.sgl2$fit$type <- "logit"
 fit1.sgl3 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.95)
 fit1.sgl3$fit$type <- "logit"
 
-fit1.cmcp1 <- cv.grpreg(xtrain, ytrain, part, penalty="cMCP", 
+fit1.cmcp1 <- cv.grpreg(cbind(utrain, xtrain), ytrain, 
+                        c(rep(0, ncol(utrain)), part), penalty="cMCP", 
                         family="binomial", alpha=0.05)
-fit1.cmcp2 <- cv.grpreg(xtrain, ytrain, part, penalty="cMCP", 
+fit1.cmcp2 <- cv.grpreg(cbind(utrain, xtrain), ytrain, 
+                        c(rep(0, ncol(utrain)), part), penalty="cMCP", 
                         family="binomial", alpha=0.5)
-fit1.cmcp3 <- cv.grpreg(xtrain, ytrain, part, penalty="cMCP", 
+fit1.cmcp3 <- cv.grpreg(cbind(utrain, xtrain), ytrain, 
+                        c(rep(0, ncol(utrain)), part), penalty="cMCP", 
                         family="binomial", alpha=0.95)
 
-fit1.gel1 <- cv.grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
-                       alpha=0.05)
-fit1.gel2 <- cv.grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
-                       alpha=0.5)
-fit1.gel3 <- cv.grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
-                       alpha=0.95)
+fit1.gel1 <- cv.grpreg(cbind(utrain, xtrain), ytrain, 
+                       c(rep(0, ncol(utrain)), part), penalty="gel", 
+                       family="binomial", alpha=0.05)
+# gel2 and gel3 give just the saturated model, so we create cv.grpreg ourselves
+fit1.gel2 <- grpreg(cbind(utrain, xtrain), ytrain, 
+                    c(rep(0, ncol(utrain)), part), penalty="gel", 
+                    family="binomial", alpha=0.5)
+fit1.gel2 <- list(cve=NA, cvse=NA, lambda=fit1.gel2$lambda, fit=fit1.gel2, 
+                   min=1, lambda.min=fit1.gel2$lambda, null.dev=NA, pe=NA)
+class(fit1.gel2) <- "cv.grpreg"
+fit1.gel3 <- grpreg(cbind(utrain, xtrain), ytrain, 
+                    c(rep(0, ncol(utrain)), part), penalty="gel", 
+                    family="binomial", alpha=0.95)
+fit1.gel3 <- list(cve=NA, cvse=NA, lambda=fit1.gel3$lambda, fit=fit1.gel3, 
+                  min=1, lambda.min=fit1.gel3$lambda, null.dev=NA, pe=NA)
+class(fit1.gel3) <- "cv.grpreg"
 
 save(fit1.grridge, fit1.gren1, fit1.gren2, fit1.gren3, fit1.sgl1, fit1.sgl2,
      fit1.sgl3, fit1.cmcp1, fit1.cmcp2, fit1.cmcp3, fit1.gel1, fit1.gel2,
      fit1.gel3, file="results/micrornaseq_colorectal_cancer_fit1.Rdata")
 
 ### prediction on test set
-pred1 <- data.frame(ridge=predict.grridge(fit1.grridge, t(xtest))[, 1], 
-                    grridge=predict.grridge(fit1.grridge, t(xtest))[, 2],
-                    gren1=predict(fit1.gren1$freq.model$groupreg, xtest, 
-                                  type="response"),
-                    
-                    enet1=predict(fit1.gren1$freq.model$regular, xtest, 
-                                  type="response"),
-                    
-                    sgl1=predictSGL(fit1.sgl1$fit, xtest),
-                    
-                    cmcp1=predict(fit1.cmcp1$fit, xtest, type="response"), 
-                    
-                    gel1=predict(fit1.gel1$fit, xtest, type="response")
-                    )
-psel1 <- c(ridge=p, grridge=p,
-           gren1=fit1.gren1$freq.model$groupreg$df,
-           
-           enet1=fit1.gren1$freq.model$regular$df,
-           
-           sgl1=colSums(fit1.sgl1$fit$beta!=0),
-           
-           cmcp1=colSums(fit1.cmcp1$fit$beta[-1, ]!=0), 
-           
-           gel1=colSums(fit1.gel1$fit$beta[-1, ]!=0))
-auc1 <- apply(pred1, 2, function(m) {pROC::auc(ytest, m)})
-auc1.gren1 <- auc1[substr(names(auc1), 1, 4)=="gren"]
-auc1.enet1 <- auc1[substr(names(auc1), 1, 4)=="enet"]
-auc1.sgl1 <- auc1[substr(names(auc1), 1, 3)=="sgl"]
-auc1.cmcp1 <- auc1[substr(names(auc1), 1, 4)=="cmcp"]
-auc1.gel1 <- auc1[substr(names(auc1), 1, 3)=="gel"]
-auc1.ridge <- auc1[substr(names(auc1), 1, 5)=="ridge"]
-auc1.grridge <- auc1[substr(names(auc1), 1, 7)=="grridge"]
-
-psel1.gren1 <- psel1[substr(names(psel1), 1, 4)=="gren"]
-psel1.enet1 <- psel1[substr(names(psel1), 1, 4)=="enet"]
-psel1.sgl1 <- psel1[substr(names(psel1), 1, 3)=="sgl"]
-psel1.cmcp1 <- psel1[substr(names(psel1), 1, 4)=="cmcp"]
-psel1.gel1 <- psel1[substr(names(psel1), 1, 3)=="gel"]
-psel1.ridge <- psel1[substr(names(psel1), 1, 5)=="ridge"]
-psel1.grridge <- psel1[substr(names(psel1), 1, 7)=="grridge"]
-
-plot(psel1.gren1, auc1.gren1, col=1, type="l", xlim=range(c(psel1.gren1 ,
-                                                            psel1.enet1 ,
-                                                            psel1.sgl1 ,
-                                                            psel1.cmcp1 ,
-                                                            psel1.gel1 ,
-                                                            psel1.ridge ,
-                                                            psel1.grridge)),
-     ylim=range(c(auc1.gren1 ,
-                  auc1.enet1 ,
-                  auc1.sgl1 , 
-                  auc1.cmcp1 ,
-                  auc1.gel1 , 
-                  auc1.ridge ,
-                  auc1.grridge)))
-lines(psel1.enet1, auc1.enet1, col=2)
-lines(psel1.sgl1, auc1.sgl1, col=3)
-lines(psel1.cmcp1, auc1.cmcp1, col=4)
-lines(psel1.gel1, auc1.gel1, col=5)
-abline(h=auc1.ridge, lty=2, col=6)
-abline(h=auc1.grridge, lty=2, col=7)
-
-
-pred1 <- data.frame(ridge=predict.grridge(fit1.grridge, t(xtest))[, 1], 
-                    grridge=predict.grridge(fit1.grridge, t(xtest))[, 2],
-                    gren1=predict(fit1.gren1$freq.model$groupreg, xtest, 
-                                  type="response"),
-                    gren2=predict(fit1.gren2$freq.model$groupreg, xtest, 
-                                  type="response"), 
-                    gren3=predict(fit1.gren3$freq.model$groupreg, xtest, 
-                                  type="response"), 
-                    enet1=predict(fit1.gren1$freq.model$regular, xtest, 
-                                  type="response"),
-                    enet2=predict(fit1.gren2$freq.model$regular, xtest, 
-                                  type="response"), 
-                    enet3=predict(fit1.gren3$freq.model$regular, xtest, 
-                                  type="response"), 
+pred1 <- data.frame(ridge=predict.grridge(fit1.grridge, t(xtest), 
+                                          dataunpennew=as.data.frame(utest))[
+                                            , 1], 
+                    grridge=predict.grridge(fit1.grridge, t(xtest),
+                                            dataunpennew=as.data.frame(utest))[
+                                              , 2],
+                    gren1=predict(fit1.gren1, xtest, utest, type="groupreg"),
+                    gren2=predict(fit1.gren2, xtest, utest, type="groupreg"), 
+                    gren3=predict(fit1.gren3, xtest, utest, type="groupreg"), 
+                    enet1=predict(fit1.gren1, xtest, utest, type="regular"),
+                    enet2=predict(fit1.gren2, xtest, utest, type="regular"), 
+                    enet3=predict(fit1.gren3, xtest, utest, type="regular"), 
                     sgl1=predictSGL(fit1.sgl1$fit, xtest),
                     sgl2=predictSGL(fit1.sgl2$fit, xtest),
                     sgl3=predictSGL(fit1.sgl3$fit, xtest),
-                    cmcp1=predict(fit1.cmcp1$fit, xtest, type="response"), 
-                    cmcp2=predict(fit1.cmcp2$fit, xtest, type="response"), 
-                    cmcp3=predict(fit1.cmcp2$fit, xtest, type="response"),
-                    gel1=predict(fit1.gel1$fit, xtest, type="response"), 
-                    gel2=predict(fit1.gel2$fit, xtest, type="response"), 
-                    gel3=predict(fit1.gel3$fit, xtest, type="response"))
+                    cmcp1=predict(fit1.cmcp1$fit, cbind(utest, xtest), 
+                                  type="response"), 
+                    cmcp2=predict(fit1.cmcp2$fit, cbind(utest, xtest), 
+                                  type="response"), 
+                    cmcp3=predict(fit1.cmcp3$fit, cbind(utest, xtest), 
+                                  type="response"),
+                    gel1=predict(fit1.gel1$fit, cbind(utest, xtest), 
+                                 type="response"), 
+                    gel2=predict(fit1.gel2$fit, cbind(utest, xtest), 
+                                 type="response"), 
+                    gel3=predict(fit1.gel3$fit, cbind(utest, xtest), 
+                                 type="response"))
 psel1 <- c(ridge=p, grridge=p,
-           gren1=fit1.gren1$freq.model$groupreg$df,
-           gren2=fit1.gren2$freq.model$groupreg$df,
-           gren3=fit1.gren3$freq.model$groupreg$df,
-           enet1=fit1.gren1$freq.model$regular$df,
-           enet2=fit1.gren2$freq.model$regular$df,
-           enet3=fit1.gren3$freq.model$regular$df,
+           gren1=fit1.gren1$freq.model$groupreg$df - u,
+           gren2=fit1.gren2$freq.model$groupreg$df - u,
+           gren3=fit1.gren3$freq.model$groupreg$df - u,
+           enet1=fit1.gren1$freq.model$regular$df - u,
+           enet2=fit1.gren2$freq.model$regular$df - u,
+           enet3=fit1.gren3$freq.model$regular$df - u,
            sgl1=colSums(fit1.sgl1$fit$beta!=0),
            sgl2=colSums(fit1.sgl2$fit$beta!=0),
            sgl3=colSums(fit1.sgl3$fit$beta!=0),
-           cmcp1=colSums(fit1.cmcp1$fit$beta[-1, ]!=0), 
-           cmcp2=colSums(fit1.cmcp2$fit$beta[-1, ]!=0), 
-           cmcp3=colSums(fit1.cmcp3$fit$beta[-1, ]!=0),
-           gel1=colSums(fit1.gel1$fit$beta[-1, ]!=0), 
-           gel2=colSums(fit1.gel1$fit$beta[-1, ]!=0), 
-           gel3=colSums(fit1.gel1$fit$beta[-1, ]!=0))
+           cmcp1=colSums(fit1.cmcp1$fit$beta[-c(1:(u + 1)), ]!=0), 
+           cmcp2=colSums(fit1.cmcp2$fit$beta[-c(1:(u + 1)), ]!=0), 
+           cmcp3=colSums(fit1.cmcp3$fit$beta[-c(1:(u + 1)), ]!=0),
+           gel1=colSums(fit1.gel1$fit$beta[-c(1:(u + 1)), ]!=0), 
+           gel2=colSums(as.matrix(fit1.gel2$fit$beta[-c(1:(u + 1)), ]!=0)), 
+           gel3=colSums(as.matrix(fit1.gel3$fit$beta[-c(1:(u + 1)), ]!=0)))
 auc1 <- apply(pred1, 2, function(m) {pROC::auc(ytest, m)})
 res1 <- rbind(pred1, psel1, auc1)
 rownames(res1) <- c(paste0("pred", c(1:length(ytest))), paste0("psel", 1),
                     paste0("auc", 1))
-write.table(res1, file="results/metabolomics_alzheimer_res1.csv")
+write.table(res1, file="results/micrornaseq_colorectal_cancer_res1.csv")
 
-### cross-validation results
-load(paste(path.res, "grEBEN_mirseq_Maarten_res4.Rdata", sep=""))
 
-auc <- lapply(results4$pred[-1], function(l) {
-  apply(l, 2, function(preds) {pROC::roc(as.numeric(resp) - 1, preds)$auc})})
-auc <- c(pROC::roc(as.numeric(resp) - 1, results4$pred[[1]])$auc, auc)
+################################### model 2 ####################################
+### fitting the models
+set.seed(2019)
+ytrain <- benefit[id.train]
+# we remove the constant micrornas
+xtrain <- scale(micrornas[id.train, ])[, apply(micrornas[id.train, ], 2, sd)!=0]
+utrain <- unpenal[id.train, ]
+ytest <- benefit[-id.train]
+xtest <- scale(micrornas[-id.train, ])[, apply(micrornas[id.train, ], 2, sd)!=0]
+# set the constant micrornas to 0
+xtest[is.nan(xtest)] <- 0
+utest <- unpenal[-id.train, ]
+part <- diff.threegroup[apply(micrornas[id.train, ], 2, sd)!=0]
+p <- ncol(xtrain)
 
-briers <- lapply(results4$pred[-1], function(l) {
-  apply(l, 2, function(preds) {
-    1 - sum((as.numeric(resp) - 1 - preds)^2)/
-      sum((as.numeric(resp) - 1 - mean(as.numeric(resp) - 1))^2)})})
-briers <- c(1 - sum((as.numeric(resp) - 1 - results4$pred[[1]])^2)/
-              sum((as.numeric(resp) - 1 - mean(as.numeric(resp) - 1))^2),
-            briers)
+fit2.gren1 <- gren(xtrain, ytrain, unpenalized=utrain, 
+                   partitions=list(part=part), alpha=0.05, standardize=TRUE, 
+                   trace=FALSE)
+fit2.gren2 <- gren(xtrain, ytrain, unpenalized=utrain, 
+                   partitions=list(part=part), alpha=0.5, standardize=TRUE, 
+                   trace=FALSE)
+fit2.gren3 <- gren(xtrain, ytrain, unpenalized=utrain, 
+                   partitions=list(part=part), alpha=0.95, standardize=TRUE, 
+                   trace=FALSE)
 
-psel <- lapply(results4$psel, function(l) {colMeans(l)})
+init2.grridge <- grridge(t(scale(micrornas)), benefit, 
+                         list(part=split(1:ncol(micrornas), diff.threegroup)),
+                         unpenal= ~ 1 + adjth2 + thscheme2 + thscheme3 + age + 
+                           pcrcdiff3, optl=NULL, 
+                         dataunpen=as.data.frame(unpenal))
 
-leglabels <- c("ridge", expression(paste("enet, ", alpha==0.05)),
-               expression(paste("enet, ", alpha==0.5)),
-               expression(paste("enet, ", alpha==0.95)),
-               "group-regularized", "not group-regularized")
+fit2.grridge <- grridge(t(xtrain), ytrain, list(part=split(1:p, part)),
+                        unpenal= ~ 1 + adjth2 + thscheme2 + thscheme3 + age + 
+                          pcrcdiff3, optl=init2.grridge$optl, 
+                        dataunpen=as.data.frame(utrain))
 
-png(paste(path.graph, "grEBEN_mirseq_Maarten_res4_performance.png", sep=""),
-    units="in", width=12, height=6, res=120)
-par(mfrow=c(1, 2))
-plot(psel[[1]], auc[[2]], type="l", xlim=range(psel), ylim=range(auc), col=2,
-     xlab="Number of selected variables", ylab="AUC", main="a)")
-lines(range(psel), rep(auc[[1]], 2), col=2, lty=2)
-lines(psel[[2]], auc[[3]], col=3, lty=2)
-lines(psel[[3]], auc[[4]], col=4, lty=2)
-lines(psel[[4]], auc[[5]], col=5, lty=2)
-lines(psel[[5]], auc[[6]], col=3)
-lines(psel[[6]], auc[[7]], col=4)
-lines(psel[[7]], auc[[8]], col=5)
+fit2.sgl1 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.05)
+fit2.sgl1$fit$type <- "logit"
+fit2.sgl2 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.5)
+fit2.sgl2$fit$type <- "logit"
+fit2.sgl3 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.95)
+fit2.sgl3$fit$type <- "logit"
 
-plot(psel[[1]], briers[[2]], type="l", xlim=range(psel), ylim=range(briers),
-     col=2, xlab="Number of selected variables", ylab="Brier skill score",
-     main="b)")
-lines(range(psel), rep(briers[[1]], 2), col=2, lty=2)
-lines(psel[[2]], briers[[3]], col=3, lty=2)
-lines(psel[[3]], briers[[4]], col=4, lty=2)
-lines(psel[[4]], briers[[5]], col=5, lty=2)
-lines(psel[[5]], briers[[6]], col=3)
-lines(psel[[6]], briers[[7]], col=4)
-lines(psel[[7]], briers[[8]], col=5)
-legend("bottomleft", legend=leglabels, fill=c(2:5, 0, 0),
-       lty=c(rep(NA, 4), 1, 2), border=c(rep(1, 4), 0, 0), merge=TRUE,
-       seg.len=1)
-dev.off()
+fit2.cmcp1 <- cv.grpreg(cbind(utrain, xtrain), ytrain, 
+                        c(rep(0, ncol(utrain)), part), penalty="cMCP", 
+                        family="binomial", alpha=0.05)
+fit2.cmcp2 <- cv.grpreg(cbind(utrain, xtrain), ytrain, 
+                        c(rep(0, ncol(utrain)), part), penalty="cMCP", 
+                        family="binomial", alpha=0.5)
+fit2.cmcp3 <- cv.grpreg(cbind(utrain, xtrain), ytrain, 
+                        c(rep(0, ncol(utrain)), part), penalty="cMCP", 
+                        family="binomial", alpha=0.95)
+
+fit2.gel1 <- cv.grpreg(cbind(utrain, xtrain), ytrain, 
+                       c(rep(0, ncol(utrain)), part), penalty="gel", 
+                       family="binomial", alpha=0.05)
+# gel2 and gel3 give just the saturated model, so we create cv.grpreg ourselves
+fit2.gel2 <- grpreg(cbind(utrain, xtrain), ytrain, 
+                    c(rep(0, ncol(utrain)), part), penalty="gel", 
+                    family="binomial", alpha=0.5)
+fit2.gel2 <- list(cve=NA, cvse=NA, lambda=fit2.gel2$lambda, fit=fit2.gel2, 
+                  min=1, lambda.min=fit2.gel2$lambda, null.dev=NA, pe=NA)
+class(fit2.gel2) <- "cv.grpreg"
+fit2.gel3 <- grpreg(cbind(utrain, xtrain), ytrain, 
+                    c(rep(0, ncol(utrain)), part), penalty="gel", 
+                    family="binomial", alpha=0.95)
+fit2.gel3 <- list(cve=NA, cvse=NA, lambda=fit2.gel3$lambda, fit=fit2.gel3, 
+                  min=1, lambda.min=fit2.gel3$lambda, null.dev=NA, pe=NA)
+class(fit2.gel3) <- "cv.grpreg"
+
+save(fit2.grridge, fit2.gren1, fit2.gren2, fit2.gren3, fit2.sgl1, fit2.sgl2,
+     fit2.sgl3, fit2.cmcp1, fit2.cmcp2, fit2.cmcp3, fit2.gel1, fit2.gel2,
+     fit2.gel3, file="results/micrornaseq_colorectal_cancer_fit2.Rdata")
+
+### prediction on test set
+pred2 <- data.frame(ridge=predict.grridge(fit2.grridge, t(xtest), 
+                                          dataunpennew=as.data.frame(utest))[
+                                            , 1], 
+                    grridge=predict.grridge(fit2.grridge, t(xtest),
+                                            dataunpennew=as.data.frame(utest))[
+                                              , 2],
+                    gren1=predict(fit2.gren1, xtest, utest, type="groupreg"),
+                    gren2=predict(fit2.gren2, xtest, utest, type="groupreg"), 
+                    gren3=predict(fit2.gren3, xtest, utest, type="groupreg"), 
+                    enet1=predict(fit2.gren1, xtest, utest, type="regular"),
+                    enet2=predict(fit2.gren2, xtest, utest, type="regular"), 
+                    enet3=predict(fit2.gren3, xtest, utest, type="regular"), 
+                    sgl1=predictSGL(fit2.sgl1$fit, xtest),
+                    sgl2=predictSGL(fit2.sgl2$fit, xtest),
+                    sgl3=predictSGL(fit2.sgl3$fit, xtest),
+                    cmcp1=predict(fit2.cmcp1$fit, cbind(utest, xtest), 
+                                  type="response"), 
+                    cmcp2=predict(fit2.cmcp2$fit, cbind(utest, xtest), 
+                                  type="response"), 
+                    cmcp3=predict(fit2.cmcp3$fit, cbind(utest, xtest), 
+                                  type="response"),
+                    gel1=predict(fit2.gel1$fit, cbind(utest, xtest), 
+                                 type="response"), 
+                    gel2=predict(fit2.gel2$fit, cbind(utest, xtest), 
+                                 type="response"), 
+                    gel3=predict(fit2.gel3$fit, cbind(utest, xtest), 
+                                 type="response"))
+psel2 <- c(ridge=p, grridge=p,
+           gren1=fit2.gren1$freq.model$groupreg$df - u,
+           gren2=fit2.gren2$freq.model$groupreg$df - u,
+           gren3=fit2.gren3$freq.model$groupreg$df - u,
+           enet1=fit2.gren1$freq.model$regular$df - u,
+           enet2=fit2.gren2$freq.model$regular$df - u,
+           enet3=fit2.gren3$freq.model$regular$df - u,
+           sgl1=colSums(fit2.sgl1$fit$beta!=0),
+           sgl2=colSums(fit2.sgl2$fit$beta!=0),
+           sgl3=colSums(fit2.sgl3$fit$beta!=0),
+           cmcp1=colSums(fit2.cmcp1$fit$beta[-c(1:(u + 1)), ]!=0), 
+           cmcp2=colSums(fit2.cmcp2$fit$beta[-c(1:(u + 1)), ]!=0), 
+           cmcp3=colSums(fit2.cmcp3$fit$beta[-c(1:(u + 1)), ]!=0),
+           gel1=colSums(fit2.gel1$fit$beta[-c(1:(u + 1)), ]!=0), 
+           gel2=colSums(as.matrix(fit2.gel2$fit$beta[-c(1:(u + 1)), ]!=0)), 
+           gel3=colSums(as.matrix(fit2.gel3$fit$beta[-c(1:(u + 1)), ]!=0)))
+auc2 <- apply(pred2, 2, function(m) {pROC::auc(ytest, m)})
+res2 <- rbind(pred2, psel2, auc2)
+rownames(res2) <- c(paste0("pred", c(1:length(ytest))), paste0("psel", 1),
+                    paste0("auc", 1))
+write.table(res2, file="results/micrornaseq_colorectal_cancer_res2.csv")
+
+
+################################### model 3 ####################################
+###  create 100 random splits of features into groups
+set.seed(2019)
+nsplits <- 100
+y <- benefit
+x <- scale(micrornas)
+unpenal <- unpenal
+p <- ncol(x)
+u <- ncol(unpenal)
+part <- diff.threegroup
+
+multipliers <- data.frame(grridge=matrix(NA, nrow=nsplits, 
+                                         ncol=length(unique(part))),
+                          gren1=matrix(NA, nrow=nsplits, 
+                                       ncol=length(unique(part))),
+                          gren2=matrix(NA, nrow=nsplits, 
+                                       ncol=length(unique(part))),
+                          gren3=matrix(NA, nrow=nsplits, 
+                                       ncol=length(unique(part))))
+
+for(k in 1:nsplits) {
+  cat(paste("split ", k, "\n"))
+  set.seed(2019 + k)
+  
+  part.train <- sample(part)
+
+  fit3.gren1 <- gren(x, y, unpenalized=unpenal, 
+                     partitions=list(part=part.train), alpha=0.05, 
+                     standardize=TRUE, trace=FALSE)
+  fit3.gren2 <- gren(x, y, unpenalized=unpenal, 
+                     partitions=list(part=part.train), alpha=0.5, 
+                     standardize=TRUE, trace=FALSE)
+  fit3.gren3 <- gren(x, y, unpenalized=unpenal, 
+                     partitions=list(part=part.train), alpha=0.95, 
+                     standardize=TRUE, trace=FALSE)
+  
+  fit3.grridge <- grridge(t(x), y, list(part=split(1:p, part.train)),
+                          unpenal= ~ 1 + adjth2 + thscheme2 + thscheme3 + age + 
+                            pcrcdiff3, dataunpen=as.data.frame(unpenal))
+
+  multipliers[k, c(1:length(unique(part)))] <- fit3.grridge$lambdamults$part
+  multipliers[k, c((length(unique(part)) + 1):(2*length(unique(part))))] <- 
+    fit3.gren1$lambdag$part
+  multipliers[k, c((2*length(unique(part)) + 1):(3*length(unique(part))))] <- 
+    fit3.gren2$lambdag$part
+  multipliers[k, c((3*length(unique(part)) + 1):(4*length(unique(part))))] <- 
+    fit3.gren3$lambdag$part
+
+}
+res3 <- multipliers
+rownames(res3) <- paste0("split", c(1:nsplits))
+write.table(res3, file="results/micrornaseq_colorectal_cancer_res3.csv")
+
+
+################################### model 4 ####################################
+###  create 100 random splits of features into groups
+set.seed(2019)
+nsplits <- 100
+y <- benefit
+x <- scale(micrornas)
+unpenal <- unpenal
+p <- ncol(x)
+u <- ncol(unpenal)
+ngroups <- 10
+part <- rep(1:ngroups, times=round(c(rep(
+  p %/% ngroup + as.numeric((p %% ngroups)!=0), times=p %% ngroups),
+  rep(p %/% ngroups, times=ngroups - p %% ngroups))))
+
+multipliers <- data.frame(grridge=matrix(NA, nrow=nsplits, 
+                                         ncol=length(unique(part))),
+                          gren1=matrix(NA, nrow=nsplits, 
+                                       ncol=length(unique(part))),
+                          gren2=matrix(NA, nrow=nsplits, 
+                                       ncol=length(unique(part))),
+                          gren3=matrix(NA, nrow=nsplits, 
+                                       ncol=length(unique(part))))
+
+for(k in 1:nsplits) {
+  cat(paste("split ", k, "\n"))
+  set.seed(2019 + k)
+  
+  part.train <- sample(part)
+  
+  fit3.gren1 <- gren(x, y, unpenalized=unpenal, 
+                     partitions=list(part=part.train), alpha=0.05, 
+                     standardize=TRUE, trace=FALSE)
+  fit3.gren2 <- gren(x, y, unpenalized=unpenal, 
+                     partitions=list(part=part.train), alpha=0.5, 
+                     standardize=TRUE, trace=FALSE)
+  fit3.gren3 <- gren(x, y, unpenalized=unpenal, 
+                     partitions=list(part=part.train), alpha=0.95, 
+                     standardize=TRUE, trace=FALSE)
+  
+  fit3.grridge <- grridge(t(x), y, list(part=split(1:p, part.train)),
+                          unpenal= ~ 1 + adjth2 + thscheme2 + thscheme3 + age + 
+                            pcrcdiff3, dataunpen=as.data.frame(unpenal))
+  
+  multipliers[k, c(1:length(unique(part)))] <- fit3.grridge$lambdamults$part
+  multipliers[k, c((length(unique(part)) + 1):(2*length(unique(part))))] <- 
+    fit3.gren1$lambdag$part
+  multipliers[k, c((2*length(unique(part)) + 1):(3*length(unique(part))))] <- 
+    fit3.gren2$lambdag$part
+  multipliers[k, c((3*length(unique(part)) + 1):(4*length(unique(part))))] <- 
+    fit3.gren3$lambdag$part
+  
+}
+res3 <- multipliers
+rownames(res3) <- paste0("split", c(1:nsplits))
+write.table(res3, file="results/micrornaseq_colorectal_cancer_res3.csv")

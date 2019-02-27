@@ -176,7 +176,7 @@ Aad W. van der Vaart$^{2}$ \\ and Mark A. van de Wiel$^{1,3}$}
   \subsection{Expectation and variance}
   The expectation and variance of $\beta$ are:
   \begin{align*}
-  \E[\beta] &= g(\lambda_1,\lambda_2) \int_{-\infty}^{\infty} \beta \cdot \exp\
+  \E[\beta] &= g(\lambda_1,\lambda_2) \int_{-\infty}^{\infty} \beta \cdot \exp\[
   -\frac{1}{2} (\lambda_1 |\beta| + \lambda_2 \beta^2)\] d\beta=0, \\
   \V[\beta] &= g(\lambda_1,\lambda_2) \int_{-\infty}^{\infty} \beta^2 \cdot
   \exp\[-\frac{1}{2} (\lambda_1 |\beta| + \lambda_2 \beta^2)\] d\beta -
@@ -482,14 +482,14 @@ with the $d_{g_1 g_2}$ terms calculated as $\sum_{\substack{j \in \G_1(g_1) \\ \
 
 In (\ref{eq:multpart}) we model the two partition-specific penalty multipliers in a multiplicative way, mainly for convenience. First, there are computational reasons: The separation of the square root in the $L_1$-norm penalty term into two terms facilitates the numerical estimation. Additionally, multiplicative modelling of the partitions allows for more flexibility in the estimates. To see this consider the obvious alternative: additive partition-specific multipliers. Since the penalty multipliers are strictly positive, the constraint on the geometric mean makes one large additive penalty estimate difficult to compensate with a smaller estimate, thereby impairing flexibility of the model. Large multiplicative penalty multipliers are easier to compensate for by smaller penalty multipliers, rendering this the less restrictive option for modelling the partitions.
 
-\section{Simulations}
+  \section{Simulations}
 The quality of feature selection is assessed by Cohen's kappa \cite[]{cohen_coefficient_1960}. This kappa is measures similarity between two sets of categorical values. One set contains the feature selection indicators: $s(j) := \mathbbm{1}\{\hat{\beta}_j \neq 0\}$, while the other set contains the true non-zero feature indicators: $t(j) := \mathbbm{1}\{\beta_j \neq 0\}$. We calculate Cohen's $\kappa$ as:
 	\begin{align*}
 	\kappa & = \frac{f_o - f_e}{1 - f_e}, \text{ where } f_o = p^{-1}\sum_{j=1}^p \mathbbm{1}\{s(j)=t(j)\} \\ & \text{ and } f_e = p^{-2} \left\{ \(\sum_{j=1}^p s(j)\) \cdot \(\sum_{j=1}^p t(j)\) + \[\sum_{j=1}^p (1 - s(j)) \] \cdot \[\sum_{j=1}^p (1 - t(j)) \]\right\}.
 	\end{align*}
 	Here, $f_o$ and $f_e$ denote the frequencies of correctly identified and expected correctly identified features, respectively. A positive or negative kappa indicate better and worse feature selection than expected by chance, respectively. In addition, we evaluate estimation accuracy by mean squared error: $\text{MSE} = p^{-1} \sum_{j=1}^p (\beta_j - \hat{\beta}_j)^2$. 
 	
-\subsection{Scenario 1}
+  \subsection{Scenario 1}
 	In this sparse scenario we assume differential signal between 5 groups of features. The average signal in a group increases by a factor 1.6 with group number:
 	\begin{align*}
 	\bbeta & =  \begin{bmatrix} \smash[b]{\underbrace{ \begin{matrix} \mathbf{0} & \cdots & \mathbf{0} \end{matrix}}_{150}} & \smash[b]{\underbrace{ \begin{matrix} \beta_{1}^1 & \cdots & \beta_{50}^1 \end{matrix}}_{50}} & \cdots & \smash[b]{\underbrace{ \begin{matrix} \mathbf{0} & \cdots & \mathbf{0} \end{matrix}}_{150}} & \smash[b]{\underbrace{ \begin{matrix} \beta_{1}^5 & \cdots & \beta^5_{50} \end{matrix}}_{50}} \end{bmatrix} \tr, \\
@@ -514,78 +514,116 @@ The quality of feature selection is assessed by Cohen's kappa \cite[]{cohen_coef
 	\subsection{Scenario 5}
 	In the last scenario we create a sparse true model that contains some differential signal. We impl
 
-\section{Application to microRNAs in colorectal cancer}\label{sec:appcolon}
-\subsection{Partitioning based on differential expression}\label{sec:mirna}
-The data set is from a deep sequencing analysis on microRNA \cite[]{neerincx_combination_2018}. The study was done in 88 treated colorectal cancer patients, with the aim of classifying treatment response, coded as either non-progressive/remission (70 patients) or progressive (18 patients). After pre-processing and normalisation, 2114 microRNAs remained. In addition to the 2114 microRNAs we incorporated 4 unpenalized clinical covariates into the analysis: prior use of adjuvant therapy (binary), the type of systemic treatment regimen (ternary), age, and primary tumor differentiation (binary).
+  \section{Application to MicroRNAs in colorectal cancer}\label{sec:colorectal}
+  In this section we present additional results to Section [! section ref here]
+  in the Main Document.
+  
+  \subsection{Random groups}
+  Considering that the features may be partitioned into many groups, with one 
+  parameter per group, we have to be aware of overfitting risks. We investigated
+  this using the data introduced in Section [! section ref here] of the Main 
+  Document, randomly dividing 
+  the features into three groups. We fixed the group sizes to the group sizes 
+  used in the three-group setting in Section [! section ref here] of the Main
+  Docuemtn. Under this random 
+  partitioning of the features, we expect all penalty multipliers to be 
+  estimated as one if no overfitting occurs.
+  
+  We compared the estimated multipliers to the estimates by \texttt{GRridge}. 
+  Since these results depend on one specific randomisation of the groups, we 
+  repeated the procedure 100 times and present the results in [! figure ref]. 
+  From this figure we see that the estimates for \texttt{gren} are close to one.
+  The estimates by \texttt{GRridge} show much more variation. Additionally, 
+  \texttt{GRridge} gives slightly biased estimates: the median penalty parameter
+  estimates are [! medians here] for the three groups. In contrast, the median 
+  estimates of \texttt{gren} are [! medians here].
+  
+  [! figure here]
 
-In a preliminary experiment on different subjects, the microRNA expression levels of metastatic colorectal tumour tissue were compared to normal non-colorectal tissue and primary colorectal tumour tissue was compared to primary colorectal tumour tissue \cite[]{neerincx_mir_2015}. This yielded 221 microRNAs that were differentially expressed in both comparisons ($\text{FDR} \leq 0.05$), versus 1893 not differentially expressed microRNAs. We expect that incorporation of this partitioning enhances therapy response classification, because tumor-specific miRNAs might be more relevant than non-specific ones. In addition, we divided the differentially expressed microRNAs even further into 127 highly differentially expressed microRNAs ($\text{FDR} \leq 0.001$) and 94 medium differentially expressed microRNAs ($0.001 < \text{FDR} \leq 0.05$).  We will refer to this second partitioning as the three-group setting, as opposed to the first, the two-group setting.
+  We repeated the simulation with ten evenly sized groups. Figure 
+  [! figure ref here] presents the estimated penalty multipliers for 100 random 
+  splits of the microRNA features into 10 evenly sized groups for 
+  \texttt{GRridge} and \texttt{gren} with $\alpha \in \{ 0.05, 0.5, 0.95 \}$. 
+  From the Figure we see that \texttt{GRridge} shows more variation around one 
+  then the other models. In addition, the median penalty multipliers for the 
+  three \texttt{gren} models are all between [! medians here], while the 
+  \texttt{GRridge} median estimates range from [! medians here]. This indicates 
+  that \texttt{GRridge} suffers from a slight bias in the estimation, while the 
+  \texttt{gren} estimates appear to be unbiased.
 
-We compared \texttt{gren} to ridge and elastic net regression, and \texttt{GRridge}. For the elastic net methods (including \texttt{gren}) we set $\alpha \in \{ 0.05, 0.5, 0.95\}$. The estimated penalty multipliers are according to expectation: in all group-regularized methods, the 221 differentially expressed microRNAs receive the smallest penalty (Figure \ref{fig:col_bar}a). In the three-group setting the pattern is again as expected (Figure \ref{fig:col_bar}b): the highly expressed group, receives the lowest penalty, followed by the medium expressed group, while the non-expressed group receives the strongest penalty. \texttt{GRridge} is not able to distinguish between the medium and non-differentially expressed groups of microRNAs.
+  [! figure here]
 
-\begin{figure}[!h]
-	\centering
-	\includegraphics[width=0.83\linewidth]{grEBEN_mirseq_Maarten_bar1.png}
-	\caption{Estimated penalty multipliers for (a) the two-group setting and (b) the three-group setting.}
-	\label{fig:col_bar}
-\end{figure}
-Predictive performance of the methods is measured by AUC and BSS, both estimated by leave-one-out cross-validation (LOOCV), and shown in Figure \ref{fig:col_per}. All group-regularized elastic net models consistently outperform their non-group-regularized counterparts in both settings, in terms of AUC and BSS. In both settings, \texttt{gren} with $\alpha=0.5$ and $\alpha=0.95$ outperforms the other methods for a large range of model sizes in terms of AUC. This is especially true for the larger models. \texttt{gren} with $\alpha=0.5$ outperforms the other methods with respect to BSS in the smaller model ranges, while \texttt{gren} with $\alpha=0.05$ becomes competitive for the larger models. A general pattern in both settings is that \texttt{GRridge} and \texttt{gren} with $\alpha=0.05$ perform similarly. This is not surprising, because an elastic net model with $\alpha=0.05$ is close to a ridge model, in terms of penalisation. In general, the classifiers with three group penalties are better than the ones with two group penalties when relatively few features are used. Comparing, for example, the models of size 20 for \texttt{gren} with $\alpha=0.5$, we have an AUC of 0.68 for the two-group setting, versus an AUC of 0.78 for the three-group setting. Note that models with few features are often desirable for clinical implementation.
-\begin{figure}[!h]
-	\centering
-	\includegraphics[width=1\linewidth]{grEBEN_mirseq_Maarten_combined_performance.png}
-	\caption{Cross-validated performance as (a) AUC in the two-group setting, (b) Brier skill score in the two-group setting, (c) AUC in the three-group setting, and (d) Brier skill score in the three-group setting against the number of selected features for each method.}
-	\label{fig:col_per}
-\end{figure}
-\begin{figure}[!h]
-	\centering
-	\includegraphics[width=0.83\linewidth]{grEBEN_mirseq_Maarten_bar1.png}
-	\caption{Estimated penalty multipliers for (a) the two-group setting and (b) the three-group setting.}
-	\label{fig:col_bar}
-\end{figure}
+  \subsection{Stability of selection}
+  One common criticism on the elastic net, and especially the lasso, is the 
+  instability of feature selection. That is, different data sets yield different
+  sets of selected features. To investigate the stability of feature selection 
+  by \texttt{gren} we created 50 stratified bootstrap samples from the microRNA 
+  data \cite[]{neerincx_combination_2018}, where we stratified by the target of 
+  prediction, treatment response. 
+  For each of these bootstrap samples we estimated the regular elastic
+  net and \texttt{gren} for $\alpha \in \{0.05, 0.5, 0.95 \}$, where we selected
+  25 features (including the 5 unpenalized covariates). We calculated the size 
+  of all ${50}\choose{2}$ intersections of selected features and present the 
+  results in Figure [! figure ref here].
 
-Predictive performance of the methods is measured by AUC and BSS, both estimated by leave-one-out cross-validation (LOOCV), and shown in Figure \ref{fig:col_per}. All group-regularized elastic net models consistently outperform their non-group-regularized counterparts in both settings, in terms of AUC and BSS. In both settings, \texttt{gren} with $\alpha=0.5$ and $\alpha=0.95$ outperforms the other methods for a large range of model sizes in terms of AUC. This is especially true for the larger models. \texttt{gren} with $\alpha=0.5$ outperforms the other methods with respect to BSS in the smaller model ranges, while \texttt{gren} with $\alpha=0.05$ becomes competitive for the larger models. A general pattern in both settings is that \texttt{GRridge} and \texttt{gren} with $\alpha=0.05$ perform similarly. This is not surprising, because an elastic net model with $\alpha=0.05$ is close to a ridge model, in terms of penalisation. In general, the classifiers with three group penalties are better than the ones with two group penalties when relatively few features are used. Comparing, for example, the models of size 20 for \texttt{gren} with $\alpha=0.5$, we have an AUC of 0.68 for the two-group setting, versus an AUC of 0.78 for the three-group setting. Note that models with few features are often desirable for clinical implementation.
-\begin{figure}[!h]
-	\centering
-	\includegraphics[width=1\linewidth]{grEBEN_mirseq_Maarten_combined_performance.png}
-	\caption{Cross-validated performance as (a) AUC in the two-group setting, (b) Brier skill score in the two-group setting, (c) AUC in the three-group setting, and (d) Brier skill score in the three-group setting against the number of selected features for each method.}
-	\label{fig:col_per}
-\end{figure}
-
-\section{Application to RNAseq in lymph node cancer}\label{sec:applymph}
-
-CoRF data:
-
-<<lines_rnaseq_lymph_node_metastasis_res1_auc, fig.cap="Cross-validated AUC in lymph node metastasis example, with a) the full range and b) cut-out", out.width="100%", fig.asp=2/3>>=
+  [! figure here]
+  
+  \section{Application to metabolomics in alzheimer}\label{sec:alzheimer}
+	We applied our method to an Alzheimer's dataset from 
+	\cite{de_leeuw_blood-based_2017}. The
+	data consist of 87 diagnosed Alzheimer's patients with the $\epsilon$4
+	allele of the APOE gene and 87 subjects with subjective un-diagnosed cognitive
+	decline, without the $\epsilon$4 allele. The aim of the study was to diagnose 
+	subjects with Alzheimer's disease based on their metabolic profile. After 
+	pre-processing, 230 metabolite expression levels were obtained. To enhance
+	classification performance, we included two sources of co-data: (a) the 
+	relative standard devitation of the measurements (RSD), a commonly 
+	used quality score (smaller is better) for metabolites, binned into five 
+	groups, and (b) the node degree of the metabolites, based on a differential 
+	network analysis of the metabolites, binned into three categories: 0 degree, 
+	positive, lower than average degree, and postive, higher than average degree. 
+	We expect a lower RSD and a higher node degree to be indicative of an 
+	important metabolite and therefore receive less penalty.
+	
+	To estimate performance measures AUC and BSS, we split the data into 120 
+	training instances and 54 test instances. 
+	The training data is used to fit the models, while the test data
+	is used to estimate the performance measures on. We included the different 
+	co-data types seperately and combined, which resulted in the estimated 
+	multipliers and performance measures presented in Figure 
+	\ref{fig:barplot_lines_metabolomics_alzheimer_res5_auc}.
+<<barplot_lines_metabolomics_alzheimer_res5_auc, fig.cap="Results for the alzheimer example with (a) the estimated penalty multipliers for the quality score, (b) the estimated penalty multipliers for the network degree, (c) the estimated AUC, and (d) the estimated Brier skill score.", out.width="100%", fig.asp=1>>=
 @
 
-\subsection{Random groups}
-Considering that the features may be partitioned into many groups, with one parameter per group, we have to be aware of overfitting risks. We investigated this using the data introduced in Section \ref{sec:mirna}, randomly dividing the features into three groups. We fixed the group sizes to the group sizes used in the three-group setting in Section \ref{sec:mirna}. Under this random partitioning of the features, we expect all penalty multipliers to be estimated as one if overfitting does not occur.
+  In this example, \texttt{GRridge} and \texttt{gren} underperform due to a 
+  small number of features to learn the penalty parameters from. The other 
+  methods estimate one global penalty parameter, so do not suffer from the 
+  lower dimensionality of the problem.
+  
+  \section{Application to microRNAs in cervical cancer}
+  A deep sequencing analysis on small non-coding ribonucleic acid (microRNAseq) 
+  was performed on 24 women with high-grade cervical intraepithelial 
+  neoplasia (CIN3) and 32 healthy women for the purpose of finding relevant 
+  screening markers for cervical cancer screening. The next generation 
+  sequencing analysis resulted in 2,576 transcripts. The data was normalized 
+  and pre-processed, rendering 752 transcripts. More details of the
+  data sets and the pre-processing steps are found in the supplementary   
+  material of \cite{novianti_better_2017}.
+  
+  The 752 microRNAs were divided in three classes based on their conservation 
+  status. Conservation status refers to whether the microRNAs are only found in
+  humans or are conserved across different species. They come in three classes:
+  (a) non-conserved (535), (b) conserved in mammals (70), and (c) 
+  conserved across most vertebrates (147). We expect (c) to contain the most 
+  important microRNAs, followed by (b) and (a), because these microRNAs have not
+  been lost during evolution and might therefore regulate important processes.
+  
+<<barplots_micrornaseq_cervical_cancer_res1_auc, fig.cap="Estimated penalty multipliers for conservation status co-data", out.width="50%", fig.asp=2/3>>=
+@
 
-We compared the estimated multipliers to the estimates by \texttt{GRridge}. Since these results depend on one specific randomisation of the groups, we repeated the procedure 100 times and present the results in Figure \ref{fig:random1}. From this figure we see that the estimates for \texttt{gren} are close to one. The estimates by \texttt{GRridge} show much more variation. Additionally, \texttt{GRridge} gives slightly biased estimates: the median penalty parameter estimates are 1.16, 1, and 0.85 for the three groups. In contrast, the median estimates of \texttt{gren} are 1, 1, and 0.99. 
-\begin{figure}[!h]
-	\centering
-	\includegraphics[width=0.5\linewidth]{grEBEN_mirseq_Maarten_res6_boxplot.png}
-	\caption{Estimated penalty multipliers of the group-regularized methods for 100 repeats of 3 random groups in colorectal miRNA data.}
-	\label{fig:random1}
-\end{figure}
-
-We repeated the simulation with ten evenly sized groups. Figure \ref{fig:random2} presents the estimated penalty multipliers for 100 random splits of the microRNA features into 10 evenly sized groups for \texttt{GRridge} and \texttt{gren} with $\alpha \in \{ 0.05, 0.5, 0.95 \}$. From the Figure we see that \texttt{GRridge} shows more variation around one then the other models. In addition, the median penalty multipliers for the three \texttt{gren} models are all between 0.99 and 1.02, while the \texttt{GRridge} median estimates range from 1.04 to 1.09. This indicates that \texttt{GRridge} suffers from a slight bias in the estimation, while the \texttt{gren} estimates appear to be unbiased.
-\begin{figure}[!h]
-	\centering
-	\includegraphics[width=0.9\linewidth]{grEBEN_mirseq_Maarten_res8_boxplot.png}
-	\caption{Estimated penalty multipliers of the group-regularized methods for 100 repeats of 10 random groups in colorectal miRNA data.}
-	\label{fig:random2}
-\end{figure}
-
-\subsection{Stability of selection}
-One common criticism on the elastic net, and especially the lasso, is the instability of feature selection. That is, different data sets yield different sets of selected features. To investigate the stability of feature selection by \texttt{gren} we created 50 stratified bootstrap samples from the microRNA data \cite[]{neerincx_combination_2018}, where we stratified by treatment response. For each of these bootstrap samples we estimated the regular elastic net and \texttt{gren} for $\alpha \in \{0.05, 0.5, 0.95 \}$, where we selected 25 features (including the 5 unpenalized covariates). We calculated the size of all ${50}\choose{2}$ intersections of selected features and present the results in Figure \ref{fig:bootstrap}. 
-\begin{figure}[!h]
-	\centering
-	\includegraphics[width=0.9\linewidth]{gren_mirseq_Maarten_overlap.png}
-	\caption{Overlap between stratified bootstrap samples for the elastic net models with (a) $\alpha=0.05$, (b) $\alpha=0.5$, and (c) $\alpha=0.95$.}
-	\label{fig:bootstrap}
-\end{figure}
-From this figure it can be seen that stability of feature selection in \texttt{gren} is higher than in the regular elastic net for all three $\alpha$'s.
-
+<<lines_micrornaseq_cervical_cancer_res1_auc, fig.cap="Cross-validated AUC in cervicl cancer example", out.width="50%", fig.asp=1>>=
+@
+  
 \section{Empirical-variational Bayes for the ridge and lasso}\label{sec:evbridgelasso}
 \subsection{Ridge regression}
 Ridge regression is a special case of the elastic net, that does not include an $L_1$-norm on the parameters. Its estimator is given by:
