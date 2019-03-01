@@ -129,7 +129,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	included in the statistical analysis, it may still be useful and informative
 	for the study at hand.
 
-	An example of such a study with extra information available is investigated in
+	Examples of such a study with extra information available are investigated in
 	Sections [! section refs here]. The first one is concerned with treatment 
 	response prediction for colorectal cancer patients, based on sequenced
 	microRNAs. In the second example we attempt to predict lymph node metastases,
@@ -577,95 +577,103 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   colorectal cancer patients, with the aim of predicting treatment response,
   coded as either non-progressive/remission (70 patients) or progressive 
   (18 patients). After pre-processing and normalisation, 2114 microRNAs 
-  remained. In addition to the 2114 microRNAs, four clinical covariates were
-  included in the analysis: prior use of adjuvant therapy (binary),
-  the type of systemic treatment regimen (ternary), age, and primary tumor
-  differentiation (binary). These clinical covariates are included as 
-  unpenalized features in the model.
+  remained. In addition to the 2114 microRNAs, four clinical unpenalized 
+  covariates were included in the analysis: prior use of adjuvant therapy 
+  (binary), the type of systemic treatment regimen (ternary), age, and primary 
+  tumor differentiation (binary).
 
   In a preliminary experiment on different subjects, the microRNA expression 
   levels of metastatic colorectal tumour tissue were compared to normal 
   non-colorectal tissue and primary colorectal tumour tissue was compared to
-  primary colorectal tumour tissue \cite[]{neerincx_mir_2015}. This yielded 221
-  microRNAs that were differentially expressed in both comparisons ($\text{FDR}
-  \leq 0.05$), versus 1893 not differentially expressed microRNAs. We expect
-  that incorporation of this partitioning enhances therapy response 
+  primary colorectal tumour tissue \cite[]{neerincx_mir_2015}. This yielded 127
+  microRNAs that were differentially expressed in both comparisons with
+  $\text{FDR} \leq 0.001$, 95 with and $\text{FDR} \leq 0.05$, and 1893 not 
+  differentially expressed microRNAs. We expect that incorporation of this 
+  partitioning enhances therapy response 
   classification, because tumor-specific miRNAs might be more relevant than 
-  non-specific ones. In addition, we divided the differentially expressed
-  microRNAs even further into 127 highly differentially expressed microRNAs
-  ($\text{FDR} \leq 0.001$) and 94 medium differentially expressed microRNAs 
-  ($0.001 < \text{FDR} \leq 0.05$).  We will refer to this second partitioning
-  as the three-group setting, as opposed to the first, the two-group setting.
+  non-specific ones.
 
-  We split the data into 61 training, and 27 test instances and
-  compared the performance of \texttt{gren} on the test set to ridge, 
-  \texttt{GRridge}, elastic net, and the composite minimax
-  concave penalty (\texttt{cMCP}) by \cite{breheny_penalized_2009}. Further
-  comparisons to the sparse
+  We compared the performance of \texttt{gren} to ridge, \texttt{GRridge}, 
+  elastic net, and to the best performing
+  group lasso extension, the composite minimax
+  concave penalty (\texttt{cMCP}) by \cite{breheny_penalized_2009}. 
+  For the methods with an extra tuning parameter 
+  $\alpha$, we picked the one (or two) that gave the best performance and refer
+  the reader to SM Section [! section ref here] for more comparisons to 
+  different $\alpha$s and to the sparse
   group lasso (\texttt{SGL}) by \cite{simon_sparse-group_2013} and the group
-  exponential lasso (\texttt{gel}) \cite[]{breheny_group_2015} are presented in 
-  the SM [! section ref here]. We compared the methods on AUC. More performance
-  measures are presented in the SM [! section ref here].
-  For the elastic net methods (including \texttt{gren}) and \texttt{cMCP}, we 
-  set $\alpha \in \{ 0.05, 0.5, 0.95\}$. We experienced numerical issues with 
+  exponential lasso (\texttt{gel}) \cite[]{breheny_group_2015}.
+  
+  To estimate performance, we split the data into 61 training, and 27 test 
+  instances stratified by treatment response. We estimated the models on the 
+  training data and calculated AUC on the test data. We present AUC for a range 
+  of model sizes, together with the estimated 
+  penalty multipliers for \texttt{gren} and \texttt{GRridge} in Figure
+  \ref{fig:barplot_lines_micrornaseq_colorectal_cancer_res2_auc}. More 
+  performance measures comparisons are presented in Section [! section ref here]
+  of the SM. In addition, we investigated the sensitivity of
+  the multiplier estimation using this data set in SM Section 
+  [! section ref here]. A small sidenote: We experienced numerical issues with 
   \texttt{GRridge} when cross-validating 
   the global penalty parameter on the training data. We therefore estimated this
   global parameter on the full data for \texttt{GRridge}.
   
-  The results are presented in Figure 
-  \ref{fig:barplot_lines_micrornaseq_colorectal_cancer_res2_auc}. 
   The penalty multipliers estimated by 
   \texttt{gren} and \texttt{GRridge} are according to expectation: the highly
   expressed group receives the lowest penalty, followed by the medium expressed
   group, while the non-expressed group receives the strongest penalty. 
   \texttt{gren} seems to outperform the other methods for a range of model 
   sizes. This is especially pronounced for the larger models. The performance of
-  \texttt{cmcp} is somewhat unstable. We noticed this is in general
+  \texttt{cMCP} is somewhat unstable. We noticed this is in general
   for the group-lasso and its extensions (see SM [! section ref here]). Overall,
   it seems as though the inclusion of the extra information on the features 
   benefited predictive performance: both \texttt{GRridge} and \texttt{gren} 
-  outperform their respective non-group-regularized versions.
+  outperform their respective non-group-regularized versions, albeit it only
+  slightly for \texttt{GRridge}.
 <<barplot_lines_micrornaseq_colorectal_cancer_res2_auc, fig.cap="Results for the colorectal cancer example with (a) the estimated penalty multipliers and (b) estimated AUC.", out.width="100%", fig.asp=1/2>>=
 @
   
   \section{Application to RNAseq in lymph node cancer}\label{sec:applymph}
   In this application, the aim is to predict lymph node metastasis in patients 
-  with HPV negative oral cancer using sequenced RNAs from TCGA 
+  with HPV-negative oral cancer using sequenced RNAs from TCGA 
   \cite[]{the_cancer_genome_atlas_network_comprehensive_2015}. The features are 
   normalised TCGA RNASeqv2 profiles of head-and-neck squamous cell 
   carcinomas on 133 patients with HPV-negative tumours in the oral cavity. Of 
-  these patients, 76 had lymph node metastasis, and 57 did not. For a thorough 
-  introduction of these data, see \cite{te_beest_improved_2017}.
+  these patients, 76 suffered from lymph node metastasis, while 57 did not. 
+  For a thorough introduction of these data, see \cite{te_beest_improved_2017}.
   
-  As co-data we considered two sources: (a) the cis-correlation between TCGA DNA
-  copy number measurements and the RNASeqv2 data on the same patients, 
-  quantified through Kendall's $\tau$ and binned into five groups, and (b) 
-  p-values from an external microarray data set \cite[]{mes_prognostic_2017}, 
-  binned into five groups. We expect features 
-  with a positive Kendall's $\tau$ to be more important in metastasis prediction   
-  \cite[]{masayesva_gene_2004}. Likewise, we expect features with a low 
-  p-value to be more important.
+  As co-data we considered two sources: (a) the cis-correlation between the
+  the RNASeqv2 data and DNA copy numbers on the same patients, 
+  quantified by Kendall's $\tau$ and binned into five groups, and (b) 
+  $p$-values from an external microarray data set described in 
+  \cite{mes_prognostic_2017}, again binned into five groups. We expect features 
+  with a large positive Kendall's $\tau$ to be more important in 
+  metastasis prediction \cite[]{masayesva_gene_2004}. Likewise, we expect 
+  features with low $p$-values to be more important.
   
-  We split our data into 120 training instances and 97 test instances, trained
-  the models on the training set and estimated AUC on the test set. Other 
-  performance measures are presented in the SM Section [! section ref here]. We
-  compared the same models as in Section \ref{sec:appcolon}. In this 
-  application, the co-data consists of two partitions with overlapping groups.
-  \texttt{cMCP} is not designed to deal with overlapping groups, so we 
-  cross-tabulate the two co-data partitions to create one paritioning with 25 
-  groups for \texttt{cMCP}. In addition, we compare to an extension of 
-  \texttt{cMCP} that is able to handle multiple groupings 
-  \cite[]{zeng_overlapping_2016}. We present the results in Figure 
-  \ref{fig:barplot_lines_rnaseq_lymph_node_metastasis_res1_auc}. 
-  Additional comparisons to \texttt{SGL}, \texttt{gel} and 
-  the overlapping group version of \texttt{gel} \cite[]{zeng_overlapping_2016}
-  \cite[]{breheny_group_2015} are found in the SM Section [! section ref here].
-<<barplot_lines_rnaseq_lymph_node_metastasis_res1_auc, fig.cap="Results for the lymph node metastasis example with (a) the estimated penalty multipliers for the cis-correlations, (b) the estimated penalty multipliers for the p-values, and (c) the estimated AUC.", out.width="100%", fig.asp=1>>=
+  We compared \texttt{gren} to the same methods as in Section 
+  \ref{sec:appcolon}. However, the co-data consists of two partitions with 
+  overlapping groups, so we use an extension of \texttt{cMCP} that is able to 
+  handle multiple groupings \cite[]{zeng_overlapping_2016}. We split the data 
+  into 120 training instances and 97 test instances, trained
+  the models on the training set and estimated AUC on the test set. We present 
+  the results in Figure 
+  \ref{fig:barplot_lines_rnaseq_lymph_node_metastasis_res1_auc}. Other 
+  comparisons and performance measures are presented in the SM Section 
+  [! section ref here].
+  
+  The estimated penalty multipliers follow the expected pattern. Larger 
+  cis-correlations receive smaller penalties. Likewise, smaller $p$-values are
+  also penalized less. This pattern is slightly less pronounced in \texttt{gren}
+  with $\alpha=0.95$ than in the other methods. The predictive performance of
+  \texttt{gren} is slighty better than the other methods for a range of model
+  sizes. We also note that the overlapping group \texttt{cMCP} is much more
+  stable than the regular \texttt{cMCP} (see in SM [! section ref here]), 
+  where we use as grouping the cross-tabulation of the two paritions. In this 
+  example, ridge and \texttt{GRridge} perform almost identical.
+<<barplot_lines_rnaseq_lymph_node_metastasis_res1_auc, fig.cap="Results for the lymph node metastasis example with (a) the estimated penalty multipliers for the cis-correlations, (b) the estimated penalty multipliers for the p-values, and (c) the estimated AUC. OcMCP refers to the overlapping group cMCP.", out.width="100%", fig.asp=1>>=
 @
   
-  We present additional applications and comparisons in the SM Sections 
-  [! sections ref here].
-
 	\section{Discussion}\label{sec:discussion}
 	In a taxonomy of Bayesian methods, the proposed method may be considered a 
 	local shrinkage model, as opposed to the global-local shrinkage priors that 
@@ -692,9 +700,11 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	rather than to the data. It also differs in the scale of adaptation: in the 
 	adaptive lasso and elastic net the adaptive weights are feature specific,
 	while in our case they are estimated on the group level, rendering the 
-	adaptation more robust. As can be seen from the simulations and real data 
-	example in Sections \ref{sec:simulations} and [! section ref here], 
-	adaptation to 
+	adaptation more robust. As can be seen from both the simulations in Section 
+	\ref{sec:simulations} and the application examples with different types of 
+	outcome data (prognostic and diagnostic) and marker types (RNAseq, microRNAs, 
+	and metabolomics) in Sections [! section refs here], and the SM
+	Sections [! section refs here], adaptation to 
 	external data may be beneficial for prediction and feature selection. We 
 	believe that this is due to the `borrowing of information' effect: estimates 
 	that are believed to be similar are shrunken in the same way, yielding 
@@ -726,16 +736,17 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 
 	\section*{Software}
 	A (stable) \texttt{R} package is available from 
-	\url{https://CRAN.R-project.org/package=gren}.
-
-	\section*{Supplementary Material}
-	Supplementary Material is available online from 
-	\url{http://pub.math.leidenuniv.nl/~munchmm/}. All materials needed to   
+	\url{https://CRAN.R-project.org/package=gren}. All materials needed to   
 	recreate this document are available from 
 	\url{https://github.com/magnusmunch/gren}.
 
+	\section*{Supplementary Material}
+	Supplementary Material is available online from 
+	\url{http://pub.math.leidenuniv.nl/~munchmm/}.
+
 	\section*{Acknowledgements}
-	\textit{Conflict of Interest}: None declared.
+	\textit{Conflict of Interest}: None declared. We thank the editors and 
+	referees for their useful suggestions and comments.
 
 	\section*{Funding}
 	This research has received funding from the European Research Council under 
