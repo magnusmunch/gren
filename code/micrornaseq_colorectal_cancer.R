@@ -408,3 +408,174 @@ for(k in 1:nsplits) {
 res3 <- multipliers
 rownames(res3) <- paste0("split", c(1:nsplits))
 write.table(res3, file="results/micrornaseq_colorectal_cancer_res3.csv")
+
+################################### model 3 ####################################
+###  create 100 random splits of features into 3 groups, same size as FDR groups
+set.seed(2019)
+nsplits <- 100
+y <- benefit
+x <- scale(micrornas)
+unpenal <- unpenal
+p <- ncol(x)
+u <- ncol(unpenal)
+part <- diff.threegroup
+
+multipliers <- data.frame(grridge=matrix(NA, nrow=nsplits, 
+                                         ncol=length(unique(part))),
+                          gren1=matrix(NA, nrow=nsplits, 
+                                       ncol=length(unique(part))),
+                          gren2=matrix(NA, nrow=nsplits, 
+                                       ncol=length(unique(part))),
+                          gren3=matrix(NA, nrow=nsplits, 
+                                       ncol=length(unique(part))))
+
+for(k in 1:nsplits) {
+  cat(paste("split ", k, "\n"))
+  set.seed(2019 + k)
+  
+  part.train <- sample(part)
+  
+  fit3.gren1 <- gren(x, y, unpenalized=unpenal, 
+                     partitions=list(part=part.train), alpha=0.05, 
+                     standardize=TRUE, trace=FALSE)
+  fit3.gren2 <- gren(x, y, unpenalized=unpenal, 
+                     partitions=list(part=part.train), alpha=0.5, 
+                     standardize=TRUE, trace=FALSE)
+  fit3.gren3 <- gren(x, y, unpenalized=unpenal, 
+                     partitions=list(part=part.train), alpha=0.95, 
+                     standardize=TRUE, trace=FALSE)
+  
+  fit3.grridge <- grridge(t(x), y, list(part=split(1:p, part.train)),
+                          unpenal= ~ 1 + adjth2 + thscheme2 + thscheme3 + age + 
+                            pcrcdiff3, dataunpen=as.data.frame(unpenal))
+  
+  multipliers[k, c(1:length(unique(part)))] <- fit3.grridge$lambdamults$part
+  multipliers[k, c((length(unique(part)) + 1):(2*length(unique(part))))] <- 
+    fit3.gren1$lambdag$part
+  multipliers[k, c((2*length(unique(part)) + 1):(3*length(unique(part))))] <- 
+    fit3.gren2$lambdag$part
+  multipliers[k, c((3*length(unique(part)) + 1):(4*length(unique(part))))] <- 
+    fit3.gren3$lambdag$part
+  
+}
+res3 <- multipliers
+rownames(res3) <- paste0("split", c(1:nsplits))
+write.table(res3, file="results/micrornaseq_colorectal_cancer_res3.csv")
+
+
+################################### model 4 ####################################
+###  create 100 random splits of features into 10 evenly sized groups
+set.seed(2019)
+nsplits <- 100
+y <- benefit
+x <- scale(micrornas)
+unpenal <- unpenal
+p <- ncol(x)
+u <- ncol(unpenal)
+ngroups <- 10
+part <- rep(1:ngroups, times=round(c(rep(
+  p %/% ngroups + as.numeric((p %% ngroups)!=0), times=p %% ngroups),
+  rep(p %/% ngroups, times=ngroups - p %% ngroups))))
+
+multipliers <- data.frame(grridge=matrix(NA, nrow=nsplits, 
+                                         ncol=length(unique(part))),
+                          gren1=matrix(NA, nrow=nsplits, 
+                                       ncol=length(unique(part))),
+                          gren2=matrix(NA, nrow=nsplits, 
+                                       ncol=length(unique(part))),
+                          gren3=matrix(NA, nrow=nsplits, 
+                                       ncol=length(unique(part))))
+
+for(k in 1:nsplits) {
+  cat(paste("split ", k, "\n"))
+  set.seed(2019 + k)
+  
+  part.train <- sample(part)
+  
+  fit4.gren1 <- gren(x, y, unpenalized=unpenal, 
+                     partitions=list(part=part.train), alpha=0.05, 
+                     standardize=TRUE, trace=FALSE)
+  fit4.gren2 <- gren(x, y, unpenalized=unpenal, 
+                     partitions=list(part=part.train), alpha=0.5, 
+                     standardize=TRUE, trace=FALSE)
+  fit4.gren3 <- gren(x, y, unpenalized=unpenal, 
+                     partitions=list(part=part.train), alpha=0.95, 
+                     standardize=TRUE, trace=FALSE)
+  
+  fit4.grridge <- grridge(t(x), y, list(part=split(1:p, part.train)),
+                          unpenal= ~ 1 + adjth2 + thscheme2 + thscheme3 + age + 
+                            pcrcdiff3, dataunpen=as.data.frame(unpenal))
+  
+  multipliers[k, c(1:length(unique(part)))] <- fit4.grridge$lambdamults$part
+  multipliers[k, c((length(unique(part)) + 1):(2*length(unique(part))))] <- 
+    fit4.gren1$lambdag$part
+  multipliers[k, c((2*length(unique(part)) + 1):(3*length(unique(part))))] <- 
+    fit4.gren2$lambdag$part
+  multipliers[k, c((3*length(unique(part)) + 1):(4*length(unique(part))))] <- 
+    fit4.gren3$lambdag$part
+  
+}
+res4 <- multipliers
+rownames(res4) <- paste0("split", c(1:nsplits))
+write.table(res4, file="results/micrornaseq_colorectal_cancer_res4.csv")
+
+################################### model 5 ####################################
+###  create 100 random splits of features into 10 evenly sized groups
+set.seed(2019)
+nsamples <- 100
+psel <- 25
+y <- benefit
+x <- scale(micrornas)
+unpenal <- unpenal
+p <- ncol(x)
+u <- ncol(unpenal)
+ngroups <- 10
+part <- diff.threegroup
+p <- ncol(x)
+
+for(k in 1:nsamples) {
+  cat(paste("sample ", k, "\n"))
+  
+  set.seed(2019 + k)
+  
+  id.boot <- c(sample(which(y==0), replace=TRUE), 
+               sample(which(y==1), replace=TRUE))
+  # remove the constant micrornas
+  is.const <- apply(x[id.boot, ], 2, sd)==0
+  xboot <- scale(x[id.boot, !is.const])
+  yboot <- y[id.boot]
+  uboot <- unpenal[id.boot, ]
+  part.boot <- part[!is.const]
+  
+  fit5.gren1 <- gren(xboot, yboot, unpenalized=uboot, 
+                     partitions=list(part=part.boot), alpha=0.05, 
+                     standardize=TRUE, trace=FALSE)
+  fit5.gren2 <- gren(xboot, yboot, unpenalized=uboot, 
+                     partitions=list(part=part.boot), alpha=0.5, 
+                     standardize=TRUE, trace=FALSE, psel=psel)
+  fit5.gren3 <- gren(xboot, yboot, unpenalized=uboot, 
+                     partitions=list(part=part.boot), alpha=0.95, 
+                     standardize=TRUE, trace=FALSE, psel=psel)
+  
+  # sel.grridge[[k]] <- names(boot.grridge$resEN$whichEN)
+  sel.gren1[[k]] <- rownames(coef(boot.gren1$freq.model$groupreg))[
+    as.numeric(coef(boot.gren1$freq.model$groupreg))!=0][-1]
+  sel.gren2[[k]] <- rownames(coef(boot.gren2$freq.model$groupreg))[
+    as.numeric(coef(boot.gren2$freq.model$groupreg))!=0][-1]
+  sel.gren3[[k]] <- rownames(coef(boot.gren3$freq.model$groupreg))[
+    as.numeric(coef(boot.gren3$freq.model$groupreg))!=0][-1]
+  sel.enet1[[k]] <- rownames(coef(boot.gren1$freq.model$regular))[
+    as.numeric(coef(boot.gren1$freq.model$regular))!=0][-1]
+  sel.enet2[[k]] <- rownames(coef(boot.gren2$freq.model$regular))[
+    as.numeric(coef(boot.gren2$freq.model$regular))!=0][-1]
+  sel.enet3[[k]] <- rownames(coef(boot.gren3$freq.model$regular))[
+    as.numeric(coef(boot.gren3$freq.model$regular))!=0][-1]
+  
+}
+
+
+
+
+res4 <- multipliers
+rownames(res4) <- paste0("split", c(1:nsplits))
+write.table(res4, file="results/micrornaseq_colorectal_cancer_res4.csv")

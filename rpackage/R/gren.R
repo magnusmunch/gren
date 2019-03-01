@@ -221,6 +221,7 @@ gren <- function(x, y, m=rep(1, nrow(x)), unpenalized=NULL, partitions=NULL,
   # starting values for the model parameters
   if(is.null(init$mu) | is.null(init$sigma) | is.null(init$chi) | 
      is.null(init$ci)) {
+    
     fit.start <- glmnet(x=x, y=ymat, family="binomial", alpha=0, lambda=lambda, 
                         standardize=FALSE, intercept=intercept, 
                         penalty.factor=c(rep(0, u), lambdamultvecold))
