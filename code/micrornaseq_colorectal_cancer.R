@@ -531,7 +531,7 @@ write.table(res4, file="results/micrornaseq_colorectal_cancer_res4.csv")
 ################################### model 5 ####################################
 ###  create 100 random splits of features into 10 evenly sized groups
 set.seed(2019)
-nsamples <- 2
+nsamples <- 50
 psel <- 25
 y <- benefit
 x <- scale(micrornas)
@@ -541,13 +541,13 @@ u <- ncol(unpenal)
 ngroups <- 10
 part <- diff.threegroup
 p <- ncol(x)
-ncores <- detectCores() - 1
+ncores <- min(detectCores() - 1, nsamples)
 
 ### analyse splits in parallel
-cluster <- makeCluster(3, type = "FORK")
+cluster <- makeCluster(ncores, type = "FORK")
 registerDoParallel(cluster)
 
-selnames <- foreach(k=c(1:nsamples)) %do% {
+selnames <- foreach(k=c(1:nsamples)) %dopar% {
   set.seed(2019 + k)
   
   id.boot <- c(sample(which(y==0), replace=TRUE), 
@@ -561,13 +561,13 @@ selnames <- foreach(k=c(1:nsamples)) %do% {
   
   fit5.gren1 <- gren(xboot, yboot, unpenalized=uboot, 
                      partitions=list(part=part.boot), alpha=0.05, 
-                     standardize=TRUE, trace=TRUE, psel=psel)
+                     standardize=TRUE, trace=FALSE, psel=psel)
   fit5.gren2 <- gren(xboot, yboot, unpenalized=uboot, 
                      partitions=list(part=part.boot), alpha=0.5, 
-                     standardize=TRUE, trace=TRUE, psel=psel)
+                     standardize=TRUE, trace=FALSE, psel=psel)
   fit5.gren3 <- gren(xboot, yboot, unpenalized=uboot, 
                      partitions=list(part=part.boot), alpha=0.95, 
-                     standardize=TRUE, trace=TRUE, psel=psel)
+                     standardize=TRUE, trace=FALSE, psel=psel)
   
   list(gren1=colnames(xboot)[fit5.gren1$freq.model$groupreg$beta[-c(1:u), ]!=0],
        gren2=colnames(xboot)[fit5.gren2$freq.model$groupreg$beta[-c(1:u), ]!=0],
@@ -587,68 +587,3 @@ intersect <- sapply(selnames, function(m) {
 res5 <- intersect
 rownames(res5) <- paste0("combn", c(1:choose(nsamples, 2)))
 write.table(res5, file="results/micrornaseq_colorectal_cancer_res5.csv")
-
-
-
-# selnames <- data.frame(gren1=matrix(NA, nrow=nsamples, ncol=psel + 5),
-#                        gren2=matrix(NA, nrow=nsamples, ncol=psel + 5),
-#                        gren3=matrix(NA, nrow=nsamples, ncol=psel + 5),
-#                        enet1=matrix(NA, nrow=nsamples, ncol=psel + 5),
-#                        enet2=matrix(NA, nrow=nsamples, ncol=psel + 5),
-#                        enet3=matrix(NA, nrow=nsamples, ncol=psel + 5))
-# 
-# for(k in 1:nsamples) {
-#   cat(paste("sample ", k, "\n"))
-#   
-#   set.seed(2019 + k)
-#   
-#   id.boot <- c(sample(which(y==0), replace=TRUE), 
-#                sample(which(y==1), replace=TRUE))
-#   # remove the constant micrornas
-#   is.const <- apply(x[id.boot, ], 2, sd)==0
-#   xboot <- scale(x[id.boot, !is.const])
-#   yboot <- y[id.boot]
-#   uboot <- unpenal[id.boot, ]
-#   part.boot <- part[!is.const]
-#   
-#   fit5.gren1 <- gren(xboot, yboot, unpenalized=uboot, 
-#                      partitions=list(part=part.boot), alpha=0.05, 
-#                      standardize=TRUE, trace=FALSE, psel=psel)
-#   fit5.gren2 <- gren(xboot, yboot, unpenalized=uboot, 
-#                      partitions=list(part=part.boot), alpha=0.5, 
-#                      standardize=TRUE, trace=FALSE, psel=psel)
-#   fit5.gren3 <- gren(xboot, yboot, unpenalized=uboot, 
-#                      partitions=list(part=part.boot), alpha=0.95, 
-#                      standardize=TRUE, trace=FALSE, psel=psel)
-#   
-#   selnames[k, grep("gren1", colnames(selnames))][
-#     1:(fit5.gren1$freq.model$groupreg$df - u)] <- 
-#     colnames(xboot)[fit5.gren1$freq.model$groupreg$beta[-c(1:u), ]!=0]
-#   selnames[k, grep("gren2", colnames(selnames))][
-#     1:(fit5.gren2$freq.model$groupreg$df - u)] <- 
-#     colnames(xboot)[fit5.gren2$freq.model$groupreg$beta[-c(1:u), ]!=0]
-#   selnames[k, grep("gren3", colnames(selnames))][
-#     1:(fit5.gren3$freq.model$groupreg$df - u)] <- 
-#     colnames(xboot)[fit5.gren3$freq.model$groupreg$beta[-c(1:u), ]!=0]
-#   selnames[k, grep("enet1", colnames(selnames))][
-#     1:(fit5.gren1$freq.model$regular$df - u)] <- 
-#     colnames(xboot)[fit5.gren1$freq.model$regular$beta[-c(1:u), ]!=0]
-#   selnames[k, grep("enet2", colnames(selnames))][
-#     1:(fit5.gren2$freq.model$regular$df - u)] <- 
-#     colnames(xboot)[fit5.gren2$freq.model$regular$beta[-c(1:u), ]!=0]
-#   selnames[k, grep("enet3", colnames(selnames))][
-#     1:(fit5.gren3$freq.model$regular$df - u)] <- 
-#     colnames(xboot)[fit5.gren3$freq.model$regular$beta[-c(1:u), ]!=0]
-#   
-# }
-# 
-# rcombs <- combn(1:nsamples, 2)
-# intersect <- sapply(c(paste0("gren", 1:3), paste0("enet", 1:3)), function(s) {
-#   cmat <- selnames[, grepl(s, colnames(selnames))]
-#   apply(rcombs, 1, function(comb) {
-#     length(intersect(na.omit(unlist(cmat[comb[1], ])), 
-#                      na.omit(unlist(cmat[comb[2], ]))))})}, simplify=TRUE)
-# 
-# res5 <- intersect
-# rownames(res5) <- paste0("combn", c(1:nrow(rcombs)))
-# write.table(res5, file="results/micrornaseq_colorectal_cancer_res5.csv")
