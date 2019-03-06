@@ -2,7 +2,7 @@
 <<settings, include=FALSE, echo=FALSE>>=
 opts_knit$set(root.dir="..", base.dir="../figs")
 opts_chunk$set(fig.align='center', fig.path="../figs/", 
-               echo=FALSE, cache=FALSE, message=FALSE)
+               echo=FALSE, cache=FALSE, message=FALSE, fig.pos='!ht')
 @
 
 % read figure code
@@ -518,6 +518,9 @@ The quality of feature selection is assessed by Cohen's kappa \cite[]{cohen_coef
   In this section we present additional results to Section [! section ref here]
   in the Main Document.
   
+  \subsection{Additional comparisons}
+  
+  
   \subsection{Random groups}
   Considering that the features may be partitioned into many groups, with one 
   parameter per group, we have to be aware of overfitting risks. We investigated
@@ -536,8 +539,9 @@ medians <- round(apply(res, 2, median), 2)
   Since these results depend on one specific randomisation of the groups, we 
   repeated the procedure 100 times and present the results in Figure 
   \ref{fig:boxplots_micrornaseq_colorectal_cancer_res3_multipliers}. 
-  From this figure we see that the estimates for \texttt{gren} are close to one.
-  The estimates by \texttt{GRridge} show much more variation. We found no strong
+  From this figure we see that the estimates for \texttt{gren} are relatively 
+  close to one.
+  The estimates by \texttt{GRridge} show more variation. We found no strong
   indication of bias, with median estimated penalty parameters 
   \Sexpr{medians[c(1:3)]} for
   \texttt{GRridge} and \Sexpr{medians[c(4:6)]}; \Sexpr{medians[c(7:9)]},
@@ -546,16 +550,23 @@ medians <- round(apply(res, 2, median), 2)
 <<boxplots_micrornaseq_colorectal_cancer_res3_multipliers, fig.cap="Results for the colorectal cancer example with 100 realisations of 3 random groups of features.", out.width="50%", fig.asp=1>>=
 @
 
+<<>>=
+res <- read.table("results/micrornaseq_colorectal_cancer_res4.csv", 
+                  stringsAsFactors=FALSE)
+medians <- round(sapply(c("grridge", paste0("gren", 1:3)), function(s) {
+  median(as.matrix(res[, grepl(s, colnames(res))]))}), 2)
+@
   We repeated the simulation with ten evenly sized groups. Figure 
-  [! figure ref here] presents the estimated penalty multipliers for 100 random 
+  \ref{fig:boxplots_micrornaseq_colorectal_cancer_res4_multipliers} presents 
+  the estimated penalty multipliers for 100 random 
   splits of the microRNA features into 10 evenly sized groups for 
   \texttt{GRridge} and \texttt{gren} with $\alpha \in \{ 0.05, 0.5, 0.95 \}$. 
   From the Figure we see that \texttt{GRridge} shows more variation around one 
-  then the other models. In addition, the median penalty multipliers for the 
-  three \texttt{gren} models are all between [! medians here], while the 
-  \texttt{GRridge} median estimates range from [! medians here]. This indicates 
-  that \texttt{GRridge} suffers from a slight bias in the estimation, while the 
-  \texttt{gren} estimates appear to be unbiased.
+  then the other models. There is no indication of bias: the median penalty 
+  multiplier for 
+  \texttt{GRridge} is \Sexpr{medians[1]}, while the median multipliers in
+  \texttt{gren} are \Sexpr{medians[c(2:4)]} for 
+  $\alpha \in \{ 0.05, 0.5, 0.95 \}$, respectively.
 <<boxplots_micrornaseq_colorectal_cancer_res4_multipliers, fig.cap="Results for the colorectal cancer example with 100 realisations of 10 random groups of features, plotted (a) with outliers, and (b) without outliers.", out.width="100%", fig.asp=1/2>>=
 @
 
@@ -636,6 +647,12 @@ medians <- round(apply(res, 2, median), 2)
 @
 
 <<lines_micrornaseq_cervical_cancer_res1_auc, fig.cap="Cross-validated AUC in cervicl cancer example", out.width="50%", fig.asp=1>>=
+@
+  
+  \section{Choice of $\alpha$}	
+	Choice of $\alpha$ does matter in Figure 
+	\ref{fig:lines_colorectal_lymph_node_gren_auc}.
+<<lines_colorectal_lymph_node_gren_auc, fig.cap="Estimated AUC for gren in the (a) colorectal cancer example and the (b) lymph node metastasis example.", out.width="100%", fig.asp=1/2>>=
 @
   
 \section{Empirical-variational Bayes for the ridge and lasso}\label{sec:evbridgelasso}
