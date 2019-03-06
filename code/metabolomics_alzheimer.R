@@ -12,12 +12,11 @@ if(substr(system('git log -n 1 --format="%h %aN %s %ad"', intern=TRUE), 1, 7)!=
 }
 
 ### libraries
+library(Biobase)
 library(gren)
 library(GRridge)
-library(grpreg)
-library(Biobase)
-library(SGL)
 library(grpregOverlap)
+library(SGL)
 
 ### load data
 load("data/ESetMbolCSFPR2.Rdata")
@@ -69,521 +68,115 @@ alzheim.apoe <- as.numeric(pheno.apoe$D_diag_name) - 1
 
 ################################### model 1 ####################################
 ### fitting the models
-set.seed(2019)
-ytrain <- alzheim.apoe[id.train]
-xtrain <- scale(metabol.apoe[id.train, ])
-ytest <- alzheim.apoe[-id.train]
-xtest <- scale(metabol.apoe[-id.train, ])
-part <- platformcode
-p <- ncol(xtrain)
-
-fit1.gren1 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.05, 
-                   trace=FALSE)
-fit1.gren2 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.5, 
-                   trace=FALSE)
-fit1.gren3 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.95, 
-                   trace=FALSE)
-
-fit1.grridge <- grridge(t(xtrain), ytrain, list(part=split(1:p, part)))
-
-fit1.sgl1 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.05)
-fit1.sgl1$fit$type <- "logit"
-fit1.sgl2 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.5)
-fit1.sgl2$fit$type <- "logit"
-fit1.sgl3 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.95)
-fit1.sgl3$fit$type <- "logit"
-
-fit1.cmcp1 <- cv.grpreg(xtrain, ytrain, part, penalty="cMCP", 
-                        family="binomial", alpha=0.05)
-fit1.cmcp2 <- cv.grpreg(xtrain, ytrain, part, penalty="cMCP", 
-                        family="binomial", alpha=0.5)
-fit1.cmcp3 <- cv.grpreg(xtrain, ytrain, part, penalty="cMCP", 
-                        family="binomial", alpha=0.95)
-
-fit1.gel1 <- cv.grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
-                       alpha=0.05)
-fit1.gel2 <- cv.grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
-                       alpha=0.5)
-fit1.gel3 <- cv.grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
-                       alpha=0.95)
-
-save(fit1.grridge, fit1.gren1, fit1.gren2, fit1.gren3, fit1.sgl1, fit1.sgl2,
-     fit1.sgl3, fit1.cmcp1, fit1.cmcp2, fit1.cmcp3, fit1.gel1, fit1.gel2,
-     fit1.gel3, file="results/metabolomics_alzheimer_fit1.Rdata")
-
-### prediction on test set
-pred1 <- data.frame(ridge=predict.grridge(fit1.grridge, t(xtest))[, 1], 
-                    grridge=predict.grridge(fit1.grridge, t(xtest))[, 2],
-                    gren1=predict(fit1.gren1$freq.model$groupreg, xtest, 
-                                  type="response"),
-                    gren2=predict(fit1.gren2$freq.model$groupreg, xtest, 
-                                  type="response"), 
-                    gren3=predict(fit1.gren3$freq.model$groupreg, xtest, 
-                                  type="response"), 
-                    enet1=predict(fit1.gren1$freq.model$regular, xtest, 
-                                  type="response"),
-                    enet2=predict(fit1.gren2$freq.model$regular, xtest, 
-                                  type="response"), 
-                    enet3=predict(fit1.gren3$freq.model$regular, xtest, 
-                                  type="response"), 
-                    sgl1=predictSGL(fit1.sgl1$fit, xtest),
-                    sgl2=predictSGL(fit1.sgl2$fit, xtest),
-                    sgl3=predictSGL(fit1.sgl3$fit, xtest),
-                    cmcp1=predict(fit1.cmcp1$fit, xtest, type="response"), 
-                    cmcp2=predict(fit1.cmcp2$fit, xtest, type="response"), 
-                    cmcp3=predict(fit1.cmcp2$fit, xtest, type="response"),
-                    gel1=predict(fit1.gel1$fit, xtest, type="response"), 
-                    gel2=predict(fit1.gel2$fit, xtest, type="response"), 
-                    gel3=predict(fit1.gel3$fit, xtest, type="response"))
-psel1 <- c(ridge=p, grridge=p,
-           gren1=fit1.gren1$freq.model$groupreg$df,
-           gren2=fit1.gren2$freq.model$groupreg$df,
-           gren3=fit1.gren3$freq.model$groupreg$df,
-           enet1=fit1.gren1$freq.model$regular$df,
-           enet2=fit1.gren2$freq.model$regular$df,
-           enet3=fit1.gren3$freq.model$regular$df,
-           sgl1=colSums(fit1.sgl1$fit$beta!=0),
-           sgl2=colSums(fit1.sgl2$fit$beta!=0),
-           sgl3=colSums(fit1.sgl3$fit$beta!=0),
-           cmcp1=colSums(fit1.cmcp1$fit$beta[-1, ]!=0), 
-           cmcp2=colSums(fit1.cmcp2$fit$beta[-1, ]!=0), 
-           cmcp3=colSums(fit1.cmcp3$fit$beta[-1, ]!=0),
-           gel1=colSums(fit1.gel1$fit$beta[-1, ]!=0), 
-           gel2=colSums(fit1.gel1$fit$beta[-1, ]!=0), 
-           gel3=colSums(fit1.gel1$fit$beta[-1, ]!=0))
-auc1 <- apply(pred1, 2, function(m) {pROC::auc(ytest, m)})
-res1 <- rbind(pred1, psel1, auc1)
-rownames(res1) <- c(paste0("pred", c(1:length(ytest))), paste0("psel", 1),
-                    paste0("auc", 1))
-write.table(res1, file="results/metabolomics_alzheimer_res1.csv")
-
-
-################################### model 2 ####################################
-### fitting the models
-set.seed(2019)
-ytrain <- alzheim.apoe[id.train]
-xtrain <- scale(metabol.apoe[id.train, ])
-ytest <- alzheim.apoe[-id.train]
-xtest <- scale(metabol.apoe[-id.train, ])
-part <- quality
-p <- ncol(xtrain)
-
-fit2.gren1 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.05, 
-                   trace=FALSE)
-fit2.gren2 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.5, 
-                   trace=FALSE)
-fit2.gren3 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.95, 
-                   trace=FALSE)
-
-fit2.grridge <- grridge(t(xtrain), ytrain, list(part=split(1:p, part)))
-
-fit2.sgl1 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.05)
-fit2.sgl1$fit$type <- "logit"
-fit2.sgl2 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.5)
-fit2.sgl2$fit$type <- "logit"
-fit2.sgl3 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.95)
-fit2.sgl3$fit$type <- "logit"
-
-fit2.cmcp1 <- cv.grpreg(xtrain, ytrain, part, penalty="cMCP", 
-                        family="binomial", alpha=0.05)
-fit2.cmcp2 <- cv.grpreg(xtrain, ytrain, part, penalty="cMCP", 
-                        family="binomial", alpha=0.5)
-fit2.cmcp3 <- cv.grpreg(xtrain, ytrain, part, penalty="cMCP", 
-                        family="binomial", alpha=0.95)
-
-fit2.gel1 <- cv.grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
-                       alpha=0.05)
-fit2.gel2 <- cv.grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
-                       alpha=0.5)
-fit2.gel3 <- cv.grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
-                       alpha=0.95)
-
-save(fit2.grridge, fit2.gren1, fit2.gren2, fit2.gren3, fit2.sgl1, fit2.sgl2,
-     fit2.sgl3, fit2.cmcp1, fit2.cmcp2, fit2.cmcp3, fit2.gel1, fit2.gel2,
-     fit2.gel3, file="results/metabolomics_alzheimer_fit2.Rdata")
-
-### prediction on test set
-pred2 <- data.frame(ridge=predict.grridge(fit2.grridge, t(xtest))[, 1], 
-                    grridge=predict.grridge(fit2.grridge, t(xtest))[, 2],
-                    gren1=predict(fit2.gren1$freq.model$groupreg, xtest, 
-                                  type="response"),
-                    gren2=predict(fit2.gren2$freq.model$groupreg, xtest, 
-                                  type="response"), 
-                    gren3=predict(fit2.gren3$freq.model$groupreg, xtest, 
-                                  type="response"), 
-                    enet1=predict(fit2.gren1$freq.model$regular, xtest, 
-                                  type="response"),
-                    enet2=predict(fit2.gren2$freq.model$regular, xtest, 
-                                  type="response"), 
-                    enet3=predict(fit2.gren3$freq.model$regular, xtest, 
-                                  type="response"), 
-                    sgl1=predictSGL(fit2.sgl1$fit, xtest),
-                    sgl2=predictSGL(fit2.sgl2$fit, xtest),
-                    sgl3=predictSGL(fit2.sgl3$fit, xtest),
-                    cmcp1=predict(fit2.cmcp1$fit, xtest, type="response"), 
-                    cmcp2=predict(fit2.cmcp2$fit, xtest, type="response"), 
-                    cmcp3=predict(fit2.cmcp2$fit, xtest, type="response"),
-                    gel1=predict(fit2.gel1$fit, xtest, type="response"), 
-                    gel2=predict(fit2.gel2$fit, xtest, type="response"), 
-                    gel3=predict(fit2.gel3$fit, xtest, type="response"))
-psel2 <- c(ridge=p, grridge=p,
-           gren1=fit2.gren1$freq.model$groupreg$df,
-           gren2=fit2.gren2$freq.model$groupreg$df,
-           gren3=fit2.gren3$freq.model$groupreg$df,
-           enet1=fit2.gren1$freq.model$regular$df,
-           enet2=fit2.gren2$freq.model$regular$df,
-           enet3=fit2.gren3$freq.model$regular$df,
-           sgl1=colSums(fit2.sgl1$fit$beta!=0),
-           sgl2=colSums(fit2.sgl2$fit$beta!=0),
-           sgl3=colSums(fit2.sgl3$fit$beta!=0),
-           cmcp1=colSums(fit2.cmcp1$fit$beta[-1, ]!=0), 
-           cmcp2=colSums(fit2.cmcp2$fit$beta[-1, ]!=0), 
-           cmcp3=colSums(fit2.cmcp3$fit$beta[-1, ]!=0),
-           gel1=colSums(fit2.gel1$fit$beta[-1, ]!=0), 
-           gel2=colSums(fit2.gel1$fit$beta[-1, ]!=0), 
-           gel3=colSums(fit2.gel1$fit$beta[-1, ]!=0))
-auc2 <- apply(pred2, 2, function(m) {pROC::auc(ytest, m)})
-res2 <- rbind(pred2, psel2, auc2)
-rownames(res2) <- c(paste0("pred", c(1:length(ytest))), paste0("psel", 1),
-                    paste0("auc", 1))
-write.table(res2, file="results/metabolomics_alzheimer_res2.csv")
-
-
-################################### model 3 ####################################
-### fitting the models
-set.seed(2019)
-ytrain <- alzheim.apoe[id.train]
-xtrain <- scale(metabol.apoe[id.train, ])
-ytest <- alzheim.apoe[-id.train]
-xtest <- scale(metabol.apoe[-id.train, ])
-part <- degree
-p <- ncol(xtrain)
-
-fit3.gren1 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.05, 
-                   trace=FALSE)
-fit3.gren2 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.5, 
-                   trace=FALSE)
-fit3.gren3 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.95, 
-                   trace=FALSE)
-
-fit3.grridge <- grridge(t(xtrain), ytrain, list(part=split(1:p, part)))
-
-fit3.sgl1 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.05)
-fit3.sgl1$fit$type <- "logit"
-fit3.sgl2 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.5)
-fit3.sgl2$fit$type <- "logit"
-fit3.sgl3 <- cvSGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.95)
-fit3.sgl3$fit$type <- "logit"
-
-fit3.cmcp1 <- cv.grpreg(xtrain, ytrain, part, penalty="cMCP", 
-                        family="binomial", alpha=0.05)
-fit3.cmcp2 <- cv.grpreg(xtrain, ytrain, part, penalty="cMCP", 
-                        family="binomial", alpha=0.5)
-fit3.cmcp3 <- cv.grpreg(xtrain, ytrain, part, penalty="cMCP", 
-                        family="binomial", alpha=0.95)
-
-fit3.gel1 <- cv.grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
-                       alpha=0.05)
-fit3.gel2 <- cv.grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
-                       alpha=0.5)
-fit3.gel3 <- cv.grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
-                       alpha=0.95)
-
-save(fit3.grridge, fit3.gren1, fit3.gren2, fit3.gren3, fit3.sgl1, fit3.sgl2,
-     fit3.sgl3, fit3.cmcp1, fit3.cmcp2, fit3.cmcp3, fit3.gel1, fit3.gel2,
-     fit3.gel3, file="results/metabolomics_alzheimer_fit3.Rdata")
-
-### prediction on test set
-pred3 <- data.frame(ridge=predict.grridge(fit3.grridge, t(xtest))[, 1], 
-                    grridge=predict.grridge(fit3.grridge, t(xtest))[, 2],
-                    gren1=predict(fit3.gren1$freq.model$groupreg, xtest, 
-                                  type="response"),
-                    gren2=predict(fit3.gren2$freq.model$groupreg, xtest, 
-                                  type="response"), 
-                    gren3=predict(fit3.gren3$freq.model$groupreg, xtest, 
-                                  type="response"), 
-                    enet1=predict(fit3.gren1$freq.model$regular, xtest, 
-                                  type="response"),
-                    enet2=predict(fit3.gren2$freq.model$regular, xtest, 
-                                  type="response"), 
-                    enet3=predict(fit3.gren3$freq.model$regular, xtest, 
-                                  type="response"), 
-                    sgl1=predictSGL(fit3.sgl1$fit, xtest),
-                    sgl2=predictSGL(fit3.sgl2$fit, xtest),
-                    sgl3=predictSGL(fit3.sgl3$fit, xtest),
-                    cmcp1=predict(fit3.cmcp1$fit, xtest, type="response"), 
-                    cmcp2=predict(fit3.cmcp2$fit, xtest, type="response"), 
-                    cmcp3=predict(fit3.cmcp2$fit, xtest, type="response"),
-                    gel1=predict(fit3.gel1$fit, xtest, type="response"), 
-                    gel2=predict(fit3.gel2$fit, xtest, type="response"), 
-                    gel3=predict(fit3.gel3$fit, xtest, type="response"))
-psel3 <- c(ridge=p, grridge=p,
-           gren1=fit3.gren1$freq.model$groupreg$df,
-           gren2=fit3.gren2$freq.model$groupreg$df,
-           gren3=fit3.gren3$freq.model$groupreg$df,
-           enet1=fit3.gren1$freq.model$regular$df,
-           enet2=fit3.gren2$freq.model$regular$df,
-           enet3=fit3.gren3$freq.model$regular$df,
-           sgl1=colSums(fit3.sgl1$fit$beta!=0),
-           sgl2=colSums(fit3.sgl2$fit$beta!=0),
-           sgl3=colSums(fit3.sgl3$fit$beta!=0),
-           cmcp1=colSums(fit3.cmcp1$fit$beta[-1, ]!=0), 
-           cmcp2=colSums(fit3.cmcp2$fit$beta[-1, ]!=0), 
-           cmcp3=colSums(fit3.cmcp3$fit$beta[-1, ]!=0),
-           gel1=colSums(fit3.gel1$fit$beta[-1, ]!=0), 
-           gel2=colSums(fit3.gel1$fit$beta[-1, ]!=0), 
-           gel3=colSums(fit3.gel1$fit$beta[-1, ]!=0))
-auc3 <- apply(pred3, 2, function(m) {pROC::auc(ytest, m)})
-res3 <- rbind(pred3, psel3, auc3)
-rownames(res3) <- c(paste0("pred", c(1:length(ytest))), paste0("psel", 1),
-                    paste0("auc", 1))
-write.table(res3, file="results/metabolomics_alzheimer_res3.csv")
-
-
-################################### model 4 ####################################
-### fitting the models
-set.seed(2019)
 ytrain <- alzheim.apoe[id.train]
 xtrain <- scale(metabol.apoe[id.train, ])
 ytest <- alzheim.apoe[-id.train]
 xtest <- scale(metabol.apoe[-id.train, ])
 p <- ncol(xtrain)
-part.gren <- list(platformcode=platformcode, quality=quality, degree=degree)
-part.grridge <- list(platformcode=split(1:p, platformcode), 
-                     quality=split(1:p, quality),
-                     degree=split(1:p, degree))
-part.gl <- as.numeric(factor(paste(platformcode, quality, degree)))
-part.ogl <- unlist(lapply(part.grridge, function(part) {
-  lapply(part, function(s) {colnames(xtrain)[s]})}), recursive=FALSE)
+part <- list(quality=quality, degree=degree)
+part.gl <- as.numeric(as.factor(paste(quality, degree)))
+part.ogl <- unlist(lapply(list(quality=split(1:p, part$quality), 
+                               degree=split(1:p, part$degree)), function(part) {
+                                 lapply(part, function(s) {
+                                   colnames(xtrain)[s]})}), recursive=FALSE)
 
-fit4.gren1 <- gren(xtrain, ytrain, partitions=part.gren, alpha=0.05, 
-                   trace=FALSE)
-fit4.gren2 <- gren(xtrain, ytrain, partitions=part.gren, alpha=0.5, 
-                   trace=FALSE)
-fit4.gren3 <- gren(xtrain, ytrain, partitions=part.gren, alpha=0.95, 
-                   trace=FALSE)
+fit.gren1 <- gren(xtrain, ytrain, partitions=part, alpha=0.05, trace=FALSE)
+fit.gren2 <- gren(xtrain, ytrain, partitions=part, alpha=0.5, trace=FALSE)
+fit.gren3 <- gren(xtrain, ytrain, partitions=part, alpha=0.95, trace=FALSE)
 
-fit4.grridge <- grridge(t(xtrain), ytrain, part.grridge)
+fit.grridge <- grridge(t(xtrain), ytrain, list(quality=split(1:p, quality), 
+                                               degree=split(1:p, degree)))
 
-fit4.sgl1 <- cvSGL(list(x=xtrain, y=ytrain), part.gl, type="logit", alpha=0.05)
-fit4.sgl1$fit$type <- "logit"
-fit4.sgl2 <- cvSGL(list(x=xtrain, y=ytrain), part.gl, type="logit", alpha=0.5)
-fit4.sgl2$fit$type <- "logit"
-fit4.sgl3 <- cvSGL(list(x=xtrain, y=ytrain), part.gl, type="logit", alpha=0.95)
-fit4.sgl3$fit$type <- "logit"
+fit.sgl1 <- cvSGL(list(x=xtrain, y=ytrain), part.gl, type="logit", alpha=0.05)
+fit.sgl1$fit$type <- "logit"
+fit.sgl2 <- cvSGL(list(x=xtrain, y=ytrain), part.gl, type="logit", alpha=0.5)
+fit.sgl2$fit$type <- "logit"
+fit.sgl3 <- cvSGL(list(x=xtrain, y=ytrain), part.gl, type="logit", alpha=0.95)
+fit.sgl3$fit$type <- "logit"
 
-fit4.cmcp1 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="cMCP", 
-                        family="binomial", alpha=0.05)
-fit4.cmcp2 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="cMCP", 
-                        family="binomial", alpha=0.5)
-fit4.cmcp3 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="cMCP", 
-                        family="binomial", alpha=0.95)
-
-fit4.gel1 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="gel", 
+fit.cmcp1 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="cMCP", 
                        family="binomial", alpha=0.05)
-fit4.gel2 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="gel", 
+fit.cmcp2 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="cMCP", 
                        family="binomial", alpha=0.5)
-fit4.gel3 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="gel", 
+fit.cmcp3 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="cMCP", 
                        family="binomial", alpha=0.95)
 
-fit4.ocmcp1 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="cMCP", 
-                                family="binomial", alpha=0.05)
-fit4.ocmcp2 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="cMCP", 
-                                family="binomial", alpha=0.5)
-fit4.ocmcp3 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="cMCP", 
-                                family="binomial", alpha=0.95)
+fit.gel1 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="gel", 
+                      family="binomial", alpha=0.05)
+fit.gel2 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="gel", 
+                      family="binomial", alpha=0.5)
+fit.gel3 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="gel", 
+                      family="binomial", alpha=0.95)
 
-fit4.ogel1 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="gel", 
-                                family="binomial", alpha=0.05)
-fit4.ogel2 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="gel", 
-                                family="binomial", alpha=0.5)
-fit4.ogel3 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="gel", 
-                                family="binomial", alpha=0.95)
-
-save(fit4.grridge, fit4.gren1, fit4.gren2, fit4.gren3, fit4.sgl1, fit4.sgl2,
-     fit4.sgl3, fit4.cmcp1, fit4.cmcp2, fit4.cmcp3, fit4.gel1, fit4.gel2,
-     fit4.gel3, fit4.ocmcp1, fit4.ocmcp2, fit4.ocmcp3, fit4.ogel1, fit4.ogel2, 
-     fit4.ogel3, file="results/metabolomics_alzheimer_fit4.Rdata")
-
-### prediction on test set
-pred4 <- data.frame(ridge=predict.grridge(fit4.grridge, t(xtest))[, 1], 
-                    grridge=predict.grridge(fit4.grridge, t(xtest))[, 2],
-                    gren1=predict(fit4.gren1$freq.model$groupreg, xtest, 
-                                  type="response"),
-                    gren2=predict(fit4.gren2$freq.model$groupreg, xtest, 
-                                  type="response"), 
-                    gren3=predict(fit4.gren3$freq.model$groupreg, xtest, 
-                                  type="response"), 
-                    enet1=predict(fit4.gren1$freq.model$regular, xtest, 
-                                  type="response"),
-                    enet2=predict(fit4.gren2$freq.model$regular, xtest, 
-                                  type="response"), 
-                    enet3=predict(fit4.gren3$freq.model$regular, xtest, 
-                                  type="response"), 
-                    sgl1=predictSGL(fit4.sgl1$fit, xtest),
-                    sgl2=predictSGL(fit4.sgl2$fit, xtest),
-                    sgl3=predictSGL(fit4.sgl3$fit, xtest),
-                    cmcp1=predict(fit4.cmcp1$fit, xtest, type="response"), 
-                    cmcp2=predict(fit4.cmcp2$fit, xtest, type="response"), 
-                    cmcp3=predict(fit4.cmcp2$fit, xtest, type="response"),
-                    gel1=predict(fit4.gel1$fit, xtest, type="response"), 
-                    gel2=predict(fit4.gel2$fit, xtest, type="response"), 
-                    gel3=predict(fit4.gel3$fit, xtest, type="response"),
-                    ocmcp1=predict(fit4.ocmcp1$fit, xtest, type="response"), 
-                    ocmcp2=predict(fit4.ocmcp2$fit, xtest, type="response"), 
-                    ocmcp3=predict(fit4.ocmcp2$fit, xtest, type="response"),
-                    ogel1=predict(fit4.ogel1$fit, xtest, type="response"), 
-                    ogel2=predict(fit4.ogel2$fit, xtest, type="response"), 
-                    ogel3=predict(fit4.ogel3$fit, xtest, type="response"))
-psel4 <- c(ridge=p, grridge=p,
-           gren1=fit4.gren1$freq.model$groupreg$df,
-           gren2=fit4.gren2$freq.model$groupreg$df,
-           gren3=fit4.gren3$freq.model$groupreg$df,
-           enet1=fit4.gren1$freq.model$regular$df,
-           enet2=fit4.gren2$freq.model$regular$df,
-           enet3=fit4.gren3$freq.model$regular$df,
-           sgl1=colSums(fit4.sgl1$fit$beta!=0),
-           sgl2=colSums(fit4.sgl2$fit$beta!=0),
-           sgl3=colSums(fit4.sgl3$fit$beta!=0),
-           cmcp1=colSums(fit4.cmcp1$fit$beta[-1, ]!=0), 
-           cmcp2=colSums(fit4.cmcp2$fit$beta[-1, ]!=0), 
-           cmcp3=colSums(fit4.cmcp3$fit$beta[-1, ]!=0),
-           gel1=colSums(fit4.gel1$fit$beta[-1, ]!=0), 
-           gel2=colSums(fit4.gel1$fit$beta[-1, ]!=0), 
-           gel3=colSums(fit4.gel1$fit$beta[-1, ]!=0),
-           ocmcp1=colSums(fit4.ocmcp1$fit$beta[-1, ]!=0), 
-           ocmcp2=colSums(fit4.ocmcp2$fit$beta[-1, ]!=0), 
-           ocmcp3=colSums(fit4.ocmcp3$fit$beta[-1, ]!=0),
-           ogel1=colSums(fit4.ogel1$fit$beta[-1, ]!=0), 
-           ogel2=colSums(fit4.ogel1$fit$beta[-1, ]!=0), 
-           ogel3=colSums(fit4.ogel1$fit$beta[-1, ]!=0))
-auc4 <- apply(pred4, 2, function(m) {pROC::auc(ytest, m)})
-res4 <- rbind(pred4, psel4, auc4)
-rownames(res4) <- c(paste0("pred", c(1:length(ytest))), paste0("psel", 1),
-                    paste0("auc", 1))
-write.table(res4, file="results/metabolomics_alzheimer_res4.csv")
-
-
-################################### model 5 ####################################
-### fitting the models
-set.seed(2019)
-ytrain <- alzheim.apoe[id.train]
-xtrain <- scale(metabol.apoe[id.train, ])
-ytest <- alzheim.apoe[-id.train]
-xtest <- scale(metabol.apoe[-id.train, ])
-p <- ncol(xtrain)
-part.gren <- list(quality=quality, degree=degree)
-part.grridge <- list(quality=split(1:p, quality), 
-                     degree=split(1:p, degree))
-part.gl <- as.numeric(factor(paste(quality, degree)))
-part.ogl <- unlist(lapply(part.grridge, function(part) {
-  lapply(part, function(s) {colnames(xtrain)[s]})}), recursive=FALSE)
-
-fit5.gren1 <- gren(xtrain, ytrain, partitions=part.gren, alpha=0.05, 
-                   trace=FALSE)
-fit5.gren2 <- gren(xtrain, ytrain, partitions=part.gren, alpha=0.5, 
-                   trace=FALSE)
-fit5.gren3 <- gren(xtrain, ytrain, partitions=part.gren, alpha=0.95, 
-                   trace=FALSE)
-
-fit5.grridge <- grridge(t(xtrain), ytrain, part.grridge)
-
-fit5.sgl1 <- cvSGL(list(x=xtrain, y=ytrain), part.gl, type="logit", alpha=0.05)
-fit5.sgl1$fit$type <- "logit"
-fit5.sgl2 <- cvSGL(list(x=xtrain, y=ytrain), part.gl, type="logit", alpha=0.5)
-fit5.sgl2$fit$type <- "logit"
-fit5.sgl3 <- cvSGL(list(x=xtrain, y=ytrain), part.gl, type="logit", alpha=0.95)
-fit5.sgl3$fit$type <- "logit"
-
-fit5.cmcp1 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="cMCP", 
-                        family="binomial", alpha=0.05)
-fit5.cmcp2 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="cMCP", 
-                        family="binomial", alpha=0.5)
-fit5.cmcp3 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="cMCP", 
-                        family="binomial", alpha=0.95)
-
-fit5.gel1 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="gel", 
-                       family="binomial", alpha=0.05)
-fit5.gel2 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="gel", 
-                       family="binomial", alpha=0.5)
-fit5.gel3 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="gel", 
-                       family="binomial", alpha=0.95)
-
-fit5.ocmcp1 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="cMCP", 
-                                family="binomial", alpha=0.05)
-fit5.ocmcp2 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="cMCP", 
-                                family="binomial", alpha=0.5)
-fit5.ocmcp3 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="cMCP", 
-                                family="binomial", alpha=0.95)
-
-fit5.ogel1 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="gel", 
+fit.ocmcp1 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="cMCP", 
                                family="binomial", alpha=0.05)
-fit5.ogel2 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="gel", 
+fit.ocmcp2 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="cMCP", 
                                family="binomial", alpha=0.5)
-fit5.ogel3 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="gel", 
+fit.ocmcp3 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="cMCP", 
                                family="binomial", alpha=0.95)
 
-save(fit5.grridge, fit5.gren1, fit5.gren2, fit5.gren3, fit5.sgl1, fit5.sgl2,
-     fit5.sgl3, fit5.cmcp1, fit5.cmcp2, fit5.cmcp3, fit5.gel1, fit5.gel2,
-     fit5.gel3, fit5.ocmcp1, fit5.ocmcp2, fit5.ocmcp3, fit5.ogel1, fit5.ogel2, 
-     fit5.ogel3, file="results/metabolomics_alzheimer_fit5.Rdata")
+fit.ogel1 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="gel", 
+                              family="binomial", alpha=0.05)
+fit.ogel2 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="gel", 
+                              family="binomial", alpha=0.5)
+fit.ogel3 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="gel", 
+                               family="binomial", alpha=0.95)
+
+save(fit.grridge, fit.gren1, fit.gren2, fit.gren3, fit.sgl1, fit.sgl2,
+     fit.sgl3, fit.cmcp1, fit.cmcp2, fit.cmcp3, fit.gel1, fit.gel2,
+     fit.gel3, fit.ocmcp1, fit.ocmcp2, fit.ocmcp3, fit.ogel1, fit.ogel2, 
+     fit.ogel3, file="results/metabolomics_alzheimer_fit1.Rdata")
 
 ### prediction on test set
-pred5 <- data.frame(ridge=predict.grridge(fit5.grridge, t(xtest))[, 1], 
-                    grridge=predict.grridge(fit5.grridge, t(xtest))[, 2],
-                    gren1=predict(fit5.gren1$freq.model$groupreg, xtest, 
-                                  type="response"),
-                    gren2=predict(fit5.gren2$freq.model$groupreg, xtest, 
-                                  type="response"), 
-                    gren3=predict(fit5.gren3$freq.model$groupreg, xtest, 
-                                  type="response"), 
-                    enet1=predict(fit5.gren1$freq.model$regular, xtest, 
-                                  type="response"),
-                    enet2=predict(fit5.gren2$freq.model$regular, xtest, 
-                                  type="response"), 
-                    enet3=predict(fit5.gren3$freq.model$regular, xtest, 
-                                  type="response"), 
-                    sgl1=predictSGL(fit5.sgl1$fit, xtest),
-                    sgl2=predictSGL(fit5.sgl2$fit, xtest),
-                    sgl3=predictSGL(fit5.sgl3$fit, xtest),
-                    cmcp1=predict(fit5.cmcp1$fit, xtest, type="response"), 
-                    cmcp2=predict(fit5.cmcp2$fit, xtest, type="response"), 
-                    cmcp3=predict(fit5.cmcp2$fit, xtest, type="response"),
-                    gel1=predict(fit5.gel1$fit, xtest, type="response"), 
-                    gel2=predict(fit5.gel2$fit, xtest, type="response"), 
-                    gel3=predict(fit5.gel3$fit, xtest, type="response"),
-                    ocmcp1=predict(fit5.ocmcp1$fit, xtest, type="response"), 
-                    ocmcp2=predict(fit5.ocmcp2$fit, xtest, type="response"), 
-                    ocmcp3=predict(fit5.ocmcp2$fit, xtest, type="response"),
-                    ogel1=predict(fit5.ogel1$fit, xtest, type="response"), 
-                    ogel2=predict(fit5.ogel2$fit, xtest, type="response"), 
-                    ogel3=predict(fit5.ogel3$fit, xtest, type="response"))
-psel5 <- c(ridge=p, grridge=p,
-           gren1=fit5.gren1$freq.model$groupreg$df,
-           gren2=fit5.gren2$freq.model$groupreg$df,
-           gren3=fit5.gren3$freq.model$groupreg$df,
-           enet1=fit5.gren1$freq.model$regular$df,
-           enet2=fit5.gren2$freq.model$regular$df,
-           enet3=fit5.gren3$freq.model$regular$df,
-           sgl1=colSums(fit5.sgl1$fit$beta!=0),
-           sgl2=colSums(fit5.sgl2$fit$beta!=0),
-           sgl3=colSums(fit5.sgl3$fit$beta!=0),
-           cmcp1=colSums(fit5.cmcp1$fit$beta[-1, ]!=0), 
-           cmcp2=colSums(fit5.cmcp2$fit$beta[-1, ]!=0), 
-           cmcp3=colSums(fit5.cmcp3$fit$beta[-1, ]!=0),
-           gel1=colSums(fit5.gel1$fit$beta[-1, ]!=0), 
-           gel2=colSums(fit5.gel1$fit$beta[-1, ]!=0), 
-           gel3=colSums(fit5.gel1$fit$beta[-1, ]!=0),
-           ocmcp1=colSums(fit5.ocmcp1$fit$beta[-1, ]!=0), 
-           ocmcp2=colSums(fit5.ocmcp2$fit$beta[-1, ]!=0), 
-           ocmcp3=colSums(fit5.ocmcp3$fit$beta[-1, ]!=0),
-           ogel1=colSums(fit5.ogel1$fit$beta[-1, ]!=0), 
-           ogel2=colSums(fit5.ogel1$fit$beta[-1, ]!=0), 
-           ogel3=colSums(fit5.ogel1$fit$beta[-1, ]!=0))
-auc5 <- apply(pred5, 2, function(m) {pROC::auc(ytest, m)})
-briers5 <- apply(pred5, 2, function(m) {
+pred <- data.frame(ridge=predict.grridge(fit.grridge, t(xtest))[, 1], 
+                   grridge=predict.grridge(fit.grridge, t(xtest))[, 2],
+                   gren1=predict(fit.gren1, xtest, type="groupreg"),
+                   gren2=predict(fit.gren2, xtest, type="groupreg"), 
+                   gren3=predict(fit.gren3, xtest, type="groupreg"), 
+                   enet1=predict(fit.gren1, xtest, type="regular"),
+                   enet2=predict(fit.gren2, xtest, type="regular"), 
+                   enet3=predict(fit.gren3, xtest, type="regular"), 
+                   sgl1=predictSGL(fit.sgl1$fit, xtest),
+                   sgl2=predictSGL(fit.sgl2$fit, xtest),
+                   sgl3=predictSGL(fit.sgl3$fit, xtest),
+                   cmcp1=predict(fit.cmcp1$fit, xtest, type="response"), 
+                   cmcp2=predict(fit.cmcp2$fit, xtest, type="response"), 
+                   cmcp3=predict(fit.cmcp2$fit, xtest, type="response"),
+                   gel1=predict(fit.gel1$fit, xtest, type="response"), 
+                   gel2=predict(fit.gel2$fit, xtest, type="response"), 
+                   gel3=predict(fit.gel3$fit, xtest, type="response"),
+                   ocmcp1=predict(fit.ocmcp1$fit, xtest, type="response"), 
+                   ocmcp2=predict(fit.ocmcp2$fit, xtest, type="response"), 
+                   ocmcp3=predict(fit.ocmcp2$fit, xtest, type="response"),
+                   ogel1=predict(fit.ogel1$fit, xtest, type="response"), 
+                   ogel2=predict(fit.ogel2$fit, xtest, type="response"), 
+                   ogel3=predict(fit.ogel3$fit, xtest, type="response"))
+psel <- c(ridge=p, grridge=p,
+          gren1=fit.gren1$freq.model$groupreg$df,
+          gren2=fit.gren2$freq.model$groupreg$df,
+          gren3=fit.gren3$freq.model$groupreg$df,
+          enet1=fit.gren1$freq.model$regular$df,
+          enet2=fit.gren2$freq.model$regular$df,
+          enet3=fit.gren3$freq.model$regular$df,
+          sgl1=colSums(fit.sgl1$fit$beta!=0),
+          sgl2=colSums(fit.sgl2$fit$beta!=0),
+          sgl3=colSums(fit.sgl3$fit$beta!=0),
+          cmcp1=colSums(fit.cmcp1$fit$beta[-1, ]!=0), 
+          cmcp2=colSums(fit.cmcp2$fit$beta[-1, ]!=0), 
+          cmcp3=colSums(fit.cmcp3$fit$beta[-1, ]!=0),
+          gel1=colSums(fit.gel1$fit$beta[-1, ]!=0), 
+          gel2=colSums(fit.gel1$fit$beta[-1, ]!=0), 
+          gel3=colSums(fit.gel1$fit$beta[-1, ]!=0),
+          ocmcp1=colSums(fit.ocmcp1$fit$beta[-1, ]!=0), 
+          ocmcp2=colSums(fit.ocmcp2$fit$beta[-1, ]!=0), 
+          ocmcp3=colSums(fit.ocmcp3$fit$beta[-1, ]!=0),
+          ogel1=colSums(fit.ogel1$fit$beta[-1, ]!=0), 
+          ogel2=colSums(fit.ogel1$fit$beta[-1, ]!=0), 
+          ogel3=colSums(fit.ogel1$fit$beta[-1, ]!=0))
+auc <- apply(pred, 2, function(m) {pROC::auc(ytest, m)})
+briers <- apply(pred, 2, function(m) {
   1 - mean((m - ytest)^2)/mean((mean(ytest) - ytest)^2)})
-res5 <- rbind(pred5, psel5, auc5, briers5)
-rownames(res5) <- c(paste0("pred", c(1:length(ytest))), paste0("psel", 1),
+res <- rbind(pred, psel, auc, briers)
+rownames(res) <- c(paste0("pred", c(1:length(ytest))), paste0("psel", 1),
                     paste0("auc", 1), paste0("briers", 1))
-write.table(res5, file="results/metabolomics_alzheimer_res5.csv")
+write.table(res, file="results/metabolomics_alzheimer_res1.csv")
