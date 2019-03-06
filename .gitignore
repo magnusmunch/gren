@@ -41,6 +41,4 @@
 *.toc
 *.xlsx
 
-!data/NwkDegreePartition.Rdata
-!data/EsetMbolCSFPR2.Rdata
 revision/
