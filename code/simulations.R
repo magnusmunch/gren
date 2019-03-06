@@ -154,7 +154,7 @@ out <- foreach(k=c(1:nreps)) %dopar% {
   briers1$ridge[r] <- 1 - sum((ytest - pred1.ridge)^2)/const
   
   coef(fit1.gren1, type="groupreg")
-  coef(fit1.gren1$freq.model$groupreg)
+  str(coef(fit1.gren1$freq.model$groupreg))
   
   mse1$ridge[r] <- mean((coef(fit1.ridge)[-1] - beta)^2)
   
