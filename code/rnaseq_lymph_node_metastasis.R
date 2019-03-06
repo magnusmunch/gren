@@ -61,54 +61,61 @@ part.ogl <- unlist(lapply(list(corr=split(1:p, part$corr),
 n <- nrow(xtrain)
 p <- ncol(xtrain)
 
-fit1.gren1 <- gren(xtrain, ytrain, partitions=part, alpha=0.05, trace=FALSE)
-fit1.gren2 <- gren(xtrain, ytrain, partitions=part, alpha=0.5, trace=FALSE)
-fit1.gren3 <- gren(xtrain, ytrain, partitions=part, alpha=0.95, trace=FALSE)
+bench1 <- microbenchmark(
+fit1.gren1 <- gren(xtrain, ytrain, partitions=part, alpha=0.05, trace=FALSE),
+fit1.gren2 <- gren(xtrain, ytrain, partitions=part, alpha=0.5, trace=FALSE),
+fit1.gren3 <- gren(xtrain, ytrain, partitions=part, alpha=0.95, trace=FALSE),
 
 fit1.grridge <- grridge(t(xtrain), ytrain, list(corr=split(1:p, part$corr), 
-                                                pv=split(1:p, part$pv)))
+                                                pv=split(1:p, part$pv))), {
 
 fit1.sgl1 <- cvSGL(list(x=xtrain, y=ytrain), as.numeric(as.factor(paste(
   corpart0, pvpart0))), type="logit", alpha=0.05)
-fit1.sgl1$fit$type <- "logit"
+fit1.sgl1$fit$type <- "logit"}, {
 fit1.sgl2 <- cvSGL(list(x=xtrain, y=ytrain), as.numeric(as.factor(paste(
   corpart0, pvpart0))), type="logit", alpha=0.5)
-fit1.sgl2$fit$type <- "logit"
+fit1.sgl2$fit$type <- "logit"}, {
 fit1.sgl3 <- cvSGL(list(x=xtrain, y=ytrain), as.numeric(as.factor(paste(
   corpart0, pvpart0))), type="logit", alpha=0.95)
-fit1.sgl3$fit$type <- "logit"
+fit1.sgl3$fit$type <- "logit"},
 
 fit1.cmcp1 <- cv.grpreg(xtrain, ytrain, as.numeric(as.factor(paste(
-  corpart0, pvpart0))), penalty="cMCP", family="binomial", alpha=0.05)
+  corpart0, pvpart0))), penalty="cMCP", family="binomial", alpha=0.05),
 fit1.cmcp2 <- cv.grpreg(xtrain, ytrain, as.numeric(as.factor(paste(
-  corpart0, pvpart0))), penalty="cMCP", family="binomial", alpha=0.5)
+  corpart0, pvpart0))), penalty="cMCP", family="binomial", alpha=0.5),
 fit1.cmcp3 <- cv.grpreg(xtrain, ytrain, as.numeric(as.factor(paste(
-  corpart0, pvpart0))), penalty="cMCP", family="binomial", alpha=0.95)
+  corpart0, pvpart0))), penalty="cMCP", family="binomial", alpha=0.95),
 
 fit1.gel1 <- cv.grpreg(xtrain, ytrain, as.numeric(as.factor(paste(
-  corpart0, pvpart0))), penalty="gel", family="binomial", alpha=0.05)
+  corpart0, pvpart0))), penalty="gel", family="binomial", alpha=0.05),
 fit1.gel2 <- cv.grpreg(xtrain, ytrain, as.numeric(as.factor(paste(
-  corpart0, pvpart0))), penalty="gel", family="binomial", alpha=0.5)
+  corpart0, pvpart0))), penalty="gel", family="binomial", alpha=0.5),
 fit1.gel3 <- cv.grpreg(xtrain, ytrain, as.numeric(as.factor(paste(
-  corpart0, pvpart0))), penalty="gel", family="binomial", alpha=0.95)
+  corpart0, pvpart0))), penalty="gel", family="binomial", alpha=0.95),
 
 fit1.ocmcp1 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="cMCP", 
-                                family="binomial", alpha=0.05)
+                                family="binomial", alpha=0.05),
 fit1.ocmcp2 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="cMCP", 
-                                family="binomial", alpha=0.5)
+                                family="binomial", alpha=0.5),
 fit1.ocmcp3 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="cMCP", 
-                                family="binomial", alpha=0.95)
+                                family="binomial", alpha=0.95),
 
 fit1.ogel1 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="gel", 
-                               family="binomial", alpha=0.05)
+                               family="binomial", alpha=0.05),
 fit1.ogel2 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="gel", 
-                               family="binomial", alpha=0.5)
+                               family="binomial", alpha=0.5), {
 # ogel3 gives just the saturated model, so we create cv.grpregOverlap ourselves
 fit1.ogel3 <- grpregOverlap(xtrain, ytrain, part.ogl, penalty="gel", 
                             family="binomial", alpha=0.95)
 fit1.ogel3 <- list(cve=NA, cvse=NA, lambda=fit1.ogel3$lambda, fit=fit1.ogel3, 
                    min=1, lambda.min=fit1.ogel3$lambda, null.dev=NA, pe=NA)
-class(fit1.ogel3) <- c("cv.grpregOverlap", "cv.grpreg")
+class(fit1.ogel3) <- c("cv.grpregOverlap", "cv.grpreg")}, times=1, 
+control=list(order="inorder"))
+
+rownames(bench1) <- c(paste0("gren", 1:3), "grridge", paste0("sgl", 1:3),
+                      paste0("cmcp", 1:3), paste0("gel", 1:3),
+                      paste0("ocmcp", 1:3), paste0("ogel", 1:3))
+write.table(bench1, file="results/rnaseq_lymph_node_metastasis_bench1.csv")
 
 save(fit1.grridge, fit1.gren1, fit1.gren2, fit1.gren3, fit1.sgl1, fit1.sgl2,
      fit1.sgl3, fit1.cmcp1, fit1.cmcp2, fit1.cmcp3, fit1.gel1, fit1.gel2,

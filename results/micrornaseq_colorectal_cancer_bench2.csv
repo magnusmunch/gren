@@ -1,0 +1,14 @@
+"expr" "time"
+"gren1" "fit2.gren1 <- gren(xtrain, ytrain, unpenalized = utrain, partitions = list(part = part),      alpha = 0.05, standardize = TRUE, trace = FALSE)" 62927550507
+"gren2" "fit2.gren2 <- gren(xtrain, ytrain, unpenalized = utrain, partitions = list(part = part),      alpha = 0.5, standardize = TRUE, trace = FALSE)" 72116014250
+"gren3" "fit2.gren3 <- gren(xtrain, ytrain, unpenalized = utrain, partitions = list(part = part),      alpha = 0.95, standardize = TRUE, trace = FALSE)" 77599445710
+"grridge" "{     init2.grridge <- grridge(t(scale(micrornas)), benefit, list(part = split(1:ncol(micrornas),          diff.threegroup)), unpenal = ~1 + adjth2 + thscheme2 +          thscheme3 + age + pcrcdiff3, optl = NULL, dataunpen = as.data.frame(unpenal))     fit2.grridge <- grridge(t(xtrain), ytrain, list(part = split(1:p,          part)), unpenal = ~1 + adjth2 + thscheme2 + thscheme3 +          age + pcrcdiff3, optl = init2.grridge$optl, dataunpen = as.data.frame(utrain)) }" 23936502942
+"sgl1" "{     fit2.sgl1 <- cvSGL(list(x = xtrain, y = ytrain), part, type = \"logit\",          alpha = 0.05)     fit2.sgl1$fit$type <- \"logit\" }" 150833755348
+"sgl2" "{     fit2.sgl2 <- cvSGL(list(x = xtrain, y = ytrain), part, type = \"logit\",          alpha = 0.5)     fit2.sgl2$fit$type <- \"logit\" }" 143096239196
+"sgl3" "{     fit2.sgl3 <- cvSGL(list(x = xtrain, y = ytrain), part, type = \"logit\",          alpha = 0.95)     fit2.sgl3$fit$type <- \"logit\" }" 185183985297
+"cmcp1" "fit2.cmcp1 <- cv.grpreg(cbind(utrain, xtrain), ytrain, c(rep(0,      ncol(utrain)), part), penalty = \"cMCP\", family = \"binomial\",      alpha = 0.05)" 3246315516
+"cmcp2" "fit2.cmcp2 <- cv.grpreg(cbind(utrain, xtrain), ytrain, c(rep(0,      ncol(utrain)), part), penalty = \"cMCP\", family = \"binomial\",      alpha = 0.5)" 3607255242
+"cmcp3" "fit2.cmcp3 <- cv.grpreg(cbind(utrain, xtrain), ytrain, c(rep(0,      ncol(utrain)), part), penalty = \"cMCP\", family = \"binomial\",      alpha = 0.95)" 2655332767
+"gel1" "fit2.gel1 <- cv.grpreg(cbind(utrain, xtrain), ytrain, c(rep(0,      ncol(utrain)), part), penalty = \"gel\", family = \"binomial\",      alpha = 0.05)" 4988938546
+"gel2" "{     fit2.gel2 <- grpreg(cbind(utrain, xtrain), ytrain, c(rep(0,          ncol(utrain)), part), penalty = \"gel\", family = \"binomial\",          alpha = 0.5)     fit2.gel2 <- list(cve = NA, cvse = NA, lambda = fit2.gel2$lambda,          fit = fit2.gel2, min = 1, lambda.min = fit2.gel2$lambda,          null.dev = NA, pe = NA)     class(fit2.gel2) <- \"cv.grpreg\" }" 73516059
+"gel3" "{     fit2.gel3 <- grpreg(cbind(utrain, xtrain), ytrain, c(rep(0,          ncol(utrain)), part), penalty = \"gel\", family = \"binomial\",          alpha = 0.95)     fit2.gel3 <- list(cve = NA, cvse = NA, lambda = fit2.gel3$lambda,          fit = fit2.gel3, min = 1, lambda.min = fit2.gel3$lambda,          null.dev = NA, pe = NA)     class(fit2.gel3) <- \"cv.grpreg\" }" 19332787

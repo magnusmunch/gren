@@ -34,7 +34,8 @@ plot.data2 <- lapply(methods2, function(m) {
 names(plot.data2) <- methods2
 
 opar <- par(no.readonly=TRUE)
-par(mfrow=c(1, 2), mar=opar$mar*c(1, 1.3, 1, 0.3), cex=0.70)
+par(mar=opar$mar*c(1, 1.3, 1, 1))
+layout(matrix(rep(c(1, 1, 2, 2), 2), 2, 4, byrow=TRUE))
 barplot(plot.data1[[1]], beside=TRUE, col=col1,
         legend.text=methods1,
         args.legend=list(x="bottomleft", fill=c(col1, NA),
@@ -46,7 +47,7 @@ barplot(plot.data1[[1]], beside=TRUE, col=col1,
 abline(h=1, lty=2)
 
 plot(plot.data2[[3]], type="l", xlab="Number of selected features", ylab="AUC", 
-     main="(b)", ylim=range(auc), xlim=c(0, 500), col=col2[3], 
+     main="(b)", ylim=range(auc), xlim=c(0, 600), col=col2[3], 
      lty=lty2[1])
 lines(plot.data2[[4]], col=col2[4], lty=lty2[1])
 lines(plot.data2[[5]], col=col2[5], lty=lty2[1])
@@ -91,7 +92,7 @@ labels1 <- list(corr=expression(tau > 0.54,
                                             textstyle(p <= 2.1e-02))), 
                               p > 2.1e-02))
 labels2 <- expression("ridge", "GRridge", "gren,"~alpha==0.05, 
-                      "enet"~alpha==0.05, "OcMCP,"~alpha==0.05)
+                      "enet"~alpha==0.05, "cMCP,"~alpha==0.05)
 
 plot.data1 <- lapply(1:length(fit1.gren1$lambdag), function(s) {
   rbind(fit1.grridge$lambdamults[[s]], fit1.gren1$lambdag[[s]],
@@ -128,6 +129,53 @@ abline(h=plot.data2[[1]][, 2], col=col2[1], lty=lty2[2])
 abline(h=plot.data2[[2]][, 2], col=col2[2], lty=lty2[2])
 legend("bottomright", legend=labels2, col=col2, 
        lty=c(rep(lty2[2], 2), rep(lty2[1], 4)), bg = "white")
+par(opar)
+
+# ---- lines_colorectal_lymph_node_gren_auc ----
+library(sp)
+load("results/rnaseq_lymph_node_metastasis_fit1.Rdata")
+res1 <- read.table("results/rnaseq_lymph_node_metastasis_res1.csv", 
+                   stringsAsFactors=FALSE)
+res2 <- read.table("results/micrornaseq_colorectal_cancer_res2.csv", 
+                   stringsAsFactors=FALSE)
+pred1 <- as.matrix(res1[substr(rownames(res1), 1, 4)=="pred", ])
+pred2 <- as.matrix(res2[substr(rownames(res2), 1, 4)=="pred", ])
+psel1 <- as.matrix(res1[substr(rownames(res1), 1, 4)=="psel", ])
+psel2 <- as.matrix(res2[substr(rownames(res2), 1, 4)=="psel", ])
+auc1 <- as.matrix(res1[substr(rownames(res1), 1, 3)=="auc", ])
+auc2 <- as.matrix(res2[substr(rownames(res2), 1, 3)=="auc", ])
+
+methods1 <- methods2 <- paste0("gren", 1:3)
+col1 <- bpy.colors(length(methods1) + 2, cutoff.tail=0.1)[-c(1, 5)]
+col2 <- bpy.colors(length(methods2) + 2, cutoff.tail=0.1)[-c(1, 5)]
+lty1 <- lty2 <- 1
+labels1 <- labels2 <- expression("gren,"~alpha==0.05, "gren,"~alpha==0.5, 
+                                 "gren,"~alpha==0.95)
+
+plot.data1 <- lapply(methods1, function(m) {
+  aggregate(auc1[, grepl(m, colnames(auc1))], 
+            list(psel=psel1[, grepl(m, colnames(psel1))]), mean)})
+plot.data2 <- lapply(methods2, function(m) {
+  aggregate(auc2[, grepl(m, colnames(auc2))], 
+            list(psel=psel2[, grepl(m, colnames(psel2))]), mean)})
+names(plot.data1) <- methods1
+names(plot.data2) <- methods2
+
+opar <- par(no.readonly=TRUE)
+par(mar=opar$mar*c(1, 1.3, 1, 1))
+layout(matrix(rep(c(1, 1, 2, 2), 2), 2, 4, byrow=TRUE))
+plot(plot.data1[[1]], type="l", xlab="Number of selected features", ylab="AUC", 
+     main="(a)", ylim=c(0.63, max(auc1)), xlim=c(0, 300), col=col1[1], 
+     lty=lty1[1])
+lines(plot.data1[[2]], col=col1[2], lty=lty1[1])
+lines(plot.data1[[3]], col=col1[3], lty=lty1[1])
+legend("bottomright", legend=labels1, col=col1, 
+       lty=rep(lty1[1], 3), bg = "white")
+plot(plot.data2[[1]], type="l", xlab="Number of selected features", ylab="AUC", 
+     main="(b)", ylim=range(auc2), xlim=c(0, 400), col=col2[1], 
+     lty=lty2[1])
+lines(plot.data2[[2]], col=col2[2], lty=lty2[1])
+lines(plot.data2[[3]], col=col2[3], lty=lty2[1])
 par(opar)
 
 ################################## supplement ##################################
@@ -178,19 +226,82 @@ plot.data <- data.frame(multipliers=unlist(res),
                         method=rep(1:4, each=1000))
 
 opar <- par(no.readonly=TRUE)
-par(mar=opar$mar*c(1, 1.3, 1, 1/1.3), mfrow=c(1, 2))
+par(mar=opar$mar*c(1, 1.3, 1, 1/1.3))
+layout(matrix(rep(c(1, 1, 2, 2), 2), 2, 4, byrow=TRUE))
 boxplot(multipliers ~ method, data=plot.data, names=labels,
         col=col, outline=TRUE, main="(a)",
-        ylab=expression({lambda^{"'"}}[g]),
-        boxlwd=0.5, cex.names=0.75, las=2)
+        ylab=expression({lambda^{"'"}}[g]), las=2,
+        boxlwd=0.5, cex.lab=2, cex.names=1.5, cex.axis=1.3)
 abline(h=1, lty=2, lwd=1.5)
 
 boxplot(multipliers ~ method, data=plot.data, names=labels,
         col=col, outline=FALSE, main="(b)",
-        ylab=expression({lambda^{"'"}}[g]),
-        boxlwd=0.5, cex.names=0.75, las=2)
+        ylab=expression({lambda^{"'"}}[g]), las=2,
+        boxlwd=0.5, cex.lab=2, cex.names=1.5, cex.axis=1.3)
 abline(h=1, lty=2, lwd=1.5)
 par(opar)
+
+# ---- hist_micrornaseq_colorectal_cancer_res5_overlap ----
+
+# ---- lines_micrornaseq_colorectal_cancer_res2_auc ----
+library(sp)
+res <- read.table("results/micrornaseq_colorectal_cancer_res2.csv", 
+                   stringsAsFactors=FALSE)
+
+pred <- as.matrix(res[substr(rownames(res), 1, 4)=="pred", ])
+psel <- as.matrix(res[substr(rownames(res), 1, 4)=="psel", ])
+auc <- as.matrix(res[substr(rownames(res), 1, 3)=="auc", ])
+
+methods <- c("ridge", "grridge", paste0("gren", c(1:3)), paste0("enet", c(1:3)),
+             paste0("sgl", c(1:3)), paste0("cmcp", c(1:3)), 
+             paste0("gel", c(1:3)))
+col <- bpy.colors(length(methods), cutoff.tail=0.1)
+lty <- 1:2
+labels <- expression("ridge", "GRridge", "gren,"~alpha==0.05, 
+                     "gren,"~alpha==0.5, "gren,"~alpha==0.95, 
+                     "enet"~alpha==0.05, "enet"~alpha==0.5, "enet"~alpha==0.95, 
+                     "SGL"~alpha==0.05, "SGL"~alpha==0.5, "SGL"~alpha==0.95,
+                     "cMCP"~alpha==0.05, "cMCP"~alpha==0.5, "cMCP"~alpha==0.95,
+                     "gel"~alpha==0.05, "gel"~alpha==0.5, "gel"~alpha==0.95)
+
+
+plot.data <- lapply(methods, function(m) {
+  aggregate(auc[, grepl(m, colnames(auc))], 
+            list(psel=psel[, grepl(m, colnames(psel))]), mean)})
+names(plot.data) <- methods
+
+opar <- par(no.readonly=TRUE)
+par(mar=opar$mar*c(1, 1.3, 1, 1))
+plot(plot.data[[3]], type="l", xlab="Number of selected features", ylab="AUC", 
+     main="(b)", ylim=range(auc), xlim=c(0, 500), col=col[3], 
+     lty=lty[1])
+lines(plot.data[[4]], col=col[4], lty=lty[1])
+lines(plot.data[[5]], col=col[5], lty=lty[1])
+lines(plot.data[[6]], col=col[6], lty=lty[1])
+lines(plot.data[[7]], col=col[7], lty=lty[1])
+lines(plot.data[[8]], col=col[8], lty=lty[1])
+lines(plot.data[[9]], col=col[9], lty=lty[1])
+lines(plot.data[[10]], col=col[10], lty=lty[1])
+lines(plot.data[[11]], col=col[11], lty=lty[1])
+lines(plot.data[[12]], col=col[12], lty=lty[1])
+lines(plot.data[[13]], col=col[13], lty=lty[1])
+lines(plot.data[[14]], col=col[14], lty=lty[1])
+lines(plot.data[[15]], col=col[15], lty=lty[1])
+lines(plot.data[[16]], col=col[16], lty=lty[1])
+lines(plot.data[[17]], col=col[17], lty=lty[1])
+abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[2])
+abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
+legend("bottomright", legend=labels, col=col, 
+       lty=c(rep(lty[2], 2), rep(lty[2], 15)), bg = "white")
+par(opar)
+
+
+
+str(plot.data)
+
+
+
+
 
 # ---- lines_metabolomics_alzheimer_res1_auc ----
 library(pROC)
