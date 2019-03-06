@@ -1,8 +1,8 @@
 ################################## manuscript ##################################
-# ---- barplot_lines_micrornaseq_colorectal_cancer_res2_auc ----
+# ---- barplot_lines_micrornaseq_colorectal_cancer_res1_auc ----
 library(sp)
-load("results/micrornaseq_colorectal_cancer_fit2.Rdata")
-res <- read.table("results/micrornaseq_colorectal_cancer_res2.csv", 
+load("results/micrornaseq_colorectal_cancer_fit1.Rdata")
+res <- read.table("results/micrornaseq_colorectal_cancer_res1.csv", 
                   stringsAsFactors=FALSE)
 pred <- as.matrix(res[substr(rownames(res), 1, 4)=="pred", ])
 psel <- as.matrix(res[substr(rownames(res), 1, 4)=="psel", ])
@@ -16,18 +16,17 @@ col1 <- grey.colors(length(methods1) - 1, start=0.3, end=0.9, gamma=2.2,
 col2 <- bpy.colors(length(methods2), cutoff.tail=0.1)
 lty1 <- 2
 lty2 <- c(1, 2)
-labels1 <- list(diff.threegroup=expression("FDR">0.05,
-                                           atop(NA, atop(textstyle(
-                                             0.05>=phantom(0)),
-                                             textstyle("FDR" > 0.001))),
-                                           "FDR"<=0.001))
+labels1 <- list(diff.expr=expression("FDR">0.05,
+                                     atop(NA, atop(textstyle(0.05>=phantom(0)),
+                                                   textstyle("FDR" > 0.001))),
+                                     "FDR"<=0.001))
 labels2 <- expression("ridge", "GRridge", "gren,"~alpha==0.05, 
                       "gren,"~alpha==0.5, "enet"~alpha==0.05, 
                       "cMCP"~alpha==0.05)
 
-plot.data1 <- lapply(1:length(fit2.gren1$lambdag), function(s) {
-  rbind(fit2.grridge$lambdamults[[s]], fit2.gren1$lambdag[[s]],
-        fit2.gren2$lambdag[[s]], fit2.gren3$lambdag[[s]])})
+plot.data1 <- lapply(1:length(fit.gren1$lambdag), function(s) {
+  rbind(fit.grridge$lambdamults[[s]], fit.gren1$lambdag[[s]],
+        fit.gren2$lambdag[[s]], fit.gren3$lambdag[[s]])})
 plot.data2 <- lapply(methods2, function(m) {
   aggregate(auc[, grepl(m, colnames(auc))], 
             list(psel=psel[, grepl(m, colnames(psel))]), mean)})
@@ -94,9 +93,9 @@ labels1 <- list(corr=expression(tau > 0.54,
 labels2 <- expression("ridge", "GRridge", "gren,"~alpha==0.05, 
                       "enet"~alpha==0.05, "cMCP,"~alpha==0.05)
 
-plot.data1 <- lapply(1:length(fit1.gren1$lambdag), function(s) {
-  rbind(fit1.grridge$lambdamults[[s]], fit1.gren1$lambdag[[s]],
-        fit1.gren2$lambdag[[s]], fit1.gren3$lambdag[[s]])})
+plot.data1 <- lapply(1:length(fit.gren1$lambdag), function(s) {
+  rbind(fit.grridge$lambdamults[[s]], fit.gren1$lambdag[[s]],
+        fit.gren2$lambdag[[s]], fit.gren3$lambdag[[s]])})
 plot.data2 <- lapply(methods2, function(m) {
   aggregate(auc[, grepl(m, colnames(auc))], 
             list(psel=psel[, grepl(m, colnames(psel))]), mean)})
@@ -130,6 +129,187 @@ abline(h=plot.data2[[2]][, 2], col=col2[2], lty=lty2[2])
 legend("bottomright", legend=labels2, col=col2, 
        lty=c(rep(lty2[2], 2), rep(lty2[1], 4)), bg = "white")
 par(opar)
+
+################################## supplement ##################################
+# ---- boxplots_micrornaseq_colorectal_cancer_res2_multipliers ----
+library(sp)
+res <- read.table("results/micrornaseq_colorectal_cancer_res2.csv", 
+                  stringsAsFactors=FALSE)
+
+methods <- c("grridge", "gren1", "gren2", "gren3")
+labels <- c("GRridge", expression(paste("gren, ", alpha==0.05)),
+            expression(paste("gren, ", alpha==0.5)),
+            expression(paste("gren, ", alpha==0.95)))
+col <- bpy.colors(length(methods), cutoff.tail=0.1)
+
+plot.data <- data.frame(multipliers=unlist(res), 
+                        group=rep(rep(1:3, each=100), 4),
+                        method=rep(1:4, each=300))
+
+opar <- par(no.readonly=TRUE)
+par(mar=opar$mar*c(1, 1.3, 1, 1))
+boxplot(multipliers ~ interaction(method, group), data=plot.data,
+        at=c(c(1:4), c(6:9), c(11:14)), xaxt="n", col=rep(col, 3),
+        outline=TRUE, cex.lab=2, cex.names=1.5,
+        ylab=expression({lambda^{"'"}}[g]),
+        cex.axis=1.5, boxlwd=0.5)
+axis(1, c(2.5, 7.5, 12.5), c("Group 1", "Group 2", "Group 3"), tick=FALSE,
+     cex.axis=1.5)
+abline(h=1, lty=2, lwd=1.5)
+legend("bottomleft", legend=labels, fill=col, border=rep(1, 4), seg.len=1, cex=1.3)
+par(opar)
+
+# ---- boxplots_micrornaseq_colorectal_cancer_res3_multipliers ----
+res <- read.table("results/micrornaseq_colorectal_cancer_res3.csv", 
+                  stringsAsFactors=FALSE)
+
+methods <- c("grridge", "gren1", "gren2", "gren3")
+
+labels <- expression("GRridge", 
+                     atop(NA, atop(textstyle("gren"), 
+                                   textstyle(alpha==0.05))),
+                     atop(NA, atop(textstyle("gren"), 
+                                   textstyle(alpha==0.5))),
+                     atop(NA, atop(textstyle("gren"), 
+                                   textstyle(alpha==0.95))))
+col <- bpy.colors(length(methods), cutoff.tail=0.1)
+
+plot.data <- data.frame(multipliers=unlist(res), 
+                        method=rep(1:4, each=1000))
+
+opar <- par(no.readonly=TRUE)
+par(mar=opar$mar*c(1, 1.3, 1, 1/1.3))
+layout(matrix(rep(c(1, 1, 2, 2), 2), 2, 4, byrow=TRUE))
+boxplot(multipliers ~ method, data=plot.data, names=labels,
+        col=col, outline=TRUE, main="(a)",
+        ylab=expression({lambda^{"'"}}[g]), las=2,
+        boxlwd=0.5, cex.lab=2, cex.names=1.5, cex.axis=1.3)
+abline(h=1, lty=2, lwd=1.5)
+
+boxplot(multipliers ~ method, data=plot.data, names=labels,
+        col=col, outline=FALSE, main="(b)",
+        ylab=expression({lambda^{"'"}}[g]), las=2,
+        boxlwd=0.5, cex.lab=2, cex.names=1.5, cex.axis=1.3)
+abline(h=1, lty=2, lwd=1.5)
+par(opar)
+
+# ---- hist_micrornaseq_colorectal_cancer_res5_overlap ----
+
+# ---- lines_micrornaseq_colorectal_cancer_res1_auc ----
+library(sp)
+res <- read.table("results/micrornaseq_colorectal_cancer_res1.csv", 
+                   stringsAsFactors=FALSE)
+
+pred <- as.matrix(res[substr(rownames(res), 1, 4)=="pred", ])
+psel <- as.matrix(res[substr(rownames(res), 1, 4)=="psel", ])
+auc <- as.matrix(res[substr(rownames(res), 1, 3)=="auc", ])
+
+methods <- c("ridge", "grridge", paste0("gren", c(1:3)), paste0("enet", c(1:3)),
+             paste0("sgl", c(1:3)), paste0("cmcp", c(1:3)), 
+             paste0("gel", c(1:3)))
+col <- bpy.colors(length(methods), cutoff.tail=0.1)
+lty <- 1:length(methods)
+labels <- expression("ridge", "GRridge", "gren,"~alpha==0.05, 
+                     "gren,"~alpha==0.5, "gren,"~alpha==0.95, 
+                     "enet,"~alpha==0.05, "enet,"~alpha==0.5, 
+                     "enet,"~alpha==0.95, "SGL,"~alpha==0.05, "SGL,"~alpha==0.5, 
+                     "SGL,"~alpha==0.95, "cMCP,"~alpha==0.05, 
+                     "cMCP,"~alpha==0.5, "cMCP,"~alpha==0.95, 
+                     "gel,"~alpha==0.05, "gel,"~alpha==0.5, "gel,"~alpha==0.95)
+
+plot.data <- lapply(methods, function(m) {
+  aggregate(auc[, grepl(m, colnames(auc))], 
+            list(psel=psel[, grepl(m, colnames(psel))]), mean)})
+names(plot.data) <- methods
+
+opar <- par(no.readonly=TRUE)
+par(mar=opar$mar*c(1, 1.3, 1, 1))
+plot(plot.data[[3]], type="l", xlab="Number of selected features", ylab="AUC", 
+     main="", ylim=range(auc), xlim=c(0, 500), col=col[3], 
+     lty=lty[3])
+lines(plot.data[[4]], col=col[4], lty=lty[4])
+lines(plot.data[[5]], col=col[5], lty=lty[5])
+lines(plot.data[[6]], col=col[6], lty=lty[6])
+lines(plot.data[[7]], col=col[7], lty=lty[7])
+lines(plot.data[[8]], col=col[8], lty=lty[8])
+lines(plot.data[[9]], col=col[9], lty=lty[9])
+lines(plot.data[[10]], col=col[10], lty=lty[10])
+lines(plot.data[[11]], col=col[11], lty=lty[11])
+lines(plot.data[[12]], col=col[12], lty=lty[12])
+lines(plot.data[[13]], col=col[13], lty=lty[13])
+lines(plot.data[[14]], col=col[14], lty=lty[14])
+lines(plot.data[[15]], col=col[15], lty=lty[15])
+lines(plot.data[[16]], col=col[16], lty=lty[16])
+lines(plot.data[[17]], col=col[17], lty=lty[17])
+abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
+abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
+legend("bottomright", legend=labels, col=col, 
+       lty=lty, bg = "white")
+par(opar)
+
+# ---- lines_rnaseq_lymph_node_metastasis_res1_auc ----
+library(sp)
+res <- read.table("results/rnaseq_lymph_node_metastasis_res1.csv", 
+                  stringsAsFactors=FALSE)
+
+pred <- as.matrix(res[substr(rownames(res), 1, 4)=="pred", ])
+psel <- as.matrix(res[substr(rownames(res), 1, 4)=="psel", ])
+auc <- as.matrix(res[substr(rownames(res), 1, 3)=="auc", ])
+
+methods <- c("ridge", "grridge", paste0("gren", c(1:3)), paste0("enet", c(1:3)),
+             paste0("sgl", c(1:3)), paste0("cmcp", c(1:3)), 
+             paste0("gel", c(1:3)), paste0("ocmcp", c(1:3)), 
+             paste0("ogel", c(1:3)))
+col <- bpy.colors(length(methods), cutoff.tail=0.1)
+lty <- 1:length(methods)
+labels <- expression("ridge", "GRridge", "gren,"~alpha==0.05, 
+                     "gren,"~alpha==0.5, "gren,"~alpha==0.95, 
+                     "enet,"~alpha==0.05, "enet,"~alpha==0.5, 
+                     "enet,"~alpha==0.95, "SGL,"~alpha==0.05, "SGL,"~alpha==0.5, 
+                     "SGL,"~alpha==0.95, "cMCP,"~alpha==0.05, 
+                     "cMCP,"~alpha==0.5, "cMCP,"~alpha==0.95, 
+                     "gel,"~alpha==0.05, "gel,"~alpha==0.5, "gel,"~alpha==0.95,
+                     "OcMCP,"~alpha==0.05, "OcMCP,"~alpha==0.5, 
+                     "OcMCP,"~alpha==0.95, "Ogel,"~alpha==0.05, 
+                     "Ogel,"~alpha==0.5, "Ogel,"~alpha==0.95)
+
+plot.data <- lapply(methods, function(m) {
+  aggregate(auc[, grepl(m, colnames(auc))], 
+            list(psel=psel[, grepl(m, colnames(psel))]), mean)})
+names(plot.data) <- methods
+
+opar <- par(no.readonly=TRUE)
+par(mar=opar$mar*c(1, 1.3, 1, 1))
+plot(plot.data[[3]], type="l", xlab="Number of selected features", ylab="AUC", 
+     main="", ylim=range(auc), xlim=c(0, 500), col=col[3], 
+     lty=lty[3])
+lines(plot.data[[4]], col=col[4], lty=lty[4])
+lines(plot.data[[5]], col=col[5], lty=lty[5])
+lines(plot.data[[6]], col=col[6], lty=lty[6])
+lines(plot.data[[7]], col=col[7], lty=lty[7])
+lines(plot.data[[8]], col=col[8], lty=lty[8])
+lines(plot.data[[9]], col=col[9], lty=lty[9])
+lines(plot.data[[10]], col=col[10], lty=lty[10])
+lines(plot.data[[11]], col=col[11], lty=lty[11])
+lines(plot.data[[12]], col=col[12], lty=lty[12])
+lines(plot.data[[13]], col=col[13], lty=lty[13])
+lines(plot.data[[14]], col=col[14], lty=lty[14])
+lines(plot.data[[15]], col=col[15], lty=lty[15])
+lines(plot.data[[16]], col=col[16], lty=lty[16])
+lines(plot.data[[17]], col=col[17], lty=lty[17])
+lines(plot.data[[18]], col=col[18], lty=lty[18])
+lines(plot.data[[19]], col=col[19], lty=lty[19])
+lines(plot.data[[20]], col=col[20], lty=lty[20])
+lines(plot.data[[21]], col=col[21], lty=lty[21])
+lines(plot.data[[22]], col=col[22], lty=lty[22])
+lines(plot.data[[23]], col=col[23], lty=lty[23])
+abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
+abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
+legend("bottomright", legend=labels, col=col, 
+       lty=lty, bg = "white")
+par(opar)
+
+
 
 # ---- lines_colorectal_lymph_node_gren_auc ----
 library(sp)
@@ -178,126 +358,9 @@ lines(plot.data2[[2]], col=col2[2], lty=lty2[1])
 lines(plot.data2[[3]], col=col2[3], lty=lty2[1])
 par(opar)
 
-################################## supplement ##################################
-# ---- boxplots_micrornaseq_colorectal_cancer_res3_multipliers ----
-library(sp)
-res <- read.table("results/micrornaseq_colorectal_cancer_res3.csv", 
-                  stringsAsFactors=FALSE)
-
-methods <- c("grridge", "gren1", "gren2", "gren3")
-labels <- c("GRridge", expression(paste("gren, ", alpha==0.05)),
-            expression(paste("gren, ", alpha==0.5)),
-            expression(paste("gren, ", alpha==0.95)))
-col <- bpy.colors(length(methods), cutoff.tail=0.1)
-
-plot.data <- data.frame(multipliers=unlist(res), 
-                        group=rep(rep(1:3, each=100), 4),
-                        method=rep(1:4, each=300))
-
-opar <- par(no.readonly=TRUE)
-par(mar=opar$mar*c(1, 1.3, 1, 1))
-boxplot(multipliers ~ interaction(method, group), data=plot.data,
-        at=c(c(1:4), c(6:9), c(11:14)), xaxt="n", col=rep(col, 3),
-        outline=TRUE, cex.lab=2, cex.names=1.5,
-        ylab=expression({lambda^{"'"}}[g]),
-        cex.axis=1.5, boxlwd=0.5)
-axis(1, c(2.5, 7.5, 12.5), c("Group 1", "Group 2", "Group 3"), tick=FALSE,
-     cex.axis=1.5)
-abline(h=1, lty=2, lwd=1.5)
-legend("bottomleft", legend=labels, fill=col, border=rep(1, 4), seg.len=1, cex=1.3)
-par(opar)
-
-# ---- boxplots_micrornaseq_colorectal_cancer_res4_multipliers ----
-res <- read.table("results/micrornaseq_colorectal_cancer_res4.csv", 
-                  stringsAsFactors=FALSE)
-
-methods <- c("grridge", "gren1", "gren2", "gren3")
-
-labels <- expression("GRridge", 
-                     atop(NA, atop(textstyle("gren"), 
-                                   textstyle(alpha==0.05))),
-                     atop(NA, atop(textstyle("gren"), 
-                                   textstyle(alpha==0.5))),
-                     atop(NA, atop(textstyle("gren"), 
-                                   textstyle(alpha==0.95))))
-col <- bpy.colors(length(methods), cutoff.tail=0.1)
-
-plot.data <- data.frame(multipliers=unlist(res), 
-                        method=rep(1:4, each=1000))
-
-opar <- par(no.readonly=TRUE)
-par(mar=opar$mar*c(1, 1.3, 1, 1/1.3))
-layout(matrix(rep(c(1, 1, 2, 2), 2), 2, 4, byrow=TRUE))
-boxplot(multipliers ~ method, data=plot.data, names=labels,
-        col=col, outline=TRUE, main="(a)",
-        ylab=expression({lambda^{"'"}}[g]), las=2,
-        boxlwd=0.5, cex.lab=2, cex.names=1.5, cex.axis=1.3)
-abline(h=1, lty=2, lwd=1.5)
-
-boxplot(multipliers ~ method, data=plot.data, names=labels,
-        col=col, outline=FALSE, main="(b)",
-        ylab=expression({lambda^{"'"}}[g]), las=2,
-        boxlwd=0.5, cex.lab=2, cex.names=1.5, cex.axis=1.3)
-abline(h=1, lty=2, lwd=1.5)
-par(opar)
-
-# ---- hist_micrornaseq_colorectal_cancer_res5_overlap ----
-
-# ---- lines_micrornaseq_colorectal_cancer_res2_auc ----
-library(sp)
-res <- read.table("results/micrornaseq_colorectal_cancer_res2.csv", 
-                   stringsAsFactors=FALSE)
-
-pred <- as.matrix(res[substr(rownames(res), 1, 4)=="pred", ])
-psel <- as.matrix(res[substr(rownames(res), 1, 4)=="psel", ])
-auc <- as.matrix(res[substr(rownames(res), 1, 3)=="auc", ])
-
-methods <- c("ridge", "grridge", paste0("gren", c(1:3)), paste0("enet", c(1:3)),
-             paste0("sgl", c(1:3)), paste0("cmcp", c(1:3)), 
-             paste0("gel", c(1:3)))
-col <- bpy.colors(length(methods), cutoff.tail=0.1)
-lty <- 1:2
-labels <- expression("ridge", "GRridge", "gren,"~alpha==0.05, 
-                     "gren,"~alpha==0.5, "gren,"~alpha==0.95, 
-                     "enet"~alpha==0.05, "enet"~alpha==0.5, "enet"~alpha==0.95, 
-                     "SGL"~alpha==0.05, "SGL"~alpha==0.5, "SGL"~alpha==0.95,
-                     "cMCP"~alpha==0.05, "cMCP"~alpha==0.5, "cMCP"~alpha==0.95,
-                     "gel"~alpha==0.05, "gel"~alpha==0.5, "gel"~alpha==0.95)
-
-
-plot.data <- lapply(methods, function(m) {
-  aggregate(auc[, grepl(m, colnames(auc))], 
-            list(psel=psel[, grepl(m, colnames(psel))]), mean)})
-names(plot.data) <- methods
-
-opar <- par(no.readonly=TRUE)
-par(mar=opar$mar*c(1, 1.3, 1, 1))
-plot(plot.data[[3]], type="l", xlab="Number of selected features", ylab="AUC", 
-     main="(b)", ylim=range(auc), xlim=c(0, 500), col=col[3], 
-     lty=lty[1])
-lines(plot.data[[4]], col=col[4], lty=lty[1])
-lines(plot.data[[5]], col=col[5], lty=lty[1])
-lines(plot.data[[6]], col=col[6], lty=lty[1])
-lines(plot.data[[7]], col=col[7], lty=lty[1])
-lines(plot.data[[8]], col=col[8], lty=lty[1])
-lines(plot.data[[9]], col=col[9], lty=lty[1])
-lines(plot.data[[10]], col=col[10], lty=lty[1])
-lines(plot.data[[11]], col=col[11], lty=lty[1])
-lines(plot.data[[12]], col=col[12], lty=lty[1])
-lines(plot.data[[13]], col=col[13], lty=lty[1])
-lines(plot.data[[14]], col=col[14], lty=lty[1])
-lines(plot.data[[15]], col=col[15], lty=lty[1])
-lines(plot.data[[16]], col=col[16], lty=lty[1])
-lines(plot.data[[17]], col=col[17], lty=lty[1])
-abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[2])
-abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
-legend("bottomright", legend=labels, col=col, 
-       lty=c(rep(lty[2], 2), rep(lty[2], 15)), bg = "white")
-par(opar)
 
 
 
-str(plot.data)
 
 
 
@@ -976,98 +1039,7 @@ abline(h=briers[colnames(briers)=="ridge"], col=col2[1], lty=lty2[4])
 abline(h=briers[colnames(briers)=="grridge"], col=col2[2], lty=lty2[4])
 par(opar)
 
-# ---- lines_rnaseq_lymph_node_metastasis_res1_auc ----
-library(CoRF)
-library(pROC)
-library(grpreg)
-library(sp)
-load("results/rnaseq_lymph_node_metastasis_fit1.Rdata")
-res1 <- read.table("results/rnaseq_lymph_node_metastasis_res1.csv", 
-                   stringsAsFactors=FALSE)
 
-methods1 <- c("ridge", "grridge", "gren", "enet", "sgl", "cmcp", "gel")
-pred1 <- as.matrix(res1[substr(rownames(res1), 1, 4)=="pred", ])
-psel1 <- as.matrix(res1[substr(rownames(res1), 1, 4)=="psel", ])
-ytest <- as.numeric(levels(RespValidation))[RespValidation]
-auc1 <- apply(pred1, 2, function(m) {pROC::auc(ytest, m)})
-plot.data1 <- lapply(c(t(outer(methods1[-c(1, 2)], 1:3, paste, sep=""))), 
-                     function(m) {aggregate(auc1[grepl(m, names(auc1))], list(
-                       psel=psel1[, grepl(m, colnames(psel1))]), mean)})
-cv.psel1 <- c(sum(coef(fit1.gren1$freq.model$groupreg, 
-                       s=fit1.gren1$lambda)[-1, ]!=0),
-              sum(coef(fit1.gren2$freq.model$groupreg, 
-                       s=fit1.gren2$lambda)[-1, ]!=0),
-              sum(coef(fit1.gren3$freq.model$groupreg, 
-                       s=fit1.gren3$lambda)[-1, ]!=0),
-              sum(coef(fit1.gren1$freq.model$regular, 
-                       s=fit1.gren1$lambda)[-1, ]!=0),
-              sum(coef(fit1.gren2$freq.model$regular, 
-                       s=fit1.gren2$lambda)[-1, ]!=0),
-              sum(coef(fit1.gren3$freq.model$regular, 
-                       s=fit1.gren3$lambda)[-1, ]!=0),
-              psel1[, grepl("sgl1", colnames(psel1))][which.min(
-                fit1.sgl1$lldiff)],
-              psel1[, grepl("sgl2", colnames(psel1))][which.min(
-                fit1.sgl2$lldiff)],
-              psel1[, grepl("sgl3", colnames(psel1))][which.min(
-                fit1.sgl3$lldiff)],
-              psel1[, grepl("cmcp1", colnames(psel1))][fit1.cmcp1$min],
-              psel1[, grepl("cmcp2", colnames(psel1))][fit1.cmcp2$min],
-              psel1[, grepl("cmcp3", colnames(psel1))][fit1.cmcp3$min],
-              psel1[, grepl("gel1", colnames(psel1))][fit1.gel1$min],
-              psel1[, grepl("gel2", colnames(psel1))][fit1.gel2$min],
-              psel1[, grepl("gel3", colnames(psel1))][fit1.gel3$min])
-col1 <- bpy.colors(length(methods1), cutoff.tail=0.1)
-lty1 <- c(1:4)
-
-par(mfrow=c(1, 2))
-plot(plot.data1[[1]], type="l", xlab="Number of selected features", ylab="AUC", 
-     main="a)", ylim=range(auc1), xlim=range(psel1), col=col1[3], lty=lty1[1])
-lines(plot.data1[[2]], col=col1[3], lty=lty1[2])
-lines(plot.data1[[3]], col=col1[3], lty=lty1[3])
-lines(plot.data1[[4]], col=col1[4], lty=lty1[1])
-lines(plot.data1[[5]], col=col1[4], lty=lty1[2])
-lines(plot.data1[[6]], col=col1[4], lty=lty1[3])
-lines(plot.data1[[7]], col=col1[5], lty=lty1[1])
-lines(plot.data1[[8]], col=col1[5], lty=lty1[2])
-lines(plot.data1[[9]], col=col1[5], lty=lty1[3])
-lines(plot.data1[[10]], col=col1[6], lty=lty1[1])
-lines(plot.data1[[11]], col=col1[6], lty=lty1[2])
-lines(plot.data1[[12]], col=col1[6], lty=lty1[3])
-abline(h=auc1[names(auc1)=="ridge"], col=col1[1], lty=lty1[4])
-abline(h=auc1[names(auc1)=="grridge"], col=col1[2], lty=lty1[4])
-points(t(sapply(1:length(plot.data1), function(m) {
-  subset(plot.data1[[m]], psel==cv.psel1[m])})), 
-  col=rep(col1[-c(1, 2)], each=3), pch=1)
-legend("bottomright", 
-       legend=c(methods1, expression(alpha==0.05, alpha==0.5, alpha==0.95),
-                "CV model"), 
-       fill=c(col1, rep(NA, 4)),
-       border=c(rep(1, length(methods1)), rep(NA, 4)), 
-       lty=c(rep(NA, length(methods1)), lty1[-4], NA),
-       pch=c(rep(NA, length(methods1)), rep(NA, 3), 1),
-       seg.len=1, merge=TRUE, cex=0.75)
-
-plot(plot.data1[[1]], type="l", xlab="Number of selected features", ylab="AUC", 
-     main="b)", ylim=c(0.63, max(auc1)), xlim=c(0, 500), col=col1[3], 
-     lty=lty1[1])
-lines(plot.data1[[2]], col=col1[3], lty=lty1[2])
-lines(plot.data1[[3]], col=col1[3], lty=lty1[3])
-lines(plot.data1[[4]], col=col1[4], lty=lty1[1])
-lines(plot.data1[[5]], col=col1[4], lty=lty1[2])
-lines(plot.data1[[6]], col=col1[4], lty=lty1[3])
-lines(plot.data1[[7]], col=col1[5], lty=lty1[1])
-lines(plot.data1[[8]], col=col1[5], lty=lty1[2])
-lines(plot.data1[[9]], col=col1[5], lty=lty1[3])
-lines(plot.data1[[10]], col=col1[6], lty=lty1[1])
-lines(plot.data1[[11]], col=col1[6], lty=lty1[2])
-lines(plot.data1[[12]], col=col1[6], lty=lty1[3])
-abline(h=auc1[names(auc1)=="ridge"], col=col1[1], lty=lty1[4])
-abline(h=auc1[names(auc1)=="grridge"], col=col1[2], lty=lty1[4])
-points(t(sapply(1:length(plot.data1), function(m) {
-  subset(plot.data1[[m]], psel==cv.psel1[m])})), 
-  col=rep(col1[-c(1, 2)], each=3), pch=1)
-par(mfrow=c(1, 1))
 
 # ---- barplots_rnaseq_lymph_node_metastasis_res1_auc ----
 library(sp)
@@ -1101,104 +1073,6 @@ barplot(plot.data1[[2]], beside=TRUE, col=col1,
         names.arg=labels1[[2]], ylab=expression(hat(lambda)~"'"[g]))
 abline(h=1, lty=2)
 par(opar)
-
-# ---- lines_micrornaseq_colorectal_cancer_res1_auc ----
-library(pROC)
-library(grpreg)
-library(sp)
-load("results/micrornaseq_colorectal_cancer_fit1.Rdata")
-res1 <- read.table("results/micrornaseq_colorectal_cancer_res1.csv", 
-                   stringsAsFactors=FALSE)
-
-methods1 <- c("ridge", "grridge", "gren", "enet", "sgl", "cmcp", "gel")
-pred1 <- as.matrix(res1[substr(rownames(res1), 1, 4)=="pred", ])
-psel1 <- as.matrix(res1[substr(rownames(res1), 1, 4)=="psel", ])
-auc1 <- as.matrix(res1[substr(rownames(res1), 1, 3)=="auc", ])
-plot.data1 <- lapply(c(t(outer(methods1[-c(1, 2)], 1:3, paste, sep=""))), 
-                     function(m) {aggregate(auc1[, grepl(m, colnames(auc1))], 
-                                            list(psel=psel1[, grepl(m, colnames(
-                                              psel1))]), mean)})
-cv.psel1 <- c(sum(coef(fit1.gren1$freq.model$groupreg, 
-                       s=fit1.gren1$lambda)[-1, ]!=0),
-              sum(coef(fit1.gren2$freq.model$groupreg, 
-                       s=fit1.gren2$lambda)[-1, ]!=0),
-              sum(coef(fit1.gren3$freq.model$groupreg, 
-                       s=fit1.gren3$lambda)[-1, ]!=0),
-              sum(coef(fit1.gren1$freq.model$regular, 
-                       s=fit1.gren1$lambda)[-1, ]!=0),
-              sum(coef(fit1.gren2$freq.model$regular, 
-                       s=fit1.gren2$lambda)[-1, ]!=0),
-              sum(coef(fit1.gren3$freq.model$regular, 
-                       s=fit1.gren3$lambda)[-1, ]!=0),
-              psel1[, grepl("sgl1", colnames(psel1))][which.min(
-                fit1.sgl1$lldiff)],
-              psel1[, grepl("sgl2", colnames(psel1))][which.min(
-                fit1.sgl2$lldiff)],
-              psel1[, grepl("sgl3", colnames(psel1))][which.min(
-                fit1.sgl3$lldiff)],
-              psel1[, grepl("cmcp1", colnames(psel1))][fit1.cmcp1$min],
-              psel1[, grepl("cmcp2", colnames(psel1))][fit1.cmcp2$min],
-              psel1[, grepl("cmcp3", colnames(psel1))][fit1.cmcp3$min],
-              psel1[, grepl("gel1", colnames(psel1))][fit1.gel1$min],
-              psel1[, grepl("gel2", colnames(psel1))][fit1.gel2$min],
-              psel1[, grepl("gel3", colnames(psel1))][fit1.gel3$min])
-col1 <- bpy.colors(length(methods1), cutoff.tail=0.1)
-lty1 <- c(1:4)
-
-par(mfrow=c(1, 2))
-plot(plot.data1[[1]], type="l", xlab="Number of selected features", ylab="AUC", 
-     main="a)", ylim=range(auc1), xlim=range(psel1), col=col1[3], lty=lty1[1])
-lines(plot.data1[[2]], col=col1[3], lty=lty1[2])
-lines(plot.data1[[3]], col=col1[3], lty=lty1[3])
-lines(plot.data1[[4]], col=col1[4], lty=lty1[1])
-lines(plot.data1[[5]], col=col1[4], lty=lty1[2])
-lines(plot.data1[[6]], col=col1[4], lty=lty1[3])
-lines(plot.data1[[7]], col=col1[5], lty=lty1[1])
-lines(plot.data1[[8]], col=col1[5], lty=lty1[2])
-lines(plot.data1[[9]], col=col1[5], lty=lty1[3])
-lines(plot.data1[[10]], col=col1[6], lty=lty1[1])
-lines(plot.data1[[11]], col=col1[6], lty=lty1[2])
-lines(plot.data1[[12]], col=col1[6], lty=lty1[3])
-lines(plot.data1[[13]], col=col1[7], lty=lty1[1])
-lines(plot.data1[[14]], col=col1[8], lty=lty1[2])
-lines(plot.data1[[15]], col=col1[9], lty=lty1[3])
-abline(h=auc1[colnames(auc1)=="ridge"], col=col1[1], lty=lty1[4])
-abline(h=auc1[colnames(auc1)=="grridge"], col=col1[2], lty=lty1[4])
-points(t(sapply(1:length(plot.data1), function(m) {
-  subset(plot.data1[[m]], psel==cv.psel1[m])})), 
-  col=rep(col1[-c(1, 2)], each=3), pch=1)
-legend("bottomright", 
-       legend=c(methods1, expression(alpha==0.05, alpha==0.5, alpha==0.95),
-                "CV model"), 
-       fill=c(col1, rep(NA, 4)),
-       border=c(rep(1, length(methods1)), rep(NA, 4)), 
-       lty=c(rep(NA, length(methods1)), lty1[-4], NA),
-       pch=c(rep(NA, length(methods1)), rep(NA, 3), 1),
-       seg.len=1, merge=TRUE, cex=0.75)
-
-plot(plot.data1[[1]], type="l", xlab="Number of selected features", ylab="AUC", 
-     main="b)", ylim=c(0.5, max(auc1)), xlim=c(0, 500), col=col1[3], 
-     lty=lty1[1])
-lines(plot.data1[[2]], col=col1[3], lty=lty1[2])
-lines(plot.data1[[3]], col=col1[3], lty=lty1[3])
-lines(plot.data1[[4]], col=col1[4], lty=lty1[1])
-lines(plot.data1[[5]], col=col1[4], lty=lty1[2])
-lines(plot.data1[[6]], col=col1[4], lty=lty1[3])
-lines(plot.data1[[7]], col=col1[5], lty=lty1[1])
-lines(plot.data1[[8]], col=col1[5], lty=lty1[2])
-lines(plot.data1[[9]], col=col1[5], lty=lty1[3])
-lines(plot.data1[[10]], col=col1[6], lty=lty1[1])
-lines(plot.data1[[11]], col=col1[6], lty=lty1[2])
-lines(plot.data1[[12]], col=col1[6], lty=lty1[3])
-lines(plot.data1[[13]], col=col1[7], lty=lty1[1])
-lines(plot.data1[[14]], col=col1[8], lty=lty1[2])
-lines(plot.data1[[15]], col=col1[9], lty=lty1[3])
-abline(h=auc1[colnames(auc1)=="ridge"], col=col1[1], lty=lty1[4])
-abline(h=auc1[colnames(auc1)=="grridge"], col=col1[2], lty=lty1[4])
-points(t(sapply(1:length(plot.data1), function(m) {
-  subset(plot.data1[[m]], psel==cv.psel1[m])})), 
-  col=rep(col1[-c(1, 2)], each=3), pch=1)
-par(mfrow=c(1, 1))
 
 # ---- barplots_micrornaseq_colorectal_cancer_res1_auc ----
 library(Biobase)

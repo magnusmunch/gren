@@ -13,7 +13,7 @@ read_chunk("code/figures.R")
 \documentclass[a4paper,hidelinks]{article}
 \usepackage{bm,amsmath,amssymb,amsthm,amsfonts,graphics,graphicx,epsfig,
 rotating,caption,subcaption,natbib,appendix,titlesec,multicol,hyperref,verbatim,
-bbm,algorithm,algpseudocode,pgfplotstable,threeparttable,booktabs,mathtools,
+bbm,algorithm,algpseudocode,threeparttable,booktabs,mathtools,
 dsfont,parskip}
 
 % vectors and matrices
@@ -75,16 +75,6 @@ dsfont,parskip}
 \newcommand{\KL}{D_{\text{KL}}}
 \newcommand{\trace}{\text{tr}}
 \newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
-\newcommand{\appropto}{\mathrel{\vcenter{
-  \offinterlineskip\halign{\hfil$##$\cr
-    \propto\cr\noalign{\kern2pt}\sim\cr\noalign{\kern-2pt}}}}}
-\newcommand{\card}[1]{\text{card} \left( #1 \right)}
-\makeatletter
-\newcommand*{\defeq}{\mathrel{\rlap{%
-			\raisebox{0.3ex}{$\m@th\cdot$}}%
-		\raisebox{-0.3ex}{$\m@th\cdot$}}%
-	=}
-\makeatother
 
 % distributions
 \newcommand{\N}{\text{N}}
@@ -110,23 +100,23 @@ dsfont,parskip}
 \graphicspath{{../figs/}}
 \setlength{\evensidemargin}{.5cm} \setlength{\oddsidemargin}{.5cm}
 \setlength{\textwidth}{15cm}
-\setlength{\parindent}{0pt}
 \title{Adaptive group-regularized logistic elastic net regression Supplementary 
 material}
-\date{}
+\date{\today}
 \author{Magnus M. M\"unch$^{1,2}$\footnote{Correspondence to: 
 \href{mailto:m.munch@vumc.nl}{m.munch@vumc.nl}}, Carel F.W. Peeters$^{1}$, 
-Aad W. van der Vaart$^{2}$ \\ and Mark A. van de Wiel$^{1,3}$}
+Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 
 \begin{document}
 
   \maketitle
+  
   \noindent
-  1. Department of Epidemiology \& Biostatistics, Amsterdam Public Health
-  research institute, VU University Medical Center, PO Box 7057, 1007 MB
-  Amsterdam, The Netherlands\\
-  2. Mathematical Institute, Leiden University, Leiden, The Netherlands \\
-  3. Department of Mathematics, VU University, Amsterdam, The Netherlands \\
+	1. Department of Epidemiology \& Biostatistics, Amsterdam Public Health
+	research institute, Amsterdam University medical centers, PO Box 7057, 1007 MB
+	Amsterdam, The Netherlands \\*
+	2. Mathematical Institute, Leiden University, Leiden, The Netherlands \\*
+	3. MRC Biostatistics Unit, Cambridge University, Cambridge, United Kingdom
 
   \textbf{Keywords}: Empirical Bayes; High-dimensional data; Prediction; 
   Variational Bayes
@@ -151,8 +141,8 @@ Aad W. van der Vaart$^{2}$ \\ and Mark A. van de Wiel$^{1,3}$}
   explained in Section 3 of the Main Document. The full procedure of the
   proposed method is shown in Section \ref{sec:fullestimationprocedure}. We
   apply our method to a study on microRNAs in colorectal cancer data 
-  \cite[]{neerincx_combination_2018} in Section \ref{sec:appcolon} . Finally, we
-  introduce the ridge and lasso versions of the proposed method in Section
+  \cite[]{neerincx_combination_2018} in Section [! section ref here]. Finally, 
+  we introduce the ridge and lasso versions of the proposed method in Section
   \ref{sec:evbridgelasso}. 
 
   \section{The elastic net prior}\label{sec:enetprior}
@@ -176,95 +166,158 @@ Aad W. van der Vaart$^{2}$ \\ and Mark A. van de Wiel$^{1,3}$}
   \subsection{Expectation and variance}
   The expectation and variance of $\beta$ are:
   \begin{align*}
-  \E[\beta] &= g(\lambda_1,\lambda_2) \int_{-\infty}^{\infty} \beta \cdot \exp\[
-  -\frac{1}{2} (\lambda_1 |\beta| + \lambda_2 \beta^2)\] d\beta=0, \\
-  \V[\beta] &= g(\lambda_1,\lambda_2) \int_{-\infty}^{\infty} \beta^2 \cdot
-  \exp\[-\frac{1}{2} (\lambda_1 |\beta| + \lambda_2 \beta^2)\] d\beta -
-  \E[\beta]^2\\ &= \frac{\lambda_1^2}{4 \lambda_2^2} + \frac{1}{\lambda_2} -
-  \frac{\lambda_1}{2 \lambda_2^{3/2}} \phi \( \frac{\lambda_1}{2 
-  \sqrt{\lambda_2}} \) \Phi \(\frac{-\lambda_1}{2 \sqrt{\lambda_2}} \)^{-1}.
+    \E[\beta] &= g(\lambda_1,\lambda_2) \int_{-\infty}^{\infty} \beta \cdot 
+    \exp\[-\frac{1}{2} (\lambda_1 |\beta| + \lambda_2 \beta^2)\] d\beta=0, \\
+    \V[\beta] &= g(\lambda_1,\lambda_2) \int_{-\infty}^{\infty} \beta^2 \cdot
+    \exp\[-\frac{1}{2} (\lambda_1 |\beta| + \lambda_2 \beta^2)\] d\beta -
+    \E[\beta]^2\\ &= \frac{\lambda_1^2}{4 \lambda_2^2} + \frac{1}{\lambda_2} -
+    \frac{\lambda_1}{2 \lambda_2^{3/2}} \phi \( \frac{\lambda_1}{2 
+    \sqrt{\lambda_2}} \) \Phi \(\frac{-\lambda_1}{2 \sqrt{\lambda_2}} \)^{-1}.
   \end{align*}
 
-\subsection{Simulation}
-Generating samples from the elastic net prior is not straightforward. \cite{li_bayesian_2010} show that the elastic net prior may be written as a scale mixture of normals, with mixing parameter $\btau = \begin{bmatrix} \tau_1 & \cdots & \tau_p \end{bmatrix} \tr$: 
-\begin{align*}
-\beta | \tau & \sim \mathcal{N} \left(0,\frac{1}{\lambda_2} \frac{\tau - 1}{\tau} \right), \\
-\tau & \sim \mathcal{TG} \left( \frac{1}{2},\frac{8 \lambda_2}{\lambda_1^2}, \left(1,\infty \right) \right),
-\end{align*}
-where $\mathcal{TG} \( k,\theta,\( x_l,x_u\) \)$ denotes the truncated gamma distribution with shape $k$, scale $\theta$, and domain $\(x_l,x_u\)$. So with an efficient truncated gamma sampler available we may sample from the prior using any standard software package that includes a Gaussian sampling routine. More specifically, we require a a sample from the $\mathcal{TG} \left( \frac{1}{2},8 \lambda2/\lambda_1^2, \left(1,\infty \right) \right)$ distribution. The CDF of this distribution is given by:
-$$
-F_{T}(\tau) =	
-\begin{dcases}
-0, & \text{if }\tau < 1 \\
-1 - \frac{\Phi\(-\frac{\lambda_1}{2} \sqrt{\frac{\tau}{\lambda_2}} \)}{\Phi\(-\frac{\lambda_1}{2 \sqrt{\lambda_2}} \)}, & \text{if } \tau \geq 1.
-\end{dcases}
-$$
+  \subsection{Simulation}
+  Generating samples from the elastic net prior is not straightforward. 
+  \cite{li_bayesian_2010} show that the elastic net prior may be written as a 
+  scale mixture of normals, with mixing parameter 
+  $\btau = \begin{bmatrix} \tau_1 & \cdots & \tau_p \end{bmatrix} \tr$: 
+  \begin{align*}
+    \beta | \tau & \sim \mathcal{N} \left(0,\frac{1}{\lambda_2} 
+    \frac{\tau - 1}{\tau} \right), \\
+    \tau & \sim \mathcal{TG} \left( \frac{1}{2},\frac{8 \lambda_2}{\lambda_1^2},
+    \left(1,\infty \right) \right),
+  \end{align*}
+  where $\mathcal{TG} \( k,\theta,\( x_l,x_u\) \)$ denotes the truncated gamma 
+  distribution with shape $k$, scale $\theta$, and domain $\(x_l,x_u\)$. So with
+  an efficient truncated gamma sampler available we may sample from the prior 
+  using any standard software package that includes a Gaussian sampling routine.
+  More specifically, we require a a sample from the $\mathcal{TG} 
+  \left( \frac{1}{2},8 \lambda2/\lambda_1^2, \left(1,\infty \right) \right)$ 
+  distribution. The CDF of this distribution is given by:
+  $$
+  F_{T}(\tau) =	
+  \begin{dcases}
+    0, & \text{if }\tau < 1 \\
+    1 - \frac{\Phi\(-\frac{\lambda_1}{2} \sqrt{\frac{\tau}{\lambda_2}} \)}
+    {\Phi\(-\frac{\lambda_1}{2 \sqrt{\lambda_2}} \)}, & \text{if } \tau \geq 1.
+  \end{dcases}
+  $$
 
-Since $F_{T}(\tau)$ is continuous and strictly monotonically increasing for $\tau \geq 1$, the quantile function may be written as a function of the probability $p \in (0,1)$:
-$$
-Q_{T}(p) =	F^{-1}_{T}(p) = \frac{4 \lambda_2}{\lambda_1^2} \Phi^{-1} \[ (1 - p) \Phi\(-\frac{\lambda_1}{2 \sqrt{\lambda_2}} \)\]^2,
-$$
-where $\Phi^{-1}(p)$ is the quantile function of the standard normal distribution, i.e, the probit function. Employing inverse transform sampling for the truncated gamma distribution, an elastic net prior sampling scheme is now:
-\begin{algorithmic}
-	\State{Generate $U \sim \mathcal{U} (0,1)$}
-	\State{Set $\tau = \frac{4 \lambda_2}{\lambda_1^2} \Phi^{-1} \[ (1 - u) \Phi\(-\frac{\lambda_1}{2 \sqrt{\lambda_2}} \)\]^2$}
-	\State{Set $\nu^2= \frac{\tau - 1}{\tau \lambda_2}$}
-	\State{Generate $\beta \sim \mathcal{N}(0,\nu^2)$}
-	\State{\Return{$\beta$}}
-\end{algorithmic}
+  Since $F_{T}(\tau)$ is continuous and strictly monotonically increasing for 
+  $\tau \geq 1$, the quantile function may be written as a function of the 
+  probability $p \in (0,1)$:
+  $$
+  Q_{T}(p) =	F^{-1}_{T}(p) = \frac{4 \lambda_2}{\lambda_1^2} 
+  \Phi^{-1} \[ (1 - p) \Phi\(-\frac{\lambda_1}{2 \sqrt{\lambda_2}} \)\]^2,
+  $$
+  where $\Phi^{-1}(p)$ is the quantile function of the standard normal 
+  distribution, i.e, the probit function. Employing inverse transform sampling 
+  for the truncated gamma distribution, an elastic net prior sampling scheme is 
+  now:
+  \begin{algorithmic}
+	  \State{Generate $U \sim \mathcal{U} (0,1)$}
+	  \State{Set $\tau = \frac{4 \lambda_2}{\lambda_1^2} \Phi^{-1} \[ (1 - u) 
+	    \Phi\(-\frac{\lambda_1}{2 \sqrt{\lambda_2}} \)\]^2$}
+	  \State{Set $\nu^2= \frac{\tau - 1}{\tau \lambda_2}$}
+	  \State{Generate $\beta \sim \mathcal{N}(0,\nu^2)$}
+	  \State{\Return{$\beta$}}
+  \end{algorithmic}
 
-\section{Objective function}\label{sec:objectivefunction}
-The lower bound on the marginal likelihood, or evidence lower bound (ELBO), at iteration $t$ is given by:
-\begin{subequations}
-	\begin{align}
-	\text{ELBO} (Q^{(t)}) & = \E_{Q^{(t)}} [\log \L (\y, \bomega, \bbeta, \btau)] - \E_{Q^{(t)}} [\log Q (\bomega, \bbeta, \btau)] \\
-	& = \E_{Q^{(t)}} [\log \L (\y ; \bbeta)] + \E_{Q^{(t)}} [\log \pi(\bomega | \bbeta)] - \E_{Q^{(t)}} [\log q(\bomega)] \label{eq:elboomega} \\
-	& \,\,\,\,\, + \E_{Q^{(t)}} [\log \pi(\bbeta|\btau)] - \E_{Q^{(t)}} [\log q(\bbeta)] \label{eq:elbobeta}\\
-	& \,\,\,\,\, + \E_{Q^{(t)}} [\log \pi(\btau)] - \E_{Q^{(t)}} [\log q(\btau)] \label{eq:elbotau}.
-	\end{align}
-\end{subequations}
+  \section{Objective function}\label{sec:objectivefunction}
+  The lower bound on the marginal likelihood, or evidence lower bound (ELBO), 
+  at iteration $t$ is given by:
+  \begin{subequations}
+    \begin{align}
+      \text{ELBO} (Q^{(t)}) & = \E_{Q^{(t)}} [\log \L (\y, \bomega, \bbeta, 
+      \btau)] - \E_{Q^{(t)}} [\log Q (\bomega, \bbeta, \btau)] \\
+      & = \E_{Q^{(t)}} [\log \L (\y ; \bbeta)] + \E_{Q^{(t)}} 
+      [\log \pi(\bomega | \bbeta)] - \E_{Q^{(t)}} 
+      [\log q(\bomega)] \label{eq:elboomega} \\
+      & \,\,\,\,\, + \E_{Q^{(t)}} [\log \pi(\bbeta|\btau)] - \E_{Q^{(t)}} 
+      [\log q(\bbeta)] \label{eq:elbobeta}\\
+      & \,\,\,\,\, + \E_{Q^{(t)}} [\log \pi(\btau)] - \E_{Q^{(t)}} 
+      [\log q(\btau)] \label{eq:elbotau}.
+    \end{align}
+  \end{subequations}
 
-We start with the computation of (\ref{eq:elboomega}). To this end we define:
-$$
-h(m_i, \omega_i) := \sum_{k=0}^{\infty} (-1)^k \frac{\Gamma(k+m_i}{k + 1}\frac{2k +m_i}{\sqrt{2 \pi \omega_i^3}}\exp\[-\frac{(2k + m_i)^2}{8 \omega_i} \].
-$$
-Let $\c = \begin{bmatrix} c_1 & \cdots & c_n \end{bmatrix} \tr$. Furthermore, in the following, all expectations and variances are with respect to $Q^{(t)}$. Next we write out the three terms in (\ref{eq:elboomega}):
-\begin{subequations} \label{eq:elboomega2}
-	\begin{align}
-	\E [\log \L (\y ; \bbeta)] & = \sum_{i=1}^n \log \binom{m_i}{y_i} + \y \tr \X \E [\bbeta] - \m \tr \E \left\{ \log [1 + \exp(\x_i \tr \bbeta)] \right\}, \\
-	\E [\log \pi(\bomega | \bbeta)] & = \m \tr \E \left\{ \log [1 + \exp(\x_i \tr \bbeta)] \right\} - n \log 2 - \frac{1}{2} \m \tr \X \E [\bbeta] \\
-	& \,\,\,\,\, - \sum_{i=1}^n \log \Gamma (m_i) - \frac{1}{2} \sum_{i=1}^n [ ( \x_i \tr \E [\bbeta] )^2 + \x_i \tr \V [\bbeta] \x_i ] \E [\omega_i] \\
-	& \,\,\,\,\,+ \sum_{i=1}^n \E \left\{ \log [ h(m_i, \omega_i) ] \right\}, \\
-	\E [\log q(\bomega)] & =  \m \tr \log [1 + \exp(\c)] - n \log 2 - \frac{1}{2} \m \tr \c - \sum_{i=1}^n \log \Gamma (m_i) - \frac{1}{2} \sum_{i=1}^n c_i^2 \E [\omega_i] \\
-	& \,\,\,\,\, + \sum_{i=1}^n \E \left\{ \log [ h(m_i, \omega_i) ] \right\},
-	\end{align}
-\end{subequations}
-where all mathematical operations on vectors and matrices are element wise. After combining the terms in (\ref{eq:elboomega2}) and substituting the expectations and variances given in the Main Document, several terms cancel to give:
-\begin{subequations} \label{eq:elboomega3}
-	\begin{align}
-	\E_{Q^{(t)}} & [\log \L (\y ; \bbeta)] + \E_{Q^{(t)}} [\log \pi(\bomega | \bbeta)] - \E_{Q^{(t)}} [\log q(\bomega)] \\ & = \sum_{i=1}^n \log \binom{m_i}{y_i} + ( \y - \frac{1}{2} \m) \tr \X \bmu^{(t)} + \m \tr \left\{ \frac{1}{2} \c^{(t)} - \log [1 + \exp(\c^{(t)})] \right\} \label{eq:elboomega4}\\
-	& \,\,\,\,\, + \frac{1}{4} \sum_{i=1}^n \frac{m_i}{c_i^{(t)}} \tanh \(\frac{c_i^{(t)}}{2} \)\left\{ (c_i^{(t)})^2 - ( \x_i \tr \bmu^{(t)} )^2 - \x_i \tr \bSigma^{(t)} \x_i \tr \right\}.
-	\end{align}
-\end{subequations}
+  We start with the computation of (\ref{eq:elboomega}). To this end we define:
+  $$
+  h(m_i, \omega_i) := \sum_{k=0}^{\infty} (-1)^k \frac{\Gamma(k+m_i}{k + 1}
+  \frac{2k +m_i}{\sqrt{2 \pi \omega_i^3}}
+  \exp\[-\frac{(2k + m_i)^2}{8 \omega_i} \].
+  $$
+  Let $\c = \begin{bmatrix} c_1 & \cdots & c_n \end{bmatrix} \tr$. Furthermore, 
+  in the following, all expectations and variances are with respect to 
+  $Q^{(t)}$. Next we write out the three terms in (\ref{eq:elboomega}):
+  \begin{subequations} \label{eq:elboomega2}
+    \begin{align}
+      \E [\log \L (\y ; \bbeta)] & = \sum_{i=1}^n \log \binom{m_i}{y_i} + 
+      \y \tr \X \E [\bbeta] - \m \tr \E \left\{ \log [1 + \exp(\x_i \tr \bbeta)]
+      \right\}, \\
+      \E [\log \pi(\bomega | \bbeta)] & = \m \tr \E 
+      \left\{ \log [1 + \exp(\x_i \tr \bbeta)] \right\} - n \log 2 - 
+      \frac{1}{2} \m \tr \X \E [\bbeta] \\
+      & \,\,\,\,\, - \sum_{i=1}^n \log \Gamma (m_i) - \frac{1}{2} \sum_{i=1}^n 
+      [ ( \x_i \tr \E [\bbeta] )^2 + \x_i \tr \V [\bbeta] \x_i ] 
+      \E [\omega_i] \\
+      & \,\,\,\,\,+ \sum_{i=1}^n \E 
+      \left\{ \log [ h(m_i, \omega_i) ] \right\}, \\
+      \E [\log q(\bomega)] & =  \m \tr \log [1 + \exp(\c)] - n \log 2 - 
+      \frac{1}{2} \m \tr \c - \sum_{i=1}^n \log \Gamma (m_i) - \frac{1}{2} 
+      \sum_{i=1}^n c_i^2 \E [\omega_i] \\
+      & \,\,\,\,\, + \sum_{i=1}^n \E \left\{ \log [ h(m_i, \omega_i) ] \right\},
+	  \end{align}
+  \end{subequations}
+  where all mathematical operations on vectors and matrices are element wise. 
+  After combining the terms in (\ref{eq:elboomega2}) and substituting the 
+  expectations and variances given in the Main Document, several terms cancel to
+  give:
+  \begin{subequations} \label{eq:elboomega3}
+	  \begin{align}
+	    \E_{Q^{(t)}} & [\log \L (\y ; \bbeta)] + \E_{Q^{(t)}} 
+	    [\log \pi(\bomega | \bbeta)] - \E_{Q^{(t)}} [\log q(\bomega)] \\ 
+	    & = \sum_{i=1}^n \log \binom{m_i}{y_i} + ( \y - \frac{1}{2} \m) 
+	    \tr \X \bmu^{(t)} + \m \tr \left\{ \frac{1}{2} \c^{(t)} - 
+	    \log [1 + \exp(\c^{(t)})] \right\} \label{eq:elboomega4}\\
+	    & \,\,\,\,\, + \frac{1}{4} \sum_{i=1}^n \frac{m_i}{c_i^{(t)}} 
+	    \tanh \(\frac{c_i^{(t)}}{2} \)\left\{ (c_i^{(t)})^2 - 
+	    ( \x_i \tr \bmu^{(t)} )^2 - \x_i \tr \bSigma^{(t)} \x_i \tr \right\}.
+    \end{align}
+  \end{subequations}
 
-Inspection of the updating equations in the Main Document, learns us that the last term in the right-hand side of (\ref{eq:elboomega3}) equals zero, so that we are left with just (\ref{eq:elboomega4}). After a change of variables $\psi_j = \tau_j - 1$, the two terms in (\ref{eq:elbobeta}) are as follows:
-\begin{subequations} \label{eq:elbobeta2}
-	\begin{align}
-	\E [\log \pi (\bbeta | \btau)] & = \frac{1}{2}\sum_{g=1}^G |\mathcal{G}(g)| \log \lambda'_g + \frac{p}{2} \log \lambda_2 - \frac{p}{2} \log (2 \pi) \\
-	& \,\,\,\,\, - \frac{\lambda_2}{2} \sum_{g=1}^G \lambda'_g \sum_{j \in \mathcal{G}(g)} \(1 + \frac{\lambda_1}{2 \sqrt{\lambda_2 \chi_j}}\) (\bmu_j^2 + \bSigma_{jj}) \\
-	& \,\,\,\,\, - \frac{1}{2} \sum_{j=1}^p \E [\log \psi_j] + \frac{1}{2} \sum_{j=1}^p \E [ \log(\psi_j + 1)], \\
-	\E [\log q (\bbeta )] & = -\frac{p}{2} - \frac{p}{2}\log (2 \pi) - \frac{p}{2} \log |\bSigma| .
-	\end{align}
-\end{subequations}
-We combine the terms in (\ref{eq:elbobeta2}) and arrive at the following for (\ref{eq:elbobeta}):
-\begin{subequations} \label{eq:elbobeta3}
-	\begin{align}
-	\E_{Q^{(t)}} & [\log \pi (\bbeta | \btau)] - \E_{Q^{(t)}} [\log q (\bbeta )] \\ 
-	& = \frac{1}{2}\sum_{g=1}^G |\mathcal{G}(g)| \log \lambda'^{(t)}_g + \frac{p}{2} \log \lambda_2 + \frac{p}{2} \log |\bSigma^{(t)}| + \frac{p}{2} \\
-	& \,\,\,\,\, - \frac{\lambda_2}{2} \sum_{g=1}^G \lambda'^{(t)}_g \sum_{j \in \mathcal{G}(g)} \(1 + \frac{\lambda_1}{2 \sqrt{\lambda_2 \chi_j^{(t)} } }\) \((\bmu^{(t)}_j)^2 + \bSigma_{jj}^{(t)}\) \\
-	& \,\,\,\,\, - \frac{1}{2} \sum_{j=1}^p \E_{Q^{(t)}} [\log \psi_j] + \frac{1}{2} \sum_{j=1}^p \E_{Q^{(t)}} [ \log(\psi_j + 1)].
-	\end{align}
-\end{subequations}
+  Inspection of the updating equations in the Main Document, learns us that the 
+  last term in the right-hand side of (\ref{eq:elboomega3}) equals zero, so that
+  we are left with just (\ref{eq:elboomega4}). After a change of variables 
+  $\psi_j = \tau_j - 1$, the two terms in (\ref{eq:elbobeta}) are as follows:
+  \begin{subequations} \label{eq:elbobeta2}
+	  \begin{align}
+	    \E [\log \pi (\bbeta | \btau)] & = \frac{1}{2}\sum_{g=1}^G 
+	    |\mathcal{G}(g)| \log \lambda'_g + \frac{p}{2} \log \lambda_2 - 
+	    \frac{p}{2} \log (2 \pi) \\
+	    & \,\,\,\,\, - \frac{\lambda_2}{2} \sum_{g=1}^G \lambda'_g \sum_{j \in 
+	    \mathcal{G}(g)} \(1 + \frac{\lambda_1}{2 \sqrt{\lambda_2 \chi_j}}\) 
+	    (\bmu_j^2 + \bSigma_{jj}) \\
+	    & \,\,\,\,\, - \frac{1}{2} \sum_{j=1}^p \E [\log \psi_j] + \frac{1}{2} 
+	    \sum_{j=1}^p \E [ \log(\psi_j + 1)], \\
+	    \E [\log q (\bbeta )] & = -\frac{p}{2} - \frac{p}{2}\log (2 \pi) - 
+	    \frac{p}{2} \log |\bSigma| .
+	  \end{align}
+  \end{subequations}
+  We combine the terms in (\ref{eq:elbobeta2}) and arrive at the following for 
+  (\ref{eq:elbobeta}):
+  \begin{subequations} \label{eq:elbobeta3}
+	   \begin{align}
+	     \E_{Q^{(t)}} & [\log \pi (\bbeta | \btau)] - \E_{Q^{(t)}} 
+	     [\log q (\bbeta )] \\ 
+	     & = \frac{1}{2}\sum_{g=1}^G |\mathcal{G}(g)| \log \lambda'^{(t)}_g + 
+	     \frac{p}{2} \log \lambda_2 + \frac{p}{2} \log |\bSigma^{(t)}| + 
+	     \frac{p}{2} \\
+	     & \,\,\,\,\, - \frac{\lambda_2}{2} \sum_{g=1}^G \lambda'^{(t)}_g 
+	     \sum_{j \in \mathcal{G}(g)} \(1 + \frac{\lambda_1}{2 \sqrt{\lambda_2 
+	     \chi_j^{(t)} } }\) \((\bmu^{(t)}_j)^2 + \bSigma_{jj}^{(t)}\) \\
+	     & \,\,\,\,\, - \frac{1}{2} \sum_{j=1}^p \E_{Q^{(t)}} [\log \psi_j] + 
+	     \frac{1}{2} \sum_{j=1}^p \E_{Q^{(t)}} [ \log(\psi_j + 1)].
+	  \end{align}
+  \end{subequations}
 
 Repeating the same exercise for (\ref{eq:elbotau}) gives:
 \begin{subequations} \label{eq:elbotau2}
@@ -465,7 +518,7 @@ A natural way of enforcing monotonicity is to extend the constraint in (10) in t
 \subsection{Multiple partitions}
 In many cases the features may be partitioned in more than one way. For example, we may have both information on annotation and $p$-values from a previous study available. A naive way of incorporating multiple partitions is to cross-tabulate the partitions and create a separate group for every combination. This poses two problems: (i) The number of penalty parameters increases exponentially with the number of partitions and (ii) some of these combinations may contain only few features, so that the estimation procedure becomes unstable. We propose to stabilise the procedure and keep the number of parameters to estimate manageable by modelling the penalty parameters multiplicatively. 
 
-We describe our implementation here for two partitions of the features. To this end, let $(\G_1(1), \dots, \G_1(G_1))$ and $(\G_2(1), \dots, \G_2(G_2))$ denote the two partitions, containing $G_1$ and $G_2$ groups respectively. Furthermore, in the following we assume that the empty sum and empty product evaluate to 0 and 1, respectively. In this two-partition setting we have two penalty multipliers per feature, represented by $\lambda'_{g_1}$ and $\lambda''_{g_2}$, respectively. The generalised frequentist elastic net estimator and corresponding conditional prior are now:
+We describe our implementation here for two partitions of the features. To this end, let $(\G_1(1), \dots,\allowbreak \G_1(G_1))$ and $(\G_2(1), \dots, \G_2(G_2))$ denote the two partitions, containing $G_1$ and $G_2$ groups respectively. Furthermore, in the following we assume that the empty sum and empty product evaluate to 0 and 1, respectively. In this two-partition setting we have two penalty multipliers per feature, represented by $\lambda'_{g_1}$ and $\lambda''_{g_2}$, respectively. The generalised frequentist elastic net estimator and corresponding conditional prior are now:
 \begin{subequations}\label{eq:multpart}
 	\begin{align}
 	\hat{\bbeta} &:= \underset{\bbeta}{\argmax} \ell(\y ; \bbeta) -  \frac{\lambda_1}{2} \sum_{g_1=1}^{G_1} \sum_{g_2=1}^{G_2} \sqrt{\lambda'_{g_1} \lambda''_{g_2}} \sum_{\mathclap{\substack{j \in \G_1(g_1) \\ \cap \G_2(g_2)}}} | \beta_j| - \frac{\lambda_2}{2} \sum_{g_1=1}^{G_1} \sum_{g_2=1}^{G_2} \lambda'_{g_1} \lambda''_{g_2} \sum_{\mathclap{\substack{j \in \G_1(g_1) \\ \cap \G_2(g_2)}}} \beta_j^2, \\
@@ -515,11 +568,15 @@ The quality of feature selection is assessed by Cohen's kappa \cite[]{cohen_coef
 	In the last scenario we create a sparse true model that contains some differential signal. We impl
 
   \section{Application to MicroRNAs in colorectal cancer}\label{sec:colorectal}
-  In this section we present additional results to Section [! section ref here]
-  in the Main Document.
-  
   \subsection{Additional comparisons}
-  
+  We compared \texttt{gren} to two methods in addition to the ones in the MD: 
+  the sparse group lasso (\texttt{SGL}) by \cite{simon_sparse-group_2013} and 
+  the group exponential lasso (\texttt{gel}) by \cite{breheny_group_2015}. For
+  all methods with a tuning parameter $\alpha$, we set 
+  $\alpha \in \{ 0.05, 0.5, 0.95 \}$ and present the AUC on the test set in 
+  Figure \ref{fig:lines_micrornaseq_colorectal_cancer_res1_auc}.
+<<lines_micrornaseq_colorectal_cancer_res1_auc, fig.cap="Estimated AUC for the colorectal cancer example.", out.width="100%", fig.asp=1>>=
+@
   
   \subsection{Random groups}
   Considering that the features may be partitioned into many groups, with one 
@@ -531,14 +588,14 @@ The quality of feature selection is assessed by Cohen's kappa \cite[]{cohen_coef
   estimated as one if no overfitting occurs.
   
 <<>>=
-res <- read.table("results/micrornaseq_colorectal_cancer_res3.csv", 
+res <- read.table("results/micrornaseq_colorectal_cancer_res2.csv", 
                   stringsAsFactors=FALSE)
 medians <- round(apply(res, 2, median), 2)
 @
   We compared the estimated multipliers to the estimates by \texttt{GRridge}. 
   Since these results depend on one specific randomisation of the groups, we 
   repeated the procedure 100 times and present the results in Figure 
-  \ref{fig:boxplots_micrornaseq_colorectal_cancer_res3_multipliers}. 
+  \ref{fig:boxplots_micrornaseq_colorectal_cancer_res2_multipliers}. 
   From this figure we see that the estimates for \texttt{gren} are relatively 
   close to one.
   The estimates by \texttt{GRridge} show more variation. We found no strong
@@ -547,17 +604,17 @@ medians <- round(apply(res, 2, median), 2)
   \texttt{GRridge} and \Sexpr{medians[c(4:6)]}; \Sexpr{medians[c(7:9)]},
   and \Sexpr{medians[c(10:12)]} for \texttt{gren} with 
   $\alpha \in \{ 0.05, 0.5, 0.95 \}$, respectively.
-<<boxplots_micrornaseq_colorectal_cancer_res3_multipliers, fig.cap="Results for the colorectal cancer example with 100 realisations of 3 random groups of features.", out.width="50%", fig.asp=1>>=
+<<boxplots_micrornaseq_colorectal_cancer_res2_multipliers, fig.cap="Results for the colorectal cancer example with 100 realisations of 3 random groups of features.", out.width="50%", fig.asp=1>>=
 @
 
 <<>>=
-res <- read.table("results/micrornaseq_colorectal_cancer_res4.csv", 
+res <- read.table("results/micrornaseq_colorectal_cancer_res3.csv", 
                   stringsAsFactors=FALSE)
 medians <- round(sapply(c("grridge", paste0("gren", 1:3)), function(s) {
   median(as.matrix(res[, grepl(s, colnames(res))]))}), 2)
 @
   We repeated the simulation with ten evenly sized groups. Figure 
-  \ref{fig:boxplots_micrornaseq_colorectal_cancer_res4_multipliers} presents 
+  \ref{fig:boxplots_micrornaseq_colorectal_cancer_res3_multipliers} presents 
   the estimated penalty multipliers for 100 random 
   splits of the microRNA features into 10 evenly sized groups for 
   \texttt{GRridge} and \texttt{gren} with $\alpha \in \{ 0.05, 0.5, 0.95 \}$. 
@@ -567,7 +624,7 @@ medians <- round(sapply(c("grridge", paste0("gren", 1:3)), function(s) {
   \texttt{GRridge} is \Sexpr{medians[1]}, while the median multipliers in
   \texttt{gren} are \Sexpr{medians[c(2:4)]} for 
   $\alpha \in \{ 0.05, 0.5, 0.95 \}$, respectively.
-<<boxplots_micrornaseq_colorectal_cancer_res4_multipliers, fig.cap="Results for the colorectal cancer example with 100 realisations of 10 random groups of features, plotted (a) with outliers, and (b) without outliers.", out.width="100%", fig.asp=1/2>>=
+<<boxplots_micrornaseq_colorectal_cancer_res3_multipliers, fig.cap="Results for the colorectal cancer example with 100 realisations of 10 random groups of features, plotted (a) with outliers, and (b) without outliers.", out.width="100%", fig.asp=1/2>>=
 @
 
   \subsection{Stability of selection}
@@ -580,18 +637,28 @@ medians <- round(sapply(c("grridge", paste0("gren", 1:3)), function(s) {
   For each of these bootstrap samples we estimated the regular elastic
   net and \texttt{gren} for $\alpha \in \{0.05, 0.5, 0.95 \}$, where we selected
   25 features (including the 5 unpenalized covariates). We calculated the size 
-  of all ${50}\choose{2}$ intersections of selected features and present the 
+  of all $\genfrac(){0pt}{2}{50}{2}$ intersections of selected features and present the 
   results in Figure [! figure ref here].
 
   [! figure here]
   
   \section{Application to RNAseq in lymph node cancer}
-  \texttt{cMCP} is not designed to deal with overlapping groups, so we 
-  cross-tabulate the two co-data partitions to create one paritioning with 25 
-  groups for \texttt{cMCP}.  
-  Additional comparisons to \texttt{SGL}, \texttt{gel} and 
-  the overlapping group version of \texttt{gel} \cite[]{zeng_overlapping_2016}
-  \cite[]{breheny_group_2015} are found in the SM Section [! section ref here].
+  In addition to the results presented in Section [! section ref here] of the 
+  MD, we compared \texttt{gren} to the sparse group lasso (\texttt{SGL}) by 
+  \cite{simon_sparse-group_2013} and the group exponential lasso (\texttt{gel}) 
+  by \cite{breheny_group_2015}. The original group lasso methods are not 
+  designed to deal with overlapping groups, so in addition to using the versions
+  that allow for overlapping groups, we 
+  cross-tabulated the two co-data partitions to create one paritioning with 25 
+  groups for \texttt{cMCP} and \texttt{gel}.
+  We use $\alpha \in \{0.05, 0.5, 0.95 \}$ for the
+  methods that require this extra tuning parameter. The AUCs calculated on the
+  validation set are presented in Figure 
+  \ref{fig:lines_rnaseq_lymph_node_metastasis_res1_auc}
+<<lines_rnaseq_lymph_node_metastasis_res1_auc, fig.cap="Estimated AUC for the lymph node cancer example.", out.width="100%", fig.asp=1>>=
+@
+  
+  
   
   \section{Application to metabolomics in alzheimer}\label{sec:alzheimer}
 	We applied our method to an Alzheimer's dataset from 
@@ -649,7 +716,7 @@ medians <- round(sapply(c("grridge", paste0("gren", 1:3)), function(s) {
 <<lines_micrornaseq_cervical_cancer_res1_auc, fig.cap="Cross-validated AUC in cervicl cancer example", out.width="50%", fig.asp=1>>=
 @
   
-  \section{Choice of $\alpha$}	
+  \section{Choice of \texorpdfstring{$\alpha$}{alpha}}	
 	Choice of $\alpha$ does matter in Figure 
 	\ref{fig:lines_colorectal_lymph_node_gren_auc}.
 <<lines_colorectal_lymph_node_gren_auc, fig.cap="Estimated AUC for gren in the (a) colorectal cancer example and the (b) lymph node metastasis example.", out.width="100%", fig.asp=1/2>>=

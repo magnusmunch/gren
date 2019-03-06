@@ -43,13 +43,13 @@ beta <- numeric(p)
 
 part <- rep(c(1:G), each=p/G)
 nreps <- 1
+ncores <- min(detectCores() - 1, nreps)
 
 ### analysis splits in parallel
-ncores <- min(detectCores() - 1, nreps)
 cluster <- makeCluster(ncores, type="FORK")
 registerDoParallel(cluster)
 
-out <- foreach(k=c(1:nreps)) %do% {
+res1 <- foreach(k=c(1:nreps)) %dopar% {
   set.seed(2019 + k)
   
   for(g in 1:G) {
