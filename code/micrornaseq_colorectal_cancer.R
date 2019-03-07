@@ -303,7 +303,7 @@ part <- diff.expr
 ################################################################################
 
 ### analyse samples in parallel
-ncores <- min(detectCores() - 1, nsamples)
+ncores <- min(detectCores(), nsamples)
 cluster <- makeCluster(ncores, type="FORK")
 registerDoParallel(cluster)
 

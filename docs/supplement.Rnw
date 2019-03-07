@@ -319,88 +319,161 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	  \end{align}
   \end{subequations}
 
-Repeating the same exercise for (\ref{eq:elbotau}) gives:
-\begin{subequations} \label{eq:elbotau2}
-	\begin{align}
-	\E [\log \pi (\btau)] & = p \log \lambda_1 - \frac{p}{2} \log \lambda_2 - \frac{5 p }{2} \log 2 - \frac{p}{2} \log \pi - \frac{p}{2} - \frac{p \lambda_1^2}{8 \lambda_2} \\
-	& \,\,\,\,\, - p \log \Phi \( \frac{-\lambda_1}{2 \sqrt{ \lambda_2}} \) - \frac{\lambda_1}{4 \sqrt{\lambda_2}} \sum_{j=1}^p \chi_j^{1/2} - \frac{1}{2} \sum_{j=1}^p \E [\log ( \psi_j + 1)], \\
-	\E [\log q (\btau)] & = p \log \lambda_1 - \frac{p}{2} \log \lambda_2 - \frac{3p}{2} \log 2 -\frac{p}{2} \log \pi -\frac{p}{2} - \frac{\lambda_1}{2 \sqrt{\lambda_2}} \sum_{j=1}^p \chi_j^{1/2} \\
-	& \,\,\,\,\, + \frac{1}{4} \sum_{j=1}^p \log \chi_j - \frac{1}{2} \sum_{j=1}^p \E [\log \psi_j].
-	\end{align}
-\end{subequations}
-Again, we combine the terms in (\ref{eq:elbotau2}) to get:
-\begin{subequations} \label{eq:elbotau3}
-	\begin{align}
-	\E_{Q^{(t)}} & [\log \pi (\btau)] - \E_{Q^{(t)}} [\log q (\btau)] 
-	\\ & = p \log 2 - \frac{p \lambda_1^2}{8 \lambda_2} - p \log \Phi \( \frac{-\lambda_1}{2 \sqrt{ \lambda_2}} \) + \frac{\lambda_1}{4 \sqrt{\lambda_2}} \sum_{j=1}^p \sqrt{\chi_j^{(t)}} - \frac{1}{4} \sum_{j=1}^p \log \chi_j^{(t)} \\
-	& \,\,\,\,\, + \frac{1}{2} \sum_{j=1}^p \E_{Q^{(t)}} [\log \psi_j] - \frac{1}{2} \sum_{j=1}^p \E_{Q^{(t)}} [\log ( \psi_j + 1)].
-	\end{align}
-\end{subequations}
+  Repeating the same exercise for (\ref{eq:elbotau}) gives:
+  \begin{subequations} \label{eq:elbotau2}
+	  \begin{align}
+	    \E [\log \pi (\btau)] & = p \log \lambda_1 - \frac{p}{2} \log \lambda_2 - 
+	    \frac{5 p }{2} \log 2 - \frac{p}{2} \log \pi - \frac{p}{2} - 
+	    \frac{p \lambda_1^2}{8 \lambda_2} \\
+	    & \,\,\,\,\, - p \log \Phi \( \frac{-\lambda_1}{2 \sqrt{ \lambda_2}} \) -
+	    \frac{\lambda_1}{4 \sqrt{\lambda_2}} \sum_{j=1}^p \chi_j^{1/2} - 
+	    \frac{1}{2} \sum_{j=1}^p \E [\log ( \psi_j + 1)], \\
+	    \E [\log q (\btau)] & = p \log \lambda_1 - \frac{p}{2} \log \lambda_2 -
+	    \frac{3p}{2} \log 2 -\frac{p}{2} \log \pi -\frac{p}{2} - 
+	    \frac{\lambda_1}{2 \sqrt{\lambda_2}} \sum_{j=1}^p \chi_j^{1/2} \\
+	    & \,\,\,\,\, + \frac{1}{4} \sum_{j=1}^p \log \chi_j - 
+	    \frac{1}{2} \sum_{j=1}^p \E [\log \psi_j].
+	  \end{align}
+  \end{subequations}
+  Again, we combine the terms in (\ref{eq:elbotau2}) to get:
+  \begin{subequations} \label{eq:elbotau3}
+	  \begin{align}
+	    \E_{Q^{(t)}} & [\log \pi (\btau)] - \E_{Q^{(t)}} [\log q (\btau)] 
+	    \\ & = p \log 2 - \frac{p \lambda_1^2}{8 \lambda_2} - 
+	    p \log \Phi \( \frac{-\lambda_1}{2 \sqrt{ \lambda_2}} \) + 
+	    \frac{\lambda_1}{4 \sqrt{\lambda_2}} \sum_{j=1}^p \sqrt{\chi_j^{(t)}} -
+	    \frac{1}{4} \sum_{j=1}^p \log \chi_j^{(t)} \\
+	    & \,\,\,\,\, + \frac{1}{2} \sum_{j=1}^p \E_{Q^{(t)}} [\log \psi_j] -
+	    \frac{1}{2} \sum_{j=1}^p \E_{Q^{(t)}} [\log ( \psi_j + 1)].
+	  \end{align}
+  \end{subequations}
 
-Adding up the terms in (\ref{eq:elboomega3}), (\ref{eq:elbobeta3}), and (\ref{eq:elbotau3}) gives the ELBO, at iteration $t$:
-\begin{align*}
-\text{ELBO} (Q^{(t)}) & \propto (\y - \frac{1}{2} \m ) \tr \X \bmu^{(t)} + \m \tr \{ \frac{1}{2} \c^{(t)} - \log [ \exp(\c^{(t)}) + 1 ]\} + \frac{1}{2} \sum_{g=1}^G |\G(g)| \log \lambda'^{(t)}_g \\ 
-& + \frac{1}{2}\log |\bSigma^{(t)}| - \frac{\lambda_2}{2} \sum_{g=1}^G \lambda'^{(t)}_g \sum_{j \in \mathcal{G}(g)} \(1 + \frac{\lambda_1}{2 \sqrt{\lambda_2 \chi_j^{(t)} } }\) \((\bmu^{(t)}_j)^2 + \bSigma_{jj}^{(t)}\) \\
-& + \frac{\lambda_1}{4 \sqrt{\lambda_2}} \sum_{j=1}^p \sqrt{\chi_j^{(t)}} - \frac{1}{4} \sum_{j=1}^p \log \chi_j^{(t)}.
-\end{align*}
-Here, proportionality is with respect to the variational and penalty parameters. 
+  Adding up the terms in (\ref{eq:elboomega3}), (\ref{eq:elbobeta3}), and
+  (\ref{eq:elbotau3}) gives the ELBO, at iteration $t$:
+  \begin{align*}
+    \text{ELBO} (Q^{(t)}) & \propto (\y - \frac{1}{2} \m ) \tr \X \bmu^{(t)} + 
+    \m \tr \{ \frac{1}{2} \c^{(t)} - \log [ \exp(\c^{(t)}) + 1 ]\} + \frac{1}{2}
+    \sum_{g=1}^G |\G(g)| \log \lambda'^{(t)}_g \\ 
+    & + \frac{1}{2}\log |\bSigma^{(t)}| - \frac{\lambda_2}{2} 
+    \sum_{g=1}^G \lambda'^{(t)}_g \sum_{j \in \mathcal{G}(g)} 
+    \(1 + \frac{\lambda_1}{2 \sqrt{\lambda_2 \chi_j^{(t)} } }\) 
+    \((\bmu^{(t)}_j)^2 + \bSigma_{jj}^{(t)}\) \\
+    & + \frac{\lambda_1}{4 \sqrt{\lambda_2}} \sum_{j=1}^p \sqrt{\chi_j^{(t)}} -
+    \frac{1}{4} \sum_{j=1}^p \log \chi_j^{(t)}.
+  \end{align*}
+  Here, proportionality is with respect to the variational and penalty 
+  parameters. 
 
-\section{The P\'{o}lya-Gamma parametrisation}\label{sec:polyagamma}
-In Section 3 of the Main Document latent P\'{o}lya-Gamma distributed variables are introduced. Likewise, in \cite{polson_bayesian_2013}, P\'{o}lya-Gamma variables are introduced into the logistic regression model under a Gaussian prior. Here, we explain how introduction of these latent variables simplifies the variational Bayes calculations. 
+  \section{The P\'{o}lya-Gamma parametrisation}\label{sec:polyagamma}
+  In Section 3 of the Main Document latent P\'{o}lya-Gamma distributed variables
+  are introduced. Likewise, in \cite{polson_bayesian_2013}, P\'{o}lya-Gamma
+  variables are introduced into the logistic regression model under a Gaussian
+  prior. Here, we explain how introduction of these latent variables simplifies
+  the variational Bayes calculations. 
 
-In \cite{polson_bayesian_2013}, the central identity for this parametrisation is given in their Theorem 1:
-\begin{equation}\label{eq:intid}
-\frac{\exp(\psi)^{a}}{[1 + \exp(\psi)]^{b}} = 2^{-b} \exp(\kappa \psi) \int_0^{\infty} \exp(-\omega \psi^2 /2) \pi(\omega) d \omega,
-\end{equation}
-where $\kappa=a - b/2$ and $\omega$ is $\mathcal{PG}\(b,0\)$ distributed. This holds for all $b > 0$ and $a \in \mathbb{R}$. After setting $a=y_i$, $b=m_i$, and $\psi=\x_i \tr \bbeta$, we may consider the right-hand side of (\ref{eq:intid}) as an un-normalised joint density in $(\bbeta, \omega)$. The likelihood contribution of observation $i$ for $\bbeta$ conditional on $\omega_i$ may now be written as:
-$$
-\L_i(\bbeta | \omega_i) \propto \exp[\kappa_i \x_i \tr \bbeta - \omega_i (\x_i \tr \bbeta)^2/2].
-$$
+  In \cite{polson_bayesian_2013}, the central identity for this parametrisation
+  is given in their Theorem 1:
+  \begin{equation}\label{eq:intid}
+    \frac{\exp(\psi)^{a}}{[1 + \exp(\psi)]^{b}} = 2^{-b} \exp(\kappa \psi)
+    \int_0^{\infty} \exp(-\omega \psi^2 /2) \pi(\omega) d \omega,
+  \end{equation}
+  where $\kappa=a - b/2$ and $\omega$ is $\mathcal{PG}\(b,0\)$ distributed. This
+  holds for all $b > 0$ and $a \in \mathbb{R}$. After setting $a=y_i$, $b=m_i$,
+  and $\psi=\x_i \tr \bbeta$, we may consider the right-hand side of 
+  (\ref{eq:intid}) as an un-normalised joint density in $(\bbeta, \omega)$. The
+  likelihood contribution of observation $i$ for $\bbeta$ conditional on
+  $\omega_i$ may now be written as:
+  $$
+  \L_i(\bbeta | \omega_i) \propto \exp[\kappa_i \x_i \tr \bbeta - 
+  \omega_i (\x_i   \tr \bbeta)^2/2].
+  $$
 
-This allows the conditional posterior of $\bbeta$ to be written as:
-$$
-p(\bbeta | \bomega, \y) \propto \pi(\bbeta) \prod_{i=1}^n \L_i(\bbeta | \omega_i) = \pi(\bbeta) \exp \[-\frac{1}{2}(\bOmega^{-1} \bkappa - \X \bbeta) \tr \bOmega (\bOmega^{-1} \bkappa - \X \bbeta)\],
-$$
-where $\bOmega = \diag (\omega_i)$, for $i=1, \dots, n$. Consequently, with $\pi(\bbeta)$ a Gaussian prior, $p(\bbeta | \bomega, \y)$ is also in the Gaussian family.
+  This allows the conditional posterior of $\bbeta$ to be written as:
+  $$
+  p(\bbeta | \bomega, \y) \propto \pi(\bbeta) \prod_{i=1}^n 
+  \L_i(\bbeta | \omega_i) = \pi(\bbeta) 
+  \exp \[-\frac{1}{2}(\bOmega^{-1} \bkappa - \X \bbeta) \tr 
+  \bOmega (\bOmega^{-1} \bkappa - \X \bbeta)\],
+  $$
+  where $\bOmega = \diag (\omega_i)$, for $i=1, \dots, n$. Consequently, with
+  $\pi(\bbeta)$ a Gaussian prior, $p(\bbeta | \bomega, \y)$ is also in the
+  Gaussian family.
 
-Furthermore, by treating the integrand in (\ref{eq:intid}) as an un-normalized density over $(\psi, \phi)$, we find the distribution of $\omega$ conditional on $\bbeta$,
-$$
-p(\omega | \psi) = \frac{\exp(-\omega \psi^2/2) \pi(\omega)}{\int_0^{\infty} \exp(-\omega \psi^2/2) \pi(\omega) d\omega},
-$$
-distributed as $\omega | \psi \sim \mathcal{PG}(b,\psi)$ \cite[]{polson_bayesian_2013}, with expectation $\E[ \omega ] = \frac{b}{2\psi} \tanh (\psi/2)$. We substitute again $b=m_i$ and $\psi=\x_i \tr \bbeta$, and set the prior $\pi(\bbeta)$ to a Gaussian with mean $\m$ and covariance $\Vm$ to arrive at the following conditional posteriors:
-\begin{subequations}\label{eq:gibbssampler}
-	\begin{align}
-	\omega_i | \bbeta & \sim \mathcal{PG}(m_i, \x_i \tr \bbeta) \\
-	\bbeta | \y, \bomega & \sim \N(\bmu, \bSigma),
-	\end{align}
-\end{subequations}
-where
-\begin{align*}
-\bSigma & = (\X \tr \bOmega \X + \Vm^{-1})^{-1}, \\
-\bmu & = \Vm (\X \tr \bkappa + \Vm^{-1} \m),
-\end{align*}
-with $\bkappa = \begin{bmatrix} \kappa_1 \dots \kappa_n \end{bmatrix} \tr$. Equations (\ref{eq:gibbssampler}) constitute the Gibbs sampler used in \cite{polson_bayesian_2013}. However, from the corresponding variational Bayes derivations in Section \ref{sec:variationaldistributions}, it is obvious that the parametrisation above is also useful in the variational Bayes approximation to the posterior distribution.
+  Furthermore, by treating the integrand in (\ref{eq:intid}) as an un-normalized
+  density over $(\psi, \phi)$, we find the distribution of $\omega$ conditional
+  on $\bbeta$,
+  $$
+  p(\omega | \psi) = \frac{\exp(-\omega \psi^2/2) \pi(\omega)}{\int_0^{\infty}
+  \exp(-\omega \psi^2/2) \pi(\omega) d\omega},
+  $$
+  distributed as $\omega | \psi \sim \mathcal{PG}(b,\psi)$ 
+  \cite[]{polson_bayesian_2013}, with expectation $\E[ \omega ] = 
+  \frac{b}{2\psi} \tanh (\psi/2)$. We substitute again $b=m_i$ and $\psi=\x_i 
+  \tr \bbeta$, and set the prior $\pi(\bbeta)$ to a Gaussian with mean $\m$ and
+  covariance $\Vm$ to arrive at the following conditional posteriors:
+  \begin{subequations}\label{eq:gibbssampler}
+	  \begin{align}
+	    \omega_i | \bbeta & \sim \mathcal{PG}(m_i, \x_i \tr \bbeta) \\
+	    \bbeta | \y, \bomega & \sim \N(\bmu, \bSigma),
+	  \end{align}
+  \end{subequations}
+  where
+  \begin{align*}
+    \bSigma & = (\X \tr \bOmega \X + \Vm^{-1})^{-1}, \\
+    \bmu & = \Vm (\X \tr \bkappa + \Vm^{-1} \m),
+  \end{align*}
+  with $\bkappa = \begin{bmatrix} \kappa_1 \dots \kappa_n \end{bmatrix} \tr$.
+  Equations (\ref{eq:gibbssampler}) constitute the Gibbs sampler used in
+  \cite{polson_bayesian_2013}. However, from the corresponding variational Bayes
+  derivations in Section \ref{sec:variationaldistributions}, it is obvious that
+  the parametrisation above is also useful in the variational Bayes 
+  approximation to the posterior distribution.
 
-\section{Variational posterior}\label{sec:variationaldistributions}
-The optimal distributions in our variational Bayes implementation are:
-\begin{align}
-q^*_{\bbeta} (\bbeta) & {\propto} \exp \{ \E_{\bomega, \btau} [\log p (\bbeta, \bomega, \btau, \y)]\} {\propto} \exp \{\log \L (\y ; \bbeta) + \E_{\bomega} [\log \pi (\bomega | \bbeta)] + \E_{\btau} [ \log \pi (\bbeta | \btau)] \}, \label{eq:qbeta} \\
-q^*_{\bomega} (\bomega) & {\propto} \exp \{ \E_{\bbeta, \btau} [\log p (\bbeta, \bomega, \btau, \y)] \} {\propto} \exp \{ \E_{\bbeta} [\log \pi (\bomega | \bbeta)] \},\label{eq:qomega} \\
-q^*_{\tau} (\btau) & {\propto} \exp \{ \E_{\bbeta, \bomega} [\log p (\bbeta, \bomega, \btau, \y)] \} {\propto} \exp \{ \E_{\bbeta} [\log \pi ( \bbeta | \btau)] + \log \pi (\btau) \}. \label{eq:qtau}
-\end{align}
+  \section{Variational posterior}\label{sec:variationaldistributions}
+  The optimal distributions in our variational Bayes implementation are:
+  \begin{align}
+    q^*_{\bbeta} (\bbeta) & {\propto} \exp \{ \E_{\bomega, \btau} 
+    [\log p (\bbeta, \bomega, \btau, \y)]\} {\propto} \exp 
+    \{\log \L (\y ; \bbeta) + \E_{\bomega} [\log \pi (\bomega | \bbeta)] + 
+    \E_{\btau} [ \log \pi (\bbeta | \btau)] \}, \label{eq:qbeta} \\
+    q^*_{\bomega} (\bomega) & {\propto} \exp \{ \E_{\bbeta, \btau} 
+    [\log p (\bbeta, \bomega, \btau, \y)] \} {\propto} \exp \{ \E_{\bbeta} 
+    [\log \pi (\bomega | \bbeta)] \},\label{eq:qomega} \\
+    q^*_{\tau} (\btau) & {\propto} \exp \{ \E_{\bbeta, \bomega} 
+    [\log p (\bbeta, \bomega, \btau, \y)] \} {\propto} \exp \{ \E_{\bbeta} 
+    [\log \pi ( \bbeta | \btau)] + \log \pi (\btau) \}. \label{eq:qtau}
+  \end{align}
 
-For convenience we work on the log-scale and occasionally do a change of variables $\psi_j = \tau_j - 1$. Starting with $\bbeta$ we have for the three terms on the right-hand side of (\ref{eq:qbeta}):
-\begin{align*}
-\log \L (\y ; \bbeta) & = \sum_{i=1}^n \log f (y_i ; \bbeta) \propto \sum_{i=1}^n \log \left\{ \frac{\exp(\x_i \tr \bbeta)^{y_i}}{[1 + \exp(\x_i \tr \bbeta)]^{m_i}} \right\} \\
-& = \y \tr \X \bbeta - \sum_{i=1}^n m_i \log [1 + \exp(\x_i \tr \bbeta)], \\
-\E_{\bomega} [\log \pi (\bomega | \bbeta)] & \propto \sum_{i=1}^n \E_{\omega_i} [\log \pi (\omega_i | \bbeta)] \\ & \propto \sum_{i=1}^n \E_{\omega_i} \( \log \left\{ \cosh\( \frac{\x_i \tr \bbeta}{2}\)^{m_i} \exp \[-\frac{(\x_i \tr \bbeta)^2}{2} \omega_i \]\right\} \) \\
-& \propto \sum_{i=1}^n m_i \log \cosh \( \frac{\x_i \tr \bbeta }{2} \) - \frac{1}{2} \bbeta \tr \X \tr \bOmega \X \bbeta \\ & \propto \sum_{i=1}^n m_i \log [1 + \exp(\x_i \tr \bbeta)] - \frac{1}{2} \m \tr \X \bbeta - \frac{1}{2} \bbeta \tr \X \tr \bOmega \X \bbeta, \\
-\E_{\btau} [ \log \pi (\bbeta | \btau)] & = \sum_{j=1}^p \E_{\tau_j} [ \log \pi (\beta_j | \tau_j)] \propto \frac{\lambda_2}{2} \sum_{j=1}^p \beta_j^2 \lambda'_{g(j)} \E \( \frac{\tau_j}{\tau_j - 1} \) \\
-& = \sum_{j=1}^p \beta_j^2 \lambda'_{g(j)} [1 + \E ( \psi_j^{-1} )] = - \frac{1}{2} \lambda_2 \bbeta \tr \bLambda' (\I + \Z) \bbeta,
-\end{align*}
-where proportionality is with respect to $\bbeta$. Furthermore, $\bOmega = \diag [\E(\omega_i)]]$, $\Z = \diag [ \E (\psi_j^{-1})]$, and $\bLambda' = \diag (\lambda'_{g(j)})$. 
-Since the difficult $\sum_{i=1}^n m_i \log[1 + \exp(\x_i \tr \bbeta)]$ term appears in both the $\log \L (\y ; \bbeta)$ and $\pi (\omega_i | \bbeta)$ part, it cancels, thereby justifying the introduction of the $\omega_i$. Finally, we have: 
-$$
+  For convenience we work on the log-scale and occasionally do a change of
+  variables $\psi_j = \tau_j - 1$. Starting with $\bbeta$ we have for the three
+  terms on the right-hand side of (\ref{eq:qbeta}):
+  \begin{align*}
+    \log \L (\y ; \bbeta) & = \sum_{i=1}^n \log f (y_i ; \bbeta) \propto 
+    \sum_{i=1}^n \log \left\{ \frac{\exp(\x_i \tr \bbeta)^{y_i}}{[1 + 
+    \exp(\x_i \tr \bbeta)]^{m_i}} \right\} \\
+    & = \y \tr \X \bbeta - \sum_{i=1}^n m_i \log [1 + \exp(\x_i \tr \bbeta)], \\
+    \E_{\bomega} [\log \pi (\bomega | \bbeta)] & \propto \sum_{i=1}^n 
+    \E_{\omega_i} [\log \pi (\omega_i | \bbeta)] \\ & \propto \sum_{i=1}^n
+    \E_{\omega_i} \( \log \left\{ \cosh\( \frac{\x_i \tr \bbeta}{2}\)^{m_i} 
+    \exp \[-\frac{(\x_i \tr \bbeta)^2}{2} \omega_i \]\right\} \) \\
+    & \propto \sum_{i=1}^n m_i \log \cosh \( \frac{\x_i \tr \bbeta }{2} \) -
+    \frac{1}{2} \bbeta \tr \X \tr \bOmega \X \bbeta \\ & \propto 
+    \sum_{i=1}^n m_i \log [1 + \exp(\x_i \tr \bbeta)] - \frac{1}{2} \m \tr 
+    \X \bbeta - \frac{1}{2} \bbeta \tr \X \tr \bOmega \X \bbeta, \\
+    \E_{\btau} [ \log \pi (\bbeta | \btau)] & = \sum_{j=1}^p \E_{\tau_j} 
+    [ \log \pi (\beta_j | \tau_j)] \propto \frac{\lambda_2}{2} 
+    \sum_{j=1}^p \beta_j^2 \lambda'_{g(j)} \E \( \frac{\tau_j}{\tau_j - 1} \) \\
+    & = \sum_{j=1}^p \beta_j^2 \lambda'_{g(j)} [1 + \E ( \psi_j^{-1} )] = -
+    \frac{1}{2} \lambda_2 \bbeta \tr \bLambda' (\I + \Z) \bbeta,
+  \end{align*}
+  where proportionality is with respect to $\bbeta$. Furthermore, $\bOmega =
+  \diag [\E(\omega_i)]]$, $\Z = \diag [ \E (\psi_j^{-1})]$, and $\bLambda' =
+  \diag (\lambda'_{g(j)})$. 
+  Since the difficult $\sum_{i=1}^n m_i \log[1 + \exp(\x_i \tr \bbeta)]$ term
+  appears in both the $\log \L (\y ; \bbeta)$ and $\pi (\omega_i | \bbeta)$ 
+  part, it cancels, thereby justifying the introduction of the $\omega_i$.
+  Finally, we have: 
+  $$
 \log q^*_{\bbeta} (\bbeta) = \bkappa \tr \X \bbeta - \frac{1}{2} \bbeta \tr (\X \tr \bOmega \X + \lambda_2 \bLambda' + \lambda_2 \bLambda' \Z) \bbeta,
 $$
 which is quadratic in $\bbeta$ and thus recognised as the log-kernel of a Gaussian distribution with covariance $\bSigma = (\X \tr \bOmega \X + \lambda_2 \bLambda' + \lambda_2 \bLambda' \Z)^{-1}$ and mean $\bmu=\bSigma \X \tr \bkappa$.
@@ -642,8 +715,8 @@ medians <- round(sapply(c("grridge", paste0("gren", 1:3)), function(s) {
   For each of these bootstrap samples we estimated the regular elastic
   net and \texttt{gren} for $\alpha \in \{0.05, 0.5, 0.95 \}$, where we selected
   25 features (including the 5 unpenalized covariates). We calculated the size 
-  of all $\genfrac(){0pt}{2}{50}{2}$ intersections of selected features and present the 
-  results in Figure [! figure ref here].
+  of all $\genfrac(){0pt}{2}{50}{2}$ intersections of selected features and
+  present the results in Figure [! figure ref here].
 
   [! figure here]
   
@@ -657,13 +730,16 @@ medians <- round(sapply(c("grridge", paste0("gren", 1:3)), function(s) {
   cross-tabulated the two co-data partitions to create one paritioning with 25 
   groups for \texttt{cMCP} and \texttt{gel}.
   We use $\alpha \in \{0.05, 0.5, 0.95 \}$ for the
-  methods that require this extra tuning parameter. The AUCs calculated on the
-  validation set are presented in Figure 
-  \ref{fig:lines_rnaseq_lymph_node_metastasis_res1_auc}
+  methods that require this extra tuning parameter. The AUCs and Brier skill 
+  scores calculated on the
+  validation set are presented in Figures 
+  \ref{fig:lines_rnaseq_lymph_node_metastasis_res1_auc}--
+  \ref{fig:lines_rnaseq_lymph_node_metastasis_res1_briers}
 <<lines_rnaseq_lymph_node_metastasis_res1_auc, fig.cap="Estimated AUC for the lymph node cancer example.", out.width="100%", fig.asp=1>>=
 @
   
-
+<<lines_rnaseq_lymph_node_metastasis_res1_briers, fig.cap="Estimated Briers skill score for the lymph node cancer example.", out.width="100%", fig.asp=1>>=
+@
   
   \section{Application to metabolomics in alzheimer}\label{sec:alzheimer}
 	We applied our method to an Alzheimer's dataset from 
@@ -682,14 +758,20 @@ medians <- round(sapply(c("grridge", paste0("gren", 1:3)), function(s) {
 	We expect a lower RSD and a higher node degree to be indicative of an 
 	important metabolite and therefore receive less penalty.
 	
-	To estimate performance measures AUC and BSS, we split the data into 120 
-	training instances and 54 test instances. 
+	To estimate performance measures AUC and Briers skill score, we split the data
+	into 120 training instances and 54 test instances. 
 	The training data is used to fit the models, while the test data
-	is used to estimate the performance measures on. We included the different 
-	co-data types seperately and combined, which resulted in the estimated 
-	multipliers and performance measures presented in Figure 
-	\ref{fig:barplot_lines_metabolomics_alzheimer_res5_auc}.
-<<barplot_lines_metabolomics_alzheimer_res5_auc, fig.cap="Results for the alzheimer example with (a) the estimated penalty multipliers for the quality score, (b) the estimated penalty multipliers for the network degree, (c) the estimated AUC, and (d) the estimated Brier skill score.", out.width="100%", fig.asp=1>>=
+	is used to estimate the performance measures on. This resulted in the 
+	estimated multipliers and performance measures presented in Figures 
+	\ref{fig:barplot_metabolomics_alzheimer_res1}--
+	\ref{fig:lines_metabolomics_alzheimer_res1_briers}.
+<<barplot_metabolomics_alzheimer_res1, fig.cap="Estimated penalty multiplies for the (a) quality score and the (b) network degree in the alzheimer example.", out.width="100%", fig.asp=1/2>>=
+@
+
+<<lines_metabolomics_alzheimer_res1_auc, fig.cap="Estimated AUC for the alzheimer example.", out.width="100%", fig.asp=1>>=
+@
+
+<<lines_metabolomics_alzheimer_res1_briers, fig.cap="Estimated Brier skill score for the alzheimer example.", out.width="100%", fig.asp=1>>=
 @
 
   In this example, \texttt{GRridge} and \texttt{gren} underperform due to a 
@@ -714,17 +796,14 @@ medians <- round(sapply(c("grridge", paste0("gren", 1:3)), function(s) {
   conserved across most vertebrates (147). We expect (c) to contain the most 
   important microRNAs, followed by (b) and (a), because these microRNAs have not
   been lost during evolution and might therefore regulate important processes.
-  
-<<barplots_micrornaseq_cervical_cancer_res1_auc, fig.cap="Estimated penalty multipliers for conservation status co-data", out.width="50%", fig.asp=2/3>>=
+
+<<barplot_micrornaseq_cervical_cancer_res1, fig.cap="Estimated penalty multiplies for conservation status in cervical cancer example.", out.width="50%", fig.asp=1>>=
 @
 
-<<lines_micrornaseq_cervical_cancer_res1_auc, fig.cap="Cross-validated AUC in cervicl cancer example", out.width="50%", fig.asp=1>>=
+<<lines_micrornaseq_cervical_cancer_res1_auc, fig.cap="Cross-validated AUC in cervical cancer example", out.width="100%", fig.asp=1>>=
 @
-  
-  \section{Choice of \texorpdfstring{$\alpha$}{alpha}}	
-	Choice of $\alpha$ does matter in Figure 
-	\ref{fig:lines_colorectal_lymph_node_gren_auc}.
-<<lines_colorectal_lymph_node_gren_auc, fig.cap="Estimated AUC for gren in the (a) colorectal cancer example and the (b) lymph node metastasis example.", out.width="100%", fig.asp=1/2>>=
+
+<<lines_micrornaseq_cervical_cancer_res1_briers, fig.cap="Cross-validated Brier skill score in cervical cancer example", out.width="100%", fig.asp=1>>=
 @
   
 \section{Empirical-variational Bayes for the ridge and lasso}\label{sec:evbridgelasso}
