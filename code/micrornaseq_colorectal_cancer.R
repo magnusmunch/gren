@@ -20,6 +20,9 @@ library(foreach)
 library(doParallel)
 library(microbenchmark)
 
+### parallelisation
+parallel <- TRUE
+
 ### load data
 load("data/forMagnusN88.Rdata")
 
@@ -305,14 +308,15 @@ part <- diff.expr
 # op_inv_meat.hpp. Maybe increase lambda by hand?
 
 ### analyse samples in parallel
-# ncores <- 1
-ncores <- min(detectCores(), nsamples)
-cluster <- makeCluster(ncores, type="FORK", outfile="code/debugging.out")
-# registerDoParallel(cluster)
-registerDoSEQ()
+ncores <- min(detectCores() - 1, nsamples)
+cluster <- makeForkCluster(ncores)
+if(parallel) {
+  registerDoParallel(cluster)
+} else {
+  registerDoSEQ()
+}
 
-selnames <- foreach(k=46) %dopar% {
-# selnames <- foreach(k=c(1:nsamples)) %dopar% {
+selnames <- foreach(k=c(1:nsamples), .errorhandling="pass") %dopar% {
   set.seed(2019 + k)
   
   id.boot <- c(sample(which(y==0), replace=TRUE), 
@@ -342,15 +346,30 @@ selnames <- foreach(k=46) %dopar% {
        enet3=colnames(xboot)[fit.gren3$freq.model$regular$beta[-c(1:u), ]!=0])
     
 }
-stopCluster(cluster)
+if(parallel) {stopCluster(cluster)}
+
+################################## DEBGUGGING ##################################
+test1 <- selnames[-46]
+test2 <- sapply(c(paste0("gren", 1:3), paste0("enet", 1:3)), function(m) {
+  sapply(test1, function(s) {s[[grep(m, names(s))]]}, simplify=FALSE)},
+  simplify=FALSE)
+intersect <- sapply(test2, function(m) {
+  combn(1:length(test1), 2, function(s) {
+    length(intersect(m[[s[1]]], m[[s[2]]]))})})
+res <- intersect
+rownames(res) <- paste0("combn", c(1:choose(length(test1), 2)))
+write.table(res, file="results/micrornaseq_colorectal_cancer_res4.csv")
+################################################################################
+
 selnames <- sapply(c(paste0("gren", 1:3), paste0("enet", 1:3)), function(m) {
   sapply(selnames, function(s) {s[[grep(m, names(s))]]}, simplify=FALSE)},
   simplify=FALSE)
 
 ### calculate the size of all intersections of selected features
 intersect <- sapply(selnames, function(m) {
-  combn(1:nsamples, 2, function(s) {length(intersect(m[[s[1]]], m[[s[2]]]))})})
+  combn(1:length(m), 2, function(s) {
+    length(intersect(m[[s[1]]], m[[s[2]]]))})})
 
 res <- intersect
-rownames(res) <- paste0("combn", c(1:choose(nsamples, 2)))
+rownames(res) <- paste0("combn", c(1:choose(length(selnames), 2)))
 write.table(res, file="results/micrornaseq_colorectal_cancer_res4.csv")
