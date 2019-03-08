@@ -78,7 +78,7 @@ res <- foreach(k=c(1:nreps)) %dopar% {
   
   # fitting models
   fit.gren1 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.05, 
-                    standardize=TRUE, trace=FALSE)
+                    standardize=TRUE, trace=FALSE, psel=csel)
   fit.gren2 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.5, 
                     standardize=TRUE, trace=FALSE)
   fit.gren3 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.95, 
@@ -175,6 +175,11 @@ res <- foreach(k=c(1:nreps)) %dopar% {
   
 }
 if(parallel) {stopCluster(cluster)}
+test <- res
+test <- sapply(c("psel", "auc", "briers", "mse", "kappa", "mults"), function(s) {
+  sapply(test, function(m) {m[[s]]}, simplify=FALSE)}, simplify=FALSE)
+
+
 res <- sapply(c("psel", "auc", "briers", "mse", "kappa", "mults"), function(s) {
   sapply(res, function(m) {m[[s]]}, simplify=FALSE)}, simplify=FALSE)
   
