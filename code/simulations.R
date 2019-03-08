@@ -12,7 +12,7 @@ if(substr(system('git log -n 1 --format="%h %aN %s %ad"', intern=TRUE), 1, 7)!=
 }
 
 ### parallelisation
-parallel <- FALSE
+parallel <- TRUE
 
 ### libraries
 library(gren)
@@ -44,7 +44,7 @@ b <- 2*p*beta.mean/sum(rg*f^(c(1:G) - 1))
 beta <- numeric(p)
 
 part <- rep(c(1:G), each=p/G)
-nreps <- 2
+nreps <- 100
 
 ################################################################################
 ## Error in { :                                                                #
@@ -52,7 +52,8 @@ nreps <- 2
 ################################################################################
 
 ### analysis splits in parallel
-ncores <- min(detectCores() - 1, nreps)
+ncores <- 50
+# ncores <- min(detectCores() - 1, nreps)
 cluster <- makeForkCluster(ncores)
 if(parallel) {
   registerDoParallel(cluster)
