@@ -19,7 +19,6 @@ library(SGL)
 library(foreach)
 library(doParallel)
 library(irr)
-library(pROC)
 library(mvtnorm)
 
 ################################# simulation 1 #################################
@@ -42,14 +41,14 @@ b <- 2*p*beta.mean/sum(rg*f^(c(1:G) - 1))
 beta <- numeric(p)
 
 part <- rep(c(1:G), each=p/G)
-nreps <- 1
+nreps <- 2
 ncores <- min(detectCores() - 1, nreps)
 
 ### analysis splits in parallel
 cluster <- makeCluster(ncores, type="FORK")
 registerDoParallel(cluster)
 
-res1 <- foreach(k=c(1:nreps)) %dopar% {
+res <- foreach(k=c(1:nreps)) %do% {
   set.seed(2019 + k)
   
   for(g in 1:G) {
@@ -65,109 +64,111 @@ res1 <- foreach(k=c(1:nreps)) %dopar% {
   ytest <- rbinom(ntest, 1, as.numeric(1/(1 + exp(-xtest %*% beta))))
   
   # fitting models
-  fit1.gren1 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.05, 
-                     standardize=TRUE, trace=FALSE)
-  fit1.gren2 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.5, 
-                     standardize=TRUE, trace=FALSE)
-  fit1.gren3 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.95, 
-                     standardize=TRUE, trace=FALSE)
+  fit.gren1 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.05, 
+                    standardize=TRUE, trace=FALSE)
+  fit.gren2 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.5, 
+                    standardize=TRUE, trace=FALSE)
+  fit.gren3 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.95, 
+                    standardize=TRUE, trace=FALSE)
   
-  fit1.grridge <- grridge(t(xtrain), ytrain, list(part=split(1:p, part)))
+  fit.grridge <- grridge(t(xtrain), ytrain, list(part=split(1:p, part)))
   
-  fit1.sgl1 <- SGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.05)
-  fit1.sgl2 <- SGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.5)
-  fit1.sgl3 <- SGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.95)
+  fit.sgl1 <- SGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.05)
+  fit.sgl2 <- SGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.5)
+  fit.sgl3 <- SGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.95)
   
-  fit1.cmcp1 <- grpreg(xtrain, ytrain, part, penalty="cMCP", family="binomial", 
-                       alpha=0.05)
-  fit1.cmcp2 <- grpreg(xtrain, ytrain, part, penalty="cMCP", family="binomial", 
-                       alpha=0.5)
-  fit1.cmcp3 <- grpreg(xtrain, ytrain, part, penalty="cMCP", family="binomial", 
-                       alpha=0.95)
-  
-  fit1.gel1 <- grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
+  fit.cmcp1 <- grpreg(xtrain, ytrain, part, penalty="cMCP", family="binomial", 
                       alpha=0.05)
-  fit1.gel2 <- grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
+  fit.cmcp2 <- grpreg(xtrain, ytrain, part, penalty="cMCP", family="binomial", 
                       alpha=0.5)
-  fit1.gel3 <- grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
+  fit.cmcp3 <- grpreg(xtrain, ytrain, part, penalty="cMCP", family="binomial", 
                       alpha=0.95)
   
-  pred1 <- data.frame(ridge=predict.grridge(fit1.grridge, t(xtest))[, 1],
-                      grridge=predict.grridge(fit1.grridge, t(xtest))[, 2],
-                      gren1=predict(fit1.gren1, xtest, type="groupreg"),
-                      gren2=predict(fit1.gren2, xtest, type="groupreg"),
-                      gren3=predict(fit1.gren3, xtest, type="groupreg"),
-                      enet1=predict(fit1.gren1, xtest, type="regular"),
-                      enet2=predict(fit1.gren2, xtest, type="regular"),
-                      enet3=predict(fit1.gren3, xtest, type="regular"),
-                      sgl1=predictSGL(fit1.sgl1, xtest),
-                      sgl2=predictSGL(fit1.sgl2, xtest),
-                      sgl3=predictSGL(fit1.sgl3, xtest),
-                      cmcp1=predict(fit1.cmcp1, xtest),
-                      cmcp2=predict(fit1.cmcp2, xtest),
-                      cmcp3=predict(fit1.cmcp3, xtest),
-                      gel1=predict(fit1.gel1, xtest),
-                      gel2=predict(fit1.gel2, xtest),
-                      gel3=predict(fit1.gel3, xtest))
+  fit.gel1 <- grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
+                     alpha=0.05)
+  fit.gel2 <- grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
+                     alpha=0.5)
+  fit.gel3 <- grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
+                     alpha=0.95)
   
-  auc1 <- apply(pred1, 2, function(s) {pROC::auc(ytest, s)})
+  pred <- data.frame(ridge=predict.grridge(fit.grridge, t(xtest))[, 1],
+                     grridge=predict.grridge(fit.grridge, t(xtest))[, 2],
+                     gren1=predict(fit.gren1, xtest, type="groupreg"),
+                     gren2=predict(fit.gren2, xtest, type="groupreg"),
+                     gren3=predict(fit.gren3, xtest, type="groupreg"),
+                     enet1=predict(fit.gren1, xtest, type="regular"),
+                     enet2=predict(fit.gren2, xtest, type="regular"),
+                     enet3=predict(fit.gren3, xtest, type="regular"),
+                     sgl1=predictSGL(fit.sgl1, xtest),
+                     sgl2=predictSGL(fit.sgl2, xtest),
+                     sgl3=predictSGL(fit.sgl3, xtest),
+                     cmcp1=predict(fit.cmcp1, xtest),
+                     cmcp2=predict(fit.cmcp2, xtest),
+                     cmcp3=predict(fit.cmcp3, xtest),
+                     gel1=predict(fit.gel1, xtest),
+                     gel2=predict(fit.gel2, xtest),
+                     gel3=predict(fit.gel3, xtest))
+  
+  auc <- apply(pred, 2, function(s) {pROC::auc(ytest, s)})
   
   const <- sum((ytest - mean(ytest))^2)
-  briers1 <- apply(pred1, 2, function(s) {1 - sum((ytest - s)^2)/const})
+  briers <- apply(pred, 2, function(s) {1 - sum((ytest - s)^2)/const})
   
-  coef1 <- data.frame(ridge=coef(fit1.grridge$predobj$NoGroups),
-                      grridge=coef(fit1.grridge$predobj$GroupRegul),
-                      gren1=as.matrix(coef(fit1.gren1, type="groupreg")),
-                      gren2=as.matrix(coef(fit1.gren2, type="groupreg")),
-                      gren3=as.matrix(coef(fit1.gren3, type="groupreg")),
-                      enet1=as.matrix(coef(fit1.gren1, type="regular")),
-                      enet2=as.matrix(coef(fit1.gren2, type="regular")),
-                      enet3=as.matrix(coef(fit1.gren3, type="regular")),
-                      sgl1=rbind(fit1.sgl1$intercept, fit1.sgl1$beta),
-                      sgl2=rbind(fit1.sgl2$intercept, fit1.sgl2$beta),
-                      sgl3=rbind(fit1.sgl3$intercept, fit1.sgl3$beta),
-                      cmcp1=coef(fit1.cmcp1),
-                      cmcp2=coef(fit1.cmcp2),
-                      cmcp3=coef(fit1.cmcp3),
-                      gel1=coef(fit1.gel1),
-                      gel2=coef(fit1.gel2),
-                      gel3=coef(fit1.gel3))
+  coef <- data.frame(ridge=coef(fit.grridge$predobj$NoGroups),
+                      grridge=coef(fit.grridge$predobj$GroupRegul),
+                      gren1=as.matrix(coef(fit.gren1, type="groupreg")),
+                      gren2=as.matrix(coef(fit.gren2, type="groupreg")),
+                      gren3=as.matrix(coef(fit.gren3, type="groupreg")),
+                      enet1=as.matrix(coef(fit.gren1, type="regular")),
+                      enet2=as.matrix(coef(fit.gren2, type="regular")),
+                      enet3=as.matrix(coef(fit.gren3, type="regular")),
+                      sgl1=rbind(fit.sgl1$intercept, fit.sgl1$beta),
+                      sgl2=rbind(fit.sgl2$intercept, fit.sgl2$beta),
+                      sgl3=rbind(fit.sgl3$intercept, fit.sgl3$beta),
+                      cmcp1=coef(fit.cmcp1),
+                      cmcp2=coef(fit.cmcp2),
+                      cmcp3=coef(fit.cmcp3),
+                      gel1=coef(fit.gel1),
+                      gel2=coef(fit.gel2),
+                      gel3=coef(fit.gel3))
   
-  mse1 <- apply(coef1, 2, function(s) {mean((s - c(0, beta))^2)})
+  mse <- apply(coef, 2, function(s) {mean((s - c(0, beta))^2)})
   
-  kappa1 <- apply(coef1, 2, function(s) {
-    kappa2(cbind(s[-1]!=0, beta!=0))$value})
+  kappa <- apply(coef, 2, function(s) {kappa2(cbind(s[-1]!=0, beta!=0))$value})
   
-  psel1 <- c(ridge=p, grridge=p, 
-             gren1=fit1.gren1$freq.model$groupreg$df,
-             gren2=fit1.gren2$freq.model$groupreg$df,
-             gren3=fit1.gren3$freq.model$groupreg$df,
-             enet1=fit1.gren1$freq.model$regular$df,
-             enet2=fit1.gren2$freq.model$regular$df,
-             enet3=fit1.gren3$freq.model$regular$df,
-             sgl1=apply(fit1.sgl1$beta, 2, function(b) {sum(b!=0)}),
-             sgl2=apply(fit1.sgl2$beta, 2, function(b) {sum(b!=0)}),
-             sgl3=apply(fit1.sgl3$beta, 2, function(b) {sum(b!=0)}),
-             cmcp1=apply(as.matrix(coef(fit1.cmcp1)), 2, function(b) {
-               sum(b!=0)}),
-             cmcp2=apply(as.matrix(coef(fit1.cmcp2)), 2, function(b) {
-               sum(b!=0)}),
-             cmcp3=apply(as.matrix(coef(fit1.cmcp3)), 2, function(b) {
-               sum(b!=0)}),
-             gel1=apply(as.matrix(coef(fit1.gel1)), 2, function(b) {sum(b!=0)}),
-             gel2=apply(as.matrix(coef(fit1.gel2)), 2, function(b) {sum(b!=0)}),
-             gel3=apply(as.matrix(coef(fit1.gel3)), 2, function(b) {sum(b!=0)}))
+  psel <- c(ridge=p, grridge=p, 
+            gren1=fit.gren1$freq.model$groupreg$df,
+            gren2=fit.gren2$freq.model$groupreg$df,
+            gren3=fit.gren3$freq.model$groupreg$df,
+            enet1=fit.gren1$freq.model$regular$df,
+            enet2=fit.gren2$freq.model$regular$df,
+            enet3=fit.gren3$freq.model$regular$df,
+            sgl1=apply(fit.sgl1$beta, 2, function(b) {sum(b!=0)}),
+            sgl2=apply(fit.sgl2$beta, 2, function(b) {sum(b!=0)}),
+            sgl3=apply(fit.sgl3$beta, 2, function(b) {sum(b!=0)}),
+            cmcp1=apply(as.matrix(coef(fit.cmcp1)), 2, function(b) {sum(b!=0)}),
+            cmcp2=apply(as.matrix(coef(fit.cmcp2)), 2, function(b) {sum(b!=0)}),
+            cmcp3=apply(as.matrix(coef(fit.cmcp3)), 2, function(b) {sum(b!=0)}),
+            gel1=apply(as.matrix(coef(fit.gel1)), 2, function(b) {sum(b!=0)}),
+            gel2=apply(as.matrix(coef(fit.gel2)), 2, function(b) {sum(b!=0)}),
+            gel3=apply(as.matrix(coef(fit.gel3)), 2, function(b) {sum(b!=0)}))
   
-  mults1 <- c(grridge=fit1.grridge$lambdamults$part,
-              gren1=fit1.gren1$lambdag$part,
-              gren2=fit1.gren2$lambdag$part,
-              gren3=fit1.gren3$lambdag$part)
+  mults <- c(grridge=fit.grridge$lambdamults$part,
+             gren1=fit.gren1$lambdag$part,
+             gren2=fit.gren2$lambdag$part,
+             gren3=fit.gren3$lambdag$part)
   
-  list(auc=auc1, briers=briers1, mse=mse1, kappa=kappa1, mults=mults1)
+  list(psel=psel, auc=auc, briers=briers, mse=mse, kappa=kappa, mults=mults)
   
 }
+stopCluster(cluster)
+res <- sapply(c("psel", "auc", "briers", "mse", "kappa", "mults"), function(s) {
+  sapply(res, function(m) {m[[s]]}, simplify=FALSE)}, simplify=FALSE)
+  
+
+sapply(res$psel, function(s) {s[grep("gren1", names(s))]}, simplify=FALSE)
 
 
-results1 <- list(auc=auc1, briers=briers1, mse=mse1, kappa=kappa1, psel=psel1,
-                 lambdag=lambdagest1)
+
+
 save(results1, file=paste(path.res, "gren_sim1_res1.Rdata", sep=""))

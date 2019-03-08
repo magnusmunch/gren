@@ -5,10 +5,11 @@ using namespace Rcpp;
 
 /* This function estimates new variational parameters*/
 // [[Rcpp::export]]
-List est_param(arma::mat xr, arma::mat xu, arma::vec kappa, arma::vec m, int n, int p, arma::vec ciold, 
-               double phi, arma::vec chiold, double lambda2, arma::vec lambdag, 
-               arma::vec lambdagold, bool intercept, bool unpen, bool posterior, 
-               bool elbo, bool start) {
+List est_param(arma::mat xr, arma::mat xu, arma::vec kappa, arma::vec m, int n, 
+               int p, arma::vec ciold, double phi, arma::vec chiold, 
+               double lambda2, arma::vec lambdag, arma::vec lambdagold, 
+               bool intercept, bool unpen, bool posterior, bool elbo, 
+               bool start) {
   
   arma::vec lambda2vec = lambda2*lambdag;
   int u = 0;

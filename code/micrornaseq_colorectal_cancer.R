@@ -301,13 +301,19 @@ part <- diff.expr
 ################################################################################
 ######### Error in { : task 46 failed - "inv(): matrix seems singular" #########
 ################################################################################
+# RcppArmadillo in .i() error, thrown by op_inv::apply_noalias() in 
+# op_inv_meat.hpp. Maybe increase lambda by hand?
 
 ### analyse samples in parallel
-ncores <- min(detectCores(), nsamples)
-cluster <- makeCluster(ncores, type="FORK")
+ncores <- 1
+# ncores <- min(detectCores(), nsamples)
+cluster <- makeCluster(ncores, type="FORK", outfile="code/debugging.out")
 registerDoParallel(cluster)
+registerDoSEQ()
 
-selnames <- foreach(k=c(1:nsamples)) %dopar% {
+
+selnames <- foreach(k=46) %dopar% {
+# selnames <- foreach(k=c(1:nsamples)) %dopar% {
   set.seed(2019 + k)
   
   id.boot <- c(sample(which(y==0), replace=TRUE), 
@@ -328,7 +334,7 @@ selnames <- foreach(k=c(1:nsamples)) %dopar% {
   fit.gren3 <- gren(xboot, yboot, unpenalized=uboot, 
                     partitions=list(part=part.boot), alpha=0.95, 
                     standardize=TRUE, trace=FALSE, psel=psel)
-  
+
   list(gren1=colnames(xboot)[fit.gren1$freq.model$groupreg$beta[-c(1:u), ]!=0],
        gren2=colnames(xboot)[fit.gren2$freq.model$groupreg$beta[-c(1:u), ]!=0],
        gren3=colnames(xboot)[fit.gren3$freq.model$groupreg$beta[-c(1:u), ]!=0],
@@ -337,8 +343,9 @@ selnames <- foreach(k=c(1:nsamples)) %dopar% {
        enet3=colnames(xboot)[fit.gren3$freq.model$regular$beta[-c(1:u), ]!=0])
     
 }
+stopCluster(cluster)
 selnames <- sapply(c(paste0("gren", 1:3), paste0("enet", 1:3)), function(m) {
-  sapply(out, function(s) {s[[grep(m, names(s))]]}, simplify=FALSE)},
+  sapply(selnames, function(s) {s[[grep(m, names(s))]]}, simplify=FALSE)},
   simplify=FALSE)
 
 ### calculate the size of all intersections of selected features
