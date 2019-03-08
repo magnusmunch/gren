@@ -305,12 +305,11 @@ part <- diff.expr
 # op_inv_meat.hpp. Maybe increase lambda by hand?
 
 ### analyse samples in parallel
-ncores <- 1
-# ncores <- min(detectCores(), nsamples)
+# ncores <- 1
+ncores <- min(detectCores(), nsamples)
 cluster <- makeCluster(ncores, type="FORK", outfile="code/debugging.out")
-registerDoParallel(cluster)
+# registerDoParallel(cluster)
 registerDoSEQ()
-
 
 selnames <- foreach(k=46) %dopar% {
 # selnames <- foreach(k=c(1:nsamples)) %dopar% {
