@@ -353,7 +353,8 @@ selnames <- sapply(c(paste0("gren", 1:3), paste0("enet", 1:3)), function(m) {
 
 ### calculate the size of all intersections of selected features
 intersect <- sapply(selnames, function(m) {
-  combn(1:nsamples, 2, function(s) {length(intersect(m[[s[1]]], m[[s[2]]]))})})
+  combn(1:length(selnames), 2, function(s) {
+    length(intersect(m[[s[1]]], m[[s[2]]]))})})
 
 res <- intersect
 rownames(res) <- paste0("combn", c(1:choose(nsamples, 2)))
