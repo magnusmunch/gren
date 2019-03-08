@@ -12,7 +12,7 @@ if(substr(system('git log -n 1 --format="%h %aN %s %ad"', intern=TRUE), 1, 7)!=
 }
 
 ### parallelisation
-parallel <- TRUE
+parallel <- FALSE
 
 ### libraries
 library(gren)
@@ -45,6 +45,11 @@ beta <- numeric(p)
 
 part <- rep(c(1:G), each=p/G)
 nreps <- 2
+
+################################################################################
+## Error in { :                                                                #
+##     task 1 failed - ""logitNest" not resolved from current namespace (SGL)" #
+################################################################################
 
 ### analysis splits in parallel
 ncores <- min(detectCores() - 1, nreps)
