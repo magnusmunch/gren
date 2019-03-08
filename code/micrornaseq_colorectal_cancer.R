@@ -338,7 +338,7 @@ selnames <- foreach(k=c(1:nsamples)) %dopar% {
     
 }
 selnames <- sapply(c(paste0("gren", 1:3), paste0("enet", 1:3)), function(m) {
-  sapply(out, function(s) {s[[grep(m, names(s))]]}, simplify=FALSE)},
+  sapply(selnames, function(s) {s[[grep(m, names(s))]]}, simplify=FALSE)},
   simplify=FALSE)
 
 ### calculate the size of all intersections of selected features
