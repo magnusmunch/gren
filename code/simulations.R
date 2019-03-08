@@ -11,6 +11,9 @@ if(substr(system('git log -n 1 --format="%h %aN %s %ad"', intern=TRUE), 1, 7)!=
                  auth_token=Sys.getenv("GITHUB_PAT"))
 }
 
+### parallelisation
+parallel <- TRUE
+
 ### libraries
 library(gren)
 library(GRridge)
@@ -42,13 +45,17 @@ beta <- numeric(p)
 
 part <- rep(c(1:G), each=p/G)
 nreps <- 2
-ncores <- min(detectCores() - 1, nreps)
 
 ### analysis splits in parallel
-cluster <- makeCluster(ncores, type="FORK")
-registerDoParallel(cluster)
+ncores <- min(detectCores() - 1, nreps)
+cluster <- makeForkCluster(ncores)
+if(parallel) {
+  registerDoParallel(cluster)
+} else {
+  registerDoSEQ()
+}
 
-res <- foreach(k=c(1:nreps)) %do% {
+res <- foreach(k=c(1:nreps)) %dopar% {
   set.seed(2019 + k)
   
   for(g in 1:G) {
@@ -161,7 +168,7 @@ res <- foreach(k=c(1:nreps)) %do% {
   list(psel=psel, auc=auc, briers=briers, mse=mse, kappa=kappa, mults=mults)
   
 }
-stopCluster(cluster)
+if(parallel) {stopCluster(cluster)}
 res <- sapply(c("psel", "auc", "briers", "mse", "kappa", "mults"), function(s) {
   sapply(res, function(m) {m[[s]]}, simplify=FALSE)}, simplify=FALSE)
   
