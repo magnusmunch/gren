@@ -298,6 +298,32 @@ abline(h=1, lty=2, lwd=1.5)
 par(opar)
 
 # ---- hist_micrornaseq_colorectal_cancer_res4_overlap ----
+library(sp)
+res <- read.table("results/micrornaseq_colorectal_cancer_res4.csv", 
+                  stringsAsFactors=FALSE)
+
+methods <- colnames(res)
+labels <- c("gren", "enet")
+col <- bpy.colors(length(labels), cutoff.tail=0.1)
+
+plot.data <- sapply(c(1:3), function(m) {
+  sapply(1:max(res), function(s) {
+    c(sum(res[[paste0("gren", m)]]==s), sum(res[[paste0("enet", m)]]==s))/
+      nrow(res)})}, simplify=FALSE)
+
+opar <- par(no.readonly=TRUE)
+par(mar=opar$mar*c(1, 1.3, 1, 1))
+layout(matrix(c(rep(c(1, 1, 2, 2), 2), rep(c(0, 3, 3, 0), 2)), 
+              nrow=4, ncol=4, byrow=TRUE))
+barplot(plot.data[[1]], beside=TRUE, xlab="Number of overlapping features",
+        ylab="Density", main="(a)", col=col, names.arg=1:max(res), 
+        legend.text=labels, args.legend=list(x="topright", fill=col, 
+                                             border=col))
+barplot(plot.data[[2]], beside=TRUE, xlab="Number of overlapping features",
+        ylab="Density", main="(b)", col=col, names.arg=1:max(res))
+barplot(plot.data[[3]], beside=TRUE, xlab="Number of overlapping features",
+        ylab="Density", main="(c)", col=col, names.arg=1:max(res))
+par(opar)
 
 # ---- lines_rnaseq_lymph_node_metastasis_res1_auc ----
 library(sp)
