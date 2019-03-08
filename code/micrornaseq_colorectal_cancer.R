@@ -20,6 +20,9 @@ library(foreach)
 library(doParallel)
 library(microbenchmark)
 
+### parallelisation
+parallel <- TRUE
+
 ### load data
 load("data/forMagnusN88.Rdata")
 
@@ -305,15 +308,15 @@ part <- diff.expr
 # op_inv_meat.hpp. Maybe increase lambda by hand?
 
 ### analyse samples in parallel
-ncores <- 1
-# ncores <- min(detectCores(), nsamples)
-cluster <- makeCluster(ncores, type="FORK", outfile="code/debugging.out")
-registerDoParallel(cluster)
-registerDoSEQ()
+ncores <- min(detectCores() - 1, nsamples)
+cluster <- makeForkCluster(ncores)
+if(parallel) {
+  registerDoParallel(cluster)
+} else {
+  registerDoSEQ()
+}
 
-
-selnames <- foreach(k=46) %dopar% {
-# selnames <- foreach(k=c(1:nsamples)) %dopar% {
+selnames <- foreach(k=c(1:nsamples)) %dopar% {
   set.seed(2019 + k)
   
   id.boot <- c(sample(which(y==0), replace=TRUE), 
@@ -343,7 +346,7 @@ selnames <- foreach(k=46) %dopar% {
        enet3=colnames(xboot)[fit.gren3$freq.model$regular$beta[-c(1:u), ]!=0])
     
 }
-stopCluster(cluster)
+if(parallel) {stopCluster(cluster)}
 selnames <- sapply(c(paste0("gren", 1:3), paste0("enet", 1:3)), function(m) {
   sapply(selnames, function(s) {s[[grep(m, names(s))]]}, simplify=FALSE)},
   simplify=FALSE)
