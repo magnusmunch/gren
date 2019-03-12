@@ -124,8 +124,8 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	on the same molecular features obtained in a previous study (e.g. $p$-values),
 	(b) information from a publicly available database that summarizes the prior
 	information on the molecular features involved (e.g., the Cancer Gene Census
-	\cite[]{futreal_census_2004}), and (c) omics annotation (e.g. the location of 
-	a gene on the chromosome). Although this information can rarely be directly
+	\cite[]{futreal_census_2004}), and (c) omics annotation (e.g. a gene's 
+	chromosome location). Although this information can rarely be directly
 	included in the statistical analysis, it may still be useful and informative
 	for the study at hand.
 
@@ -166,18 +166,18 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	possibility of adaptive inclusion of external information on the features to
 	aid in prediction and feature selection. Bayesian versions of support vector 
 	machines have been used in classification problems as well 
-	\cite[]{chakraborty_bayesian_2011}, but just as VBVS, these methods lack 
-	adaptive inclusion of external information on the features. We emphasize that 
-	our method is different from recent developments in grouped penalized 
-	regression such as \cite{dondelinger_joint_nodate}, where instead of the 
-	features, the observations are partitioned.
+	\cite[]{chakraborty_bayesian_2011}, but these methods also lack 
+	adaptive inclusion of external information on the features. 
 
 	In line with the above, our proposed method is (a) subjective: the 
 	hyper-parameters are estimated from the data and not chosen on objective 
 	grounds, (b) adaptive: prior information is automatically and subjectively 
 	weighed with respect to its informativeness, (c) fast compared to full 
 	Bayesian analysis or cross-validation, and (d) requires minimal input by the 
-	user: only the data and grouping of the features is required.
+	user: only the data and grouping of the features is required. We emphasize that 
+	our method is different from recent developments in grouped penalized 
+	regression such as \cite{dondelinger_joint_nodate}, where instead of the 
+	features, the observations are partitioned.
 
 	The rest of the paper is structured as follows. We introduce the Bayesian 
 	logistic generalised elastic net model in Section
@@ -186,7 +186,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	Bayes estimation of multiple, group-specific penalty parameters. In Section
 	\ref{sec:simulations} we compare the method in a simulation study. In Sections
 	\ref{sec:colorectal} and \ref{sec:lymphnode}, we demonstrate the approach in 
-	the two previously introduced data sets. In Section \ref{sec:discussion} 
+	two data sets. In Section \ref{sec:discussion} 
 	we conclude by both discussing some differences and
 	parallels between the proposed method, termed \texttt{gren}, and other methods
 	in the literature.
@@ -209,7 +209,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	Assume we have a partitioning of the features in $G$ groups, such that each
 	feature belongs to one group. Let $\G(g)$ be the feature index set of group 
 	$g$ for $g=1, \dots, G$ and let $w_g \in \mathbb{R}_{>0}$ denote a 
-	group-specific weight. In generalised elastic net regression, the penalised 
+	group-specific weight. In a generalised elastic net regression, the penalised 
 	likelihood is maximised to yield parameter estimates:
 	\begin{align}
 	  \hat{\bbeta} & := \underset{\bbeta}{\argmax} \log \L(\y ; \bbeta) - 
@@ -247,8 +247,8 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	to the posterior mode of a 
 	Bayesian elastic model \cite[]{li_bayesian_2010,zou_regularization_2005}.
 	\cite{li_bayesian_2010} show that the elastic net prior 
-	(see SM Section [! section reference here] for details on this prior) may be 
-	written as
+	(see Supplementary Material (SM) Section [! section reference here] for 
+	details on this prior) may be written as
 	a computationally more convenient scale mixture of normals, with mixing 
 	parameter $\btau = \begin{bmatrix} \tau_1 & \cdots & \tau_p \end{bmatrix} 
 	\tr$. Using this result, we write the generalised elastic net model in its 
@@ -474,13 +474,13 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 
 	\subsection{Feature selection}
 	Feature selection is often desirable in high-dimensional prediction problems 
-	and omics data problems are no exception. For example, a selection of 
-	biomarkers may lead 
-	to a large cost reduction by supporting targeted assays. Bayesian feature
+	and omics data problems are no exception. For example, biomarker selection 
+	may lead 
+	to a large reduction in costs by supporting targeted assays. Bayesian feature
 	selection is often done by inspection of posterior credible intervals. 
 	Similarly as in frequentist hypothesis testing, we may select a feature if 
-	zero is not contained in the credible interval. However, the Bayesian lasso's
-	credible intervals (a special case of the elastic net) are known to suffer 
+	zero is not in the credible interval. However, the Bayesian lasso's 
+	(a special case of the elastic net) credible intervals  are known to suffer 
 	from low frequentist coverage in sparse settings 
 	\cite[]{castillo_bayesian_2015}. We often assume sparsity of the features in 
 	omics research, so selection by credible intervals is generally inconsistent. 
@@ -498,29 +498,28 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 
 	\section{Simulations}\label{sec:simulations}
 	To assess variable selection and predictive performance we conducted a 
-	simulation study in which we compare \texttt{gren} to the regular elastic 
+	simulation study in which we compared \texttt{gren} to the regular elastic 
 	net and ridge models, \texttt{GRridge} \cite[]{van_de_wiel_better_2016}, 
 	sparse group lasso (\texttt{SGL}) \cite[]{simon_sparse-group_2013}, 
-	group mimimax concave penalty (\texttt{grMCP}) 
+	composite mimimax concave penalty (\texttt{cMCP}) 
 	\cite[]{breheny_penalized_2009}, and the group exponential lasso 
 	(\texttt{gel}) \cite[]{breheny_group_2015}. \texttt{GRridge} is similar to 
 	\texttt{gren} in the sense that it estimates group-specific penalty 
 	multipliers. The two main differences with \texttt{gren} are (i) the absence 
 	of an $L_1$-norm penalty and (ii) the estimation procedure. The other methods 
-	are extensions of the group lasso \cite[]{meier_group_2008, yuan_model_2006} 
-	and not adaptive on the group level. In contrast to the original group lasso,
-	all of them are able to select single features, instead of just on the group 
-	level.
+	are extensions of the group lasso and not adaptive on the group level. 
+	However, in contrast to the original group lasso,
+	they select single features, instead of just whole groups.
 
-	For the regular elastic net, \texttt{gren}, \texttt{SGL}, \texttt{grMCP}, 
+	For the regular elastic net, \texttt{gren}, \texttt{SGL}, \texttt{cMCP}, 
 	and \texttt{gel}, we fix $\alpha \in \{0.05, 0.5, 0.95 \}$. In \texttt{gren}
 	and the elastic net, $\alpha$ determines the proportion of $L_1$-norm penalty,
 	such that the first setting closely resembles the ridge setting, 
 	where $\alpha=0$, while the third setting is similar to the lasso with 
-	$\alpha=1$. In \texttt{SGL}, \texttt{grMCP}, and \texttt{gel}, $\alpha$
-	determines the proportion of group-level penalization ($\alpha=0$) compared to
-	$L_1$-norm penalty on the feature level ($\alpha=1$). For the methods that do 
-	automatic variable selection, we estimate 
+	$\alpha=1$. In \texttt{SGL}, \texttt{cMCP}, and \texttt{gel}, $\alpha$
+	determines the ratio of group-level penalization ($\alpha=0$) to 
+	feature level ($\alpha=1$) penalization. For the methods that do 
+	automatic feature selection, we estimate 
 	the models for a range of model sizes.
 
 	We simulated data according to five different scenarios:
@@ -534,46 +533,53 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 		model parameters, and
 		\item a very sparse setting with no signal in some of the groups.
 	\end{enumerate}
-	Full descriptions of the scenarios are given in Section [! ref to section] of 
-	the SM. In the first scenario, the distribution of the model parameters is far
-	off from the assumed ridge/elastic net/lasso distributions, so we assume that 
-	all methods will underperform. In the second scenario, we expect \texttt{gren}
+	Full descriptions of the scenarios are given in Section [! section ref here] 
+	of 
+	the SM. In the first scenario, the distribution of model parameters is far
+	from the assumed ridge/elastic net/lasso distributions, so we expect
+	all methods to underperform. In the second scenario, we expect \texttt{gren}
 	and \texttt{GRridge} to overfit due to the large number of hyperparameters to 
-	estimate. The rest of the methods are conjectured to perform better, due to a
-	lack of overfitting. In scenario three, we expect all methods to perform badly
-	due to the high correlation between the features. The \texttt{gren} fourth 
-	scenario is conjectured to give a better \texttt{gren} performance, due to the
-	correctly assumed heavier-tailed distribution and differential signal between
-	the groups. Scenario five is expected to lead to a bad performance in all 
-	models, because of the sparseness of the truth and lack of differential 
+	estimate, while we expect the other methods to perform better, due to a
+	lack of overfitting. In scenario three, we expect all methods to underperform
+	due to the high correlations between the features. The fourth 
+	scenario is conjectured to yield a better \texttt{gren} performance, since
+	\texttt{gren} assumes a heavier-tailed distribution and is designed to 
+	incorporate a differential signal between
+	the groups. Scenario five is expected to yield a bad performance for all 
+	methods, because of the sparse truth and lack of differential 
 	signal.
 
 	In all scenarios we created a training set of $n=100$ samples to estimate the 
-	models and a test set of $n_{\text{test}}=1000$ samples on which we compute 
+	models and a test set of $n_{\text{test}}=1000$ samples to compute 
 	the performance measures. The features $\x_i$, $i=1, \dots, n$, are taken 
 	from a $p$-dimensional zero-centred Gaussian distribution, where we set 
-	$p=1000$. We let the covariance matrix of the features vary over the 
-	scenarios. Likewise for the model parameters $\beta_j$, $j=1, \dots, p$. We 
-	simulate the outcomes $y_i$, $i=1, \dots, n$, from a binary logistic model: 
+	$p=1000$. We varied the covariance matrix of the features and simulation of 
+	the model parameters $\beta_j$, $j=1, \dots, p$ between the
+	scenarios (see SM Section [! section ref here] for the exact 
+	parametrisations). We 
+	simulated the outcomes $y_i$, $i=1, \dots, n$, from a binary logistic model: 
 	$y_i \sim \mathcal{B}(1, \expit (\x_i \tr \bbeta))$. To mitigate the influence
-	of random variation in the simulations, we repeated every scenario 100 times 
+	of random variation, we repeated each scenario 100 times 
 	and report estimated penalty parameters and predictive performance measures 
-	area under the receiver operator curve (AUC) and Brier skill score (BSS). 
+	area under the receiver operator curve (AUC) and Brier skill score (BSS) in 
+	Table [! table ref here]. 
+	
+	- description of results
 	
 	[! results here]
 	
-	Additional results are presented in Section [! section ref here] of the SM.
+	Additional results and performance measures are presented in Section 
+	[! section ref here] of the SM.
 
 	\section{Application to microRNAs in colorectal cancer}
 	\label{sec:colorectal}
-  As shortly touched upon in Section \ref{sec:introduction}, the data is from a 
-  deep sequencing analysis on microRNAs 
-  \cite[]{neerincx_combination_2018}. This study in 88 treated 
-  colorectal cancer patients was conducted with the aim of predicting treatment 
-  response, coded as either non-progressive/remission (70 patients) or 
-  progressive 
+  We investigated the performance of \texttt{gren} on data from a 
+  deep sequencing study in microRNAs 
+  \cite[]{neerincx_combination_2018}. The aim of the study was to predict 
+  treatment response in 88 treated colorectal cancer patients, coded as either
+  non-progressive/remission (70 patients) or progressive 
   (18 patients). After pre-processing and normalisation, 2114 microRNAs 
-  remained. In addition to the 2114 microRNAs, four clinical unpenalized 
+  remained. In addition to the microRNAs, four unpenalized clinical
   covariates were included in the analysis: prior use of adjuvant therapy 
   (binary), the type of systemic treatment regimen (ternary), age, and primary 
   tumor differentiation (binary).
@@ -583,35 +589,34 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   non-colorectal tissue and primary colorectal tumour tissue was compared to
   primary colorectal tumour tissue \cite[]{neerincx_mir_2015}. This yielded 127
   microRNAs that were differentially expressed in both comparisons with
-  $\text{FDR} \leq 0.001$, 95 with and $\text{FDR} \leq 0.05$, and 1893 not 
-  differentially expressed microRNAs. We expect that incorporation of this 
-  partitioning enhances therapy response 
-  classification, because tumor-specific miRNAs might be more relevant than 
-  non-specific ones.
+  $\text{FDR} \leq 0.001$, 95 with and $\text{FDR} \leq 0.05$, and 1893 
+  microRNAs that were not differentially expressed. We expect that incorporation
+  of this partitioning enhances therapy response 
+  classification, because tumor-specific microRNAs are likely to be more 
+  relevant than non-specific microRNAs.
 
   We compared the performance of \texttt{gren} to ridge, \texttt{GRridge}, 
-  elastic net, and to the best performing
-  group lasso extension, the composite minimax
-  concave penalty (\texttt{cMCP}) by \cite{breheny_penalized_2009}. 
-  For the methods with an extra tuning parameter 
-  $\alpha$, we picked the one (or two) that gave the best performance and refer
-  the reader to SM Section [! section ref here] for more comparisons with 
-  different $\alpha$s and comparisons to the sparse
-  group lasso by \cite{simon_sparse-group_2013} and group
-  exponential lasso \cite[]{breheny_group_2015}.
+  elastic net, \texttt{SGL}, \texttt{cMCP}, and \texttt{gel}. Of the latter 
+  three methods, we only present \texttt{cMCP} here; the results for 
+  \texttt{SGL} and \texttt{gel} are presented in the SM Section 
+  [! section ref here]. For the methods with a
+  tuning parameter $\alpha$, we picked the $\alpha$('s) that gave the best
+  performance and refer
+  the reader to SM Section [! section ref here] for comparisons with 
+  different $\alpha$'s.
   
   To estimate performance, we split the data into 61 training and 27 test 
   instances, stratified by treatment response. We estimated the models on the 
-  training data and calculated AUC on the test data. We present AUC for a range 
-  of model sizes, together with the estimated 
+  training data and calculated AUC on the test data. We present the AUC for a
+  range of model sizes, together with the estimated 
   penalty multipliers for \texttt{gren} and \texttt{GRridge} in Figure
   \ref{fig:barplot_lines_micrornaseq_colorectal_cancer_res1_auc}. More 
   performance measures are presented in Section [! section ref here]
   of the SM. In addition, we investigated the sensitivity of
-  the multiplier estimation using in SM Section 
+  the multiplier estimation on this dataset in SM Section 
   [! section ref here]. We experienced numerical issues with 
   \texttt{GRridge} when cross-validating 
-  the global penalty parameter on the training data. We therefore estimated this
+  the global $\lambda$ on the training data. We therefore estimated this
   global parameter on the full data for \texttt{GRridge}.
   
   The penalty multipliers estimated by 
@@ -623,18 +628,19 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   sizes in terms of AUC 
   (Figure \ref{fig:barplot_lines_micrornaseq_colorectal_cancer_res1_auc}b). 
   This is especially pronounced for the larger models. The performance of
-  \texttt{cMCP} is somewhat unstable. We noticed that this is in general the 
-  case for the group-lasso and its extensions (see SM [! section ref here]). 
-  Overall, it seems as though the inclusion of the extra information on the 
+  \texttt{cMCP} is somewhat unstable. This unstable estimation is an issue for   
+  all group lasso extensions that we investigated.
+  (SM [! section ref here]). Overall, it seems as though the inclusion of the
+  extra information on the 
   features benefited predictive performance: both \texttt{GRridge} and 
   \texttt{gren} outperform their respective non-group-regularized versions, 
   albeit it only slightly for \texttt{GRridge}.
-<<barplot_lines_micrornaseq_colorectal_cancer_res1_auc, fig.cap="Results for the colorectal cancer example with (a) the estimated penalty multipliers and (b) estimated AUC.", out.width="100%", fig.asp=1/2>>=
+<<barplot_lines_micrornaseq_colorectal_cancer_res1_auc, fig.cap="Estimated (a) penalty multipliers and (b) AUC in the colorectal cancer example.", out.width="100%", fig.asp=1/2>>=
 @
   
   \section{Application to RNAseq in lymph node cancer}\label{sec:lymphnode}
-  The aim of this study is to predict lymph node metastasis in patients 
-  with HPV-negative oral cancer using sequenced RNAs from TCGA 
+  The aim of our second example study was to predict lymph node metastasis in
+  oral cancer patients using sequenced RNAs from TCGA 
   \cite[]{the_cancer_genome_atlas_network_comprehensive_2015}. The features are 
   3096 transformed and normalised TCGA RNASeqv2 profiles of head-and-neck 
   squamous cell carcinomas on 133 patients with HPV-negative tumours in the oral
@@ -642,45 +648,46 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   did not. For a thorough introduction of these data, see 
   \cite{te_beest_improved_2017}.
   
-  As external feature information, we considered two sources: (a) the 
-  cis-correlation between the RNASeqv2 data and TCGA DNA copy numbers on 
-  the same patients, 
-  quantified by Kendall's $\tau$ and binned into five groups. We also considered
-  (b) $p$-values from an external microarray data set described in 
-  \cite{mes_prognostic_2017}, again binned into five groups. We expect features 
+  We considered two sources of external feature information: (a) the 
+  cis-correlations between the RNASeqv2 data and TCGA DNA copy numbers on 
+  the same patients, quantified by Kendall's $\tau$ and binned into five groups.
+  In addition, we used (b) $p$-values from a microarray data set
+  described in \cite{mes_prognostic_2017}, again binned into five groups. 
+  We expected features 
   with a large positive Kendall's $\tau$ to be more important in 
   metastasis prediction \cite[]{masayesva_gene_2004}. Likewise, we expect 
-  features with low $p$-values to be more important.
+  features with low external $p$-values to be more important.
   
   We compared \texttt{gren} to the same methods as in Section 
-  \ref{sec:colorectal}. However, because the co-data consists of two partitions 
-  with overlapping groups, we use an extension of \texttt{cMCP} that allows for
+  \ref{sec:colorectal}. However, since the feature information
+  consists of two partitions with overlapping groups, we used an extension of
+  \texttt{cMCP} that allows for
   overlapping groups \cite[]{zeng_overlapping_2016}.
   We estimated AUC for the methods on an independent validation set of 97 
-  HPV-negative oral cancer patients \cite[]{mes_prognostic_2017}. The features 
+  patients \cite[]{mes_prognostic_2017}. The features 
   in this validation set were
-  microarrays, normalised to account for a different scale of the transformed 
-  RNAseq data. We present the results on this validation set in Figure 
-  \ref{fig:barplot_lines_rnaseq_lymph_node_metastasis_res1_auc}. Other 
+  microarray expression levels, normalised to account
+  for a difference in scale compared to the RNAseq training data. We present the
+  results on this validation set, together with the estimated penalty 
+  multipliers for \texttt{gren} and \texttt{GRridge}, in Figure 
+  \ref{fig:barplot_lines_rnaseq_lymph_node_metastasis_res1_auc}. Additional
   comparisons and performance measures are presented in the SM Section 
   [! section ref here].
   
   The estimated penalty multipliers follow the expected pattern 
   (Figure \ref{fig:barplot_lines_rnaseq_lymph_node_metastasis_res1_auc}a): 
   larger cis-correlations receive smaller penalties. 
-  Likewise, smaller $p$-values are penalized less. This pattern is slightly 
-  less pronounced in \texttt{gren} with $\alpha=0.95$ compared to the other 
-  methods. The predictive performance of
+  Likewise, smaller external $p$-values are penalized less. This pattern is
+  slightly less pronounced in \texttt{gren} with $\alpha=0.95$ compared to the
+  other methods. The predictive performance of
   \texttt{gren} is slighty better than the other methods for a range of model
-  sizes. We also note that the overlapping group \texttt{cMCP} is much more
-  stable than the regular \texttt{cMCP} (see in SM [! section ref here]), 
-  where we create one paritioning by cross-tabulation of the two paritions. 
-  In this example, ridge and \texttt{GRridge} perform almost identical.
-<<barplot_lines_rnaseq_lymph_node_metastasis_res1_auc, fig.cap="Results for the lymph node metastasis example with (a) the estimated penalty multipliers for the cis-correlations, (b) the estimated penalty multipliers for the p-values, and (c) the estimated AUC.", out.width="100%", fig.asp=1>>=
+  sizes. In this example, ridge and \texttt{GRridge} perform almost 
+  identical, while \texttt{gren} outperforms the regular elastic net.
+<<barplot_lines_rnaseq_lymph_node_metastasis_res1_auc, fig.cap="Estimated (a) penalty multipliers for the cis-correlations and (b) external $p$-values, and (c) estimated AUC in the lymph node metastasis example.", out.width="100%", fig.asp=1>>=
 @
   
 	\section{Discussion}\label{sec:discussion}
-	In a taxonomy of Bayesian methods, the proposed method may be considered a 
+	In a taxonomy of Bayesian methods, \texttt{gren} may be considered a 
 	local shrinkage model, as opposed to the global-local shrinkage priors that 
 	\cite{polson_local_2012,bernardo_shrink_2011} discuss. They characterise 
 	certain desirable properties of these global-local shrinkage priors in high 
@@ -698,15 +705,16 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	coverage of credibility intervals than lasso-type priors 
 	\cite[]{van_der_pas_horseshoe_2014}.
 
-	Although our method can be considered weakly adaptive, it is different from 
+	Although our method can be considered weakly adaptive and is essentially 
+	a reweighted elastic net, it is different from 
 	the adaptive lasso \cite[]{van_de_geer_adaptive_2011,huang_adaptive_2008,
 	zhang_adaptive_2007,zou_adaptive_2006} and adaptive elastic net 
 	\cite[]{zou_adaptive_2009} in the sense that it adapts to external information
-	rather than to the data. It also differs in the scale of adaptation: in the 
-	adaptive lasso and elastic net the adaptive weights are feature specific,
-	while in our case they are estimated on the group level, rendering the 
-	adaptation more robust. As can be seen from both the simulations in Section 
-	\ref{sec:simulations} and the applications to different outcomes 
+	rather than to the primary data. It also differs in the scale of adaptation: 
+	in the adaptive lasso and elastic net the adaptive weights are feature 
+	specific, while in our case they are estimated on the group level, rendering
+	the adaptation more robust. As can be seen from both the simulations in 
+	Section \ref{sec:simulations} and the applications to different outcomes 
 	(prognostic or diagnostic) and marker types 
 	(RNAseq, microRNAs, or metabolomics) in Sections \ref{sec:colorectal}--
 	\ref{sec:lymphnode}, and SM Sections [! section refs here], adaptation to 
@@ -715,21 +723,23 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	estimates of feature effects that behave similarly are shrunken similarly, 
 	yielding overall, better estimates.
 	
-	A common criticism of the lasso (and elastic net) is unstable feature 
-	selection: different data sets often lead to wildly differing sets of selected
-	features. We investigated stability selection on the data from Section
-	\ref{sec:colorectal} by taking bootstraps samples from the data, estimating
-	\texttt{gren} and looking at the overlap between selected features over 
-	different bootstrap samples. We compared it to the regular elastic net and 
-	found that inclusion of extra feature information increases selection 
-	stability (see SM Section [! section ref here]). In addition, we investigated 
-	the stability of penalty multiplier estimation by examining the distribution
+	A common criticism of the lasso (and elastic net) is its instability of 
+	feature 
+	selection: different data instances lead to different sets of selected
+	features. We investigated the stability of selection on the data from Section
+	\ref{sec:colorectal}. To that end we created several bootstrap samples from 
+	the original data and calculated the sizes of all intersections of selected
+	features. We compared \texttt{gren} to the 
+	regular elastic net and found that the inclusion of extra information
+	increased the selection stability (see SM Section [! section ref here]). 
+	In addition, we investigated 
+	the variance and bias in penalty multiplier estimation by examining the
+	distribution
 	of estimated penalty parameters from 100 random partitionings of the features
   (see SM Section [! section ref here]). We found that the penalty parameters
-  tend to cluster around one, as is expected with random groups, and are 
-  unbiased.
+  tend to cluster around one, as expected for an unbiased estimation method.
 
-	As shortly touched upon in Section \ref{sec:introduction}, another obvious 
+	As touched upon in Section \ref{sec:introduction}, another obvious 
 	comparison is to the group lasso \cite[]{meier_group_2008,
 	yuan_model_2006} and its extensions. Although it is similar in the sense that 
 	it shrinks on the 
@@ -807,9 +817,8 @@ session <- gsub("_", ".", devtools::session_info()$platform$system)
 
 	\section*{Supplementary Material}
 	Supplementary Material is available online from 
-	\url{http://pub.math.leidenuniv.nl/~munchmm/}. All materials needed to   
-	recreate this document are available from 
-	\url{https://github.com/magnusmunch/gren}.
+	\url{http://pub.math.leidenuniv.nl/~munchmm/}. All results may be recreated
+	from \url{https://github.com/magnusmunch/gren}.
 
 	\section*{Acknowledgements}
 	\textit{Conflict of Interest}: None declared. We thank the editors and 

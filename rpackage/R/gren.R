@@ -254,7 +254,8 @@ gren <- function(x, y, m=rep(1, nrow(x)), unpenalized=NULL, partitions=NULL,
   vb.conv <- logical(0)
   conv <- FALSE
   iter1 <- 0
-  if(trace) {cat("\n", "Estimating penalty multipliers by empirical Bayes", "\n", sep="")}
+  if(trace) {cat("\n", "Estimating penalty multipliers by empirical Bayes", 
+                 "\n", sep="")}
   srt <- proc.time()[3]
   while(!conv & (iter1 < control$maxit)) {
     
@@ -414,7 +415,8 @@ gren <- function(x, y, m=rep(1, nrow(x)), unpenalized=NULL, partitions=NULL,
     
       # estimate final models using lambda sequence
       fit.final <- glmnet(x, y=ymat, family="binomial", alpha=alpha, 
-                          lambda=sel.out, standardize=FALSE, intercept=intercept, 
+                          lambda=sel.out, standardize=FALSE, 
+                          intercept=intercept, 
                           penalty.factor=c(rep(0, u), lambdamultvec))
     }
   }
