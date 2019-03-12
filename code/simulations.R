@@ -44,6 +44,7 @@ b <- 2*p*beta.mean/sum(rg*f^(c(1:G) - 1))
 beta <- numeric(p)
 
 part <- rep(c(1:G), each=p/G)
+csel <- 2^c(1:8)
 nreps <- 100
 
 ################################################################################
@@ -80,29 +81,26 @@ res <- foreach(k=c(1:nreps)) %dopar% {
   fit.gren1 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.05, 
                     standardize=TRUE, trace=FALSE, psel=csel)
   fit.gren2 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.5, 
-                    standardize=TRUE, trace=FALSE)
+                    standardize=TRUE, trace=FALSE, psel=csel)
   fit.gren3 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.95, 
-                    standardize=TRUE, trace=FALSE)
+                    standardize=TRUE, trace=FALSE, psel=csel)
   
   fit.grridge <- grridge(t(xtrain), ytrain, list(part=split(1:p, part)))
   
-  fit.sgl1 <- SGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.05)
-  fit.sgl2 <- SGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.5)
-  fit.sgl3 <- SGL(list(x=xtrain, y=ytrain), part, type="logit", alpha=0.95)
+  fit.cmcp1 <- sel.grpreg(xtrain, ytrain, part, penalty="cMCP", 
+                          family="binomial", alpha=0.05, psel=csel)
+  fit.cmcp2 <- sel.grpreg(xtrain, ytrain, part, penalty="cMCP", 
+                          family="binomial", 
+                          alpha=0.5, psel=csel)
+  fit.cmcp3 <- sel.grpreg(xtrain, ytrain, part, penalty="cMCP", 
+                          family="binomial", alpha=0.95, psel=csel)
   
-  fit.cmcp1 <- grpreg(xtrain, ytrain, part, penalty="cMCP", family="binomial", 
-                      alpha=0.05)
-  fit.cmcp2 <- grpreg(xtrain, ytrain, part, penalty="cMCP", family="binomial", 
-                      alpha=0.5)
-  fit.cmcp3 <- grpreg(xtrain, ytrain, part, penalty="cMCP", family="binomial", 
-                      alpha=0.95)
-  
-  fit.gel1 <- grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
-                     alpha=0.05)
-  fit.gel2 <- grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
-                     alpha=0.5)
-  fit.gel3 <- grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
-                     alpha=0.95)
+  fit.gel1 <- sel.grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
+                         alpha=0.05, psel=csel)
+  fit.gel2 <- sel.grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
+                         alpha=0.5, psel=csel)
+  fit.gel3 <- sel.grpreg(xtrain, ytrain, part, penalty="gel", family="binomial", 
+                         alpha=0.95, psel=csel)
   
   pred <- data.frame(ridge=predict.grridge(fit.grridge, t(xtest))[, 1],
                      grridge=predict.grridge(fit.grridge, t(xtest))[, 2],
@@ -112,9 +110,6 @@ res <- foreach(k=c(1:nreps)) %dopar% {
                      enet1=predict(fit.gren1, xtest, type="regular"),
                      enet2=predict(fit.gren2, xtest, type="regular"),
                      enet3=predict(fit.gren3, xtest, type="regular"),
-                     sgl1=predictSGL(fit.sgl1, xtest),
-                     sgl2=predictSGL(fit.sgl2, xtest),
-                     sgl3=predictSGL(fit.sgl3, xtest),
                      cmcp1=predict(fit.cmcp1, xtest),
                      cmcp2=predict(fit.cmcp2, xtest),
                      cmcp3=predict(fit.cmcp3, xtest),
@@ -135,9 +130,6 @@ res <- foreach(k=c(1:nreps)) %dopar% {
                       enet1=as.matrix(coef(fit.gren1, type="regular")),
                       enet2=as.matrix(coef(fit.gren2, type="regular")),
                       enet3=as.matrix(coef(fit.gren3, type="regular")),
-                      sgl1=rbind(fit.sgl1$intercept, fit.sgl1$beta),
-                      sgl2=rbind(fit.sgl2$intercept, fit.sgl2$beta),
-                      sgl3=rbind(fit.sgl3$intercept, fit.sgl3$beta),
                       cmcp1=coef(fit.cmcp1),
                       cmcp2=coef(fit.cmcp2),
                       cmcp3=coef(fit.cmcp3),
@@ -156,9 +148,6 @@ res <- foreach(k=c(1:nreps)) %dopar% {
             enet1=fit.gren1$freq.model$regular$df,
             enet2=fit.gren2$freq.model$regular$df,
             enet3=fit.gren3$freq.model$regular$df,
-            sgl1=apply(fit.sgl1$beta, 2, function(b) {sum(b!=0)}),
-            sgl2=apply(fit.sgl2$beta, 2, function(b) {sum(b!=0)}),
-            sgl3=apply(fit.sgl3$beta, 2, function(b) {sum(b!=0)}),
             cmcp1=apply(as.matrix(coef(fit.cmcp1)), 2, function(b) {sum(b!=0)}),
             cmcp2=apply(as.matrix(coef(fit.cmcp2)), 2, function(b) {sum(b!=0)}),
             cmcp3=apply(as.matrix(coef(fit.cmcp3)), 2, function(b) {sum(b!=0)}),
@@ -175,6 +164,11 @@ res <- foreach(k=c(1:nreps)) %dopar% {
   
 }
 if(parallel) {stopCluster(cluster)}
+
+
+
+
+
 test <- res
 test <- sapply(c("psel", "auc", "briers", "mse", "kappa", "mults"), function(s) {
   sapply(test, function(m) {m[[s]]}, simplify=FALSE)}, simplify=FALSE)

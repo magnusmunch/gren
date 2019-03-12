@@ -349,7 +349,7 @@ selnames <- foreach(k=c(1:nsamples), .errorhandling="pass") %dopar% {
 if(parallel) {stopCluster(cluster)}
 
 ################################## DEBGUGGING ##################################
-test1 <- selnames[-46]
+test1 <- selnames[-46]
 test2 <- sapply(c(paste0("gren", 1:3), paste0("enet", 1:3)), function(m) {
   sapply(test1, function(s) {s[[grep(m, names(s))]]}, simplify=FALSE)},
   simplify=FALSE)

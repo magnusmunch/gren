@@ -33,19 +33,30 @@ sel.grpreg <- function(X, y, group=1:ncol(X),
   init.lambda <- grpreg:::setupLambda(XG$X, yy, XG$g, family, penalty, alpha, 
                                       lambda.min, log.lambda, 2, XG$m)
   
-  # find the lambdas that give the specified psels
-  sel.lambda <- numeric(length(psel))
-  for(i in 1:length(psel)) {
-    fit.root <- suppressWarnings(uniroot(froot, interval=init.lambda, 
-                                         psel=psel[i], inp=inp))
-    sel.lambda[i] <- fit.root$root
+  # check whether smallest lambda gives largest psel, otherwise, this psel
+  # not possible
+  init.fit <- do.call("grpreg", c(inp, lambda=init.lambda, nlambda=2))
+  pselfit <- psel[psel <= max(colSums(as.matrix(init.fit$beta[-1, ])!=0))]
+  
+  # if no model has fewer selected features than any psel, we return initial
+  # model
+  if(length(pselfit) > 0) {
+    # find the lambdas that give the specified psels
+    sel.lambda <- numeric(length(pselfit))
+    for(i in 1:length(pselfit)) {
+      fit.root <- suppressWarnings(uniroot(froot, interval=init.lambda, 
+                                           psel=pselfit[i], inp=inp))
+      sel.lambda[i] <- fit.root$root
+    }
+  
+    # final fit with the found lambdas
+    inp[["lambda"]] <- sel.lambda
+    inp[["nlambda"]] <- max(length(sel.lambda), 2)
+  
+    fit <- do.call("grpreg", inp)
+  } else {
+    fit <- init.fit
   }
-  
-  # final fit with the found lambdas
-  inp[["lambda"]] <- sel.lambda
-  inp[["nlambda"]] <- length(sel.lambda)
-  
-  fit <- do.call("grpreg", inp)
   return(fit)
   
 }
