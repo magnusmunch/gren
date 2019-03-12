@@ -12,7 +12,7 @@ if(substr(system('git log -n 1 --format="%h %aN %s %ad"', intern=TRUE), 1, 7)!=
 }
 
 ### parallelisation
-parallel <- TRUE
+parallel <- FALSE
 
 ### libraries
 library(gren)
@@ -23,6 +23,9 @@ library(foreach)
 library(doParallel)
 library(irr)
 library(mvtnorm)
+
+### loading functions
+source("code/functions.R")
 
 ################################# simulation 1 #################################
 n <- 100
@@ -62,7 +65,7 @@ if(parallel) {
   registerDoSEQ()
 }
 
-res <- foreach(k=c(1:nreps)) %dopar% {
+res <- foreach(k=c(1:nreps), .errorhandling="pass") %dopar% {
   set.seed(2019 + k)
   
   for(g in 1:G) {
@@ -164,23 +167,55 @@ res <- foreach(k=c(1:nreps)) %dopar% {
   
 }
 if(parallel) {stopCluster(cluster)}
+save(res, file="results/simulations_res1.Rdata")
+
+################################## DEBUGGING ###################################
+load("results/simulations_res1.Rdata")
+test1 <- res
+test2 <- sapply(c("psel", "auc", "briers", "mse", "kappa", "mults"), 
+                function(s) {
+                  sapply(test1, function(m) {
+                    m[[s]]}, simplify=FALSE)}, simplify=FALSE)
+
+test3 <- sapply(c(paste0("gren", 1:3), paste0("enet", 1:3),
+                  paste0("cmcp", 1:3), paste0("gel", 1:3)), function(m) {
+                    cbind(rowMeans(sapply(1:length(test2$psel), function(s) {
+                      vec1 <- rep(NA, 100);
+                      vec2 <- test2$psel[[s]][grep(m, names(test2$psel[[s]]))]
+                      replace(vec1, 1:length(vec2), vec2)}), na.rm=TRUE),
+                      rowMeans(sapply(1:length(test2$auc), function(s) {
+                        vec1 <- rep(NA, 100);
+                        vec2 <- test2$auc[[s]][grep(m, names(test2$auc[[s]]))]
+                        replace(vec1, 1:length(vec2), vec2)}), na.rm=TRUE))},
+                simplify=FALSE)
+
+grep("cmcp1", test1[[1]]$auc)
+
+xlim <- range(sapply(test3, function(s) {s[, 1]}), na.rm=TRUE)
+ylim <- range(sapply(test3, function(s) {s[, 2]}), na.rm=TRUE)
+plot(test3[[1]], type="l", ylim=ylim, xlim=xlim, col=1, lty=1)
+lines(test3[[2]], col=2, lty=2)
+lines(test3[[3]], col=3, lty=3)
+lines(test3[[4]], col=4, lty=4)
+lines(test3[[5]], col=5, lty=5)
+lines(test3[[6]], col=6, lty=6)
+lines(test3[[7]], col=7, lty=7)
+lines(test3[[8]], col=8, lty=8)
+lines(test3[[9]], col=9, lty=9)
+lines(test3[[10]], col=10, lty=10)
+lines(test3[[11]], col=11, lty=11)
+lines(test3[[12]], col=12, lty=12)
+legend("bottomright", legend=names(test3), col=1:12, lty=1:12)
 
 
 
 
-
-test <- res
-test <- sapply(c("psel", "auc", "briers", "mse", "kappa", "mults"), function(s) {
-  sapply(test, function(m) {m[[s]]}, simplify=FALSE)}, simplify=FALSE)
+################################################################################
 
 
 res <- sapply(c("psel", "auc", "briers", "mse", "kappa", "mults"), function(s) {
   sapply(res, function(m) {m[[s]]}, simplify=FALSE)}, simplify=FALSE)
-  
-
-sapply(res$psel, function(s) {s[grep("gren1", names(s))]}, simplify=FALSE)
+save(res, file="results/simulations_res1.Rdata")
 
 
 
-
-save(results1, file=paste(path.res, "gren_sim1_res1.Rdata", sep=""))
