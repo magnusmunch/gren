@@ -12,7 +12,7 @@ if(substr(system('git log -n 1 --format="%h %aN %s %ad"', intern=TRUE), 1, 7)!=
 }
 
 ### parallelisation
-parallel <- TRUE
+parallel <- FALSE
 
 ### libraries
 library(gren)
@@ -61,7 +61,7 @@ if(parallel) {
   registerDoSEQ()
 }
 
-res <- foreach(k=c(1:nreps)) %dopar% {
+res <- foreach(k=c(1:nreps), .errorhandling="pass") %dopar% {
   set.seed(2019 + k)
   
   for(g in 1:G) {
@@ -175,9 +175,14 @@ res <- foreach(k=c(1:nreps)) %dopar% {
   
 }
 if(parallel) {stopCluster(cluster)}
+save(res, file="results/simulations_res1.Rdata")
+
 test <- res
 test <- sapply(c("psel", "auc", "briers", "mse", "kappa", "mults"), function(s) {
   sapply(test, function(m) {m[[s]]}, simplify=FALSE)}, simplify=FALSE)
+
+str(test$psel)
+
 
 
 res <- sapply(c("psel", "auc", "briers", "mse", "kappa", "mults"), function(s) {
@@ -189,4 +194,3 @@ sapply(res$psel, function(s) {s[grep("gren1", names(s))]}, simplify=FALSE)
 
 
 
-save(results1, file=paste(path.res, "gren_sim1_res1.Rdata", sep=""))
