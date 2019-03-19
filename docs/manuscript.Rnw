@@ -13,12 +13,9 @@ read_chunk("code/figures.R")
 \documentclass[a4paper,hidelinks]{article}
 \usepackage{url,bm,algorithm,algpseudocode,bbm,amsmath,amssymb,amsthm,
 amsfonts,graphics,graphicx,epsfig,rotating,caption,subcaption,natbib,appendix,
-titlesec,multicol,hyperref,verbatim,threeparttable,booktabs,dsfont,parskip}
-
-% Add history information for the article if required
-%\history{Received August 1, 2010;
-%	revised October 1, 2010;
-%	accepted for publication November 1, 2010}
+titlesec,multicol,verbatim,threeparttable,booktabs,dsfont,parskip,
+xr-hyper,hyperref}
+\externaldocument[sm-]{supplement}
 
 % objects
 \newcommand{\x}{\mathbf{x}}
@@ -87,9 +84,10 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 		features based on the external information. The method, termed 
 		\texttt{gren}, makes use of the Bayesian formulation of logistic elastic net
 		regression to estimate both the model and penalty parameters in an 
-		approximate empirical-variational Bayes framework. Simulations and an
-		application to a colon cancer microRNA study show that, if the partitioning
-		of the features is informative, classification performance and feature
+		approximate empirical-variational Bayes framework. Simulations and
+		applications in two different molecular marker and cancer type studies show
+		that, if the partitioning of the features is informative, classification 
+		performance and feature
 		selection are indeed enhanced.}
 	\end{abstract}
 
@@ -247,7 +245,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	to the posterior mode of a 
 	Bayesian elastic model \cite[]{li_bayesian_2010,zou_regularization_2005}.
 	\cite{li_bayesian_2010} show that the elastic net prior 
-	(see Supplementary Material (SM) Section [! section reference here] for 
+	(see Supplementary Material (SM) Section \ref{sm-sec:enetprior} for 
 	details on this prior) may be written as
 	a computationally more convenient scale mixture of normals, with mixing 
 	parameter $\btau = \begin{bmatrix} \tau_1 & \cdots & \tau_p \end{bmatrix} 
@@ -362,8 +360,8 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	genetic association studies \cite[]{carbonetto_scalable_2012} and gene network
 	reconstruction \cite[]{leday_gene_2017}. In variational Bayes, the posterior 
 	is approximated by a tractable form and estimated by optimizing a lower bound 
-	on the marginal likelihood of this model (see Section [! section ref here] 
-	of the SM for the 
+	on the marginal likelihood of this model (see Section 
+	\ref{sm-sec:objectivefunction} of the SM for the 
 	lower bound of the proposed model). For an extensive introduction and concise 
 	review, see \cite{beal_variational_2003} and \cite{blei_variational_2017}, 
 	respectively.
@@ -371,7 +369,8 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	To simplify the computations of our variational approximation, we follow
 	\cite{polson_bayesian_2013} and introduce latent variables $\omega_i$, for 
 	$i=1, \dots, n$. Conditional on $\bbeta$, the $\omega_i$ are independent of
-	the $y_i$ and P\'{o}lya-Gamma distributed (see Section 4 of the SM for more 
+	the $y_i$ and P\'{o}lya-Gamma distributed (see Section 
+	\ref{sm-sec:polyagamma} of the SM for more 
 	details). We augment Model (\ref{eq:enmodel2}) with:
 	\begin{equation}\label{eq:logmodel}
 	  \bomega | \bbeta \sim \prod_{i=1}^n \mathcal{PG}\(m_i, |\x_i \tr \bbeta| \).
@@ -403,7 +402,8 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	  \(\frac{1}{2}, \frac{\lambda_1^2}{4 \lambda_2}, \chi_j\),
 	\end{equation}
 	where $\mathcal{GIG} (\cdot)$ denotes the generalized inverse Gaussian 
-	distribution (See SM Section 5 for the derivations). The so-called variational
+	distribution (See SM Section \ref{sm-sec:variationaldistributions} 
+	for the derivations). The so-called variational
 	parameters in (\ref{eq:varbayesdistr}) contain cyclic dependencies, so we 
 	update them by:
 	\begin{subequations}\label{eq:VBupdateequations}
@@ -425,7 +425,8 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	\cdots & m_n \end{bmatrix} \tr$. Furthermore, $\mathbf{A}_{jj}$ and 
 	$\mathbf{a}_j$ denote the $j$th diagonal element of a square matrix and $j$th
 	element of a column vector, respectively. Naive calculation of the variational
-	parameters is computationally expensive. In Section 6 of the SM we show that 
+	parameters is computationally expensive. In Section 
+	\ref{sm-sec:computationalcomplexity} of the SM we show that 
 	informed calculation of the parameters results in a significant reduction of 
 	computational complexity.
 
@@ -450,12 +451,14 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 
 	To estimate the penalty multipliers, the intractable posterior expectation
 	in (\ref{eq:ebEM}) is approximated using the variational posterior:
-	$$
-	\E_{Q} \[ \log \L_{\blambda'}(\y, \bomega, \bbeta, \btau) | \blambda'^{(k)} \]
-	= \frac{1}{2} \sum_{g=1}^G |\G(g)| \log (\lambda'_g) - \frac{(1 - \alpha) 
-	\lambda}{4} \sum_{g=1}^G \lambda'_g d^{(k)}_g + C,
-	$$
-	where $C$ is constant in $\blambda'$ (see SM Section 7 for the full 
+	\begin{equation}\label{eq:approximatedloglikelihood}
+	  \E_{Q} \[ \log \L_{\blambda'}(\y, \bomega, \bbeta, \btau) | 
+	  \blambda'^{(k)} \]
+	  = \frac{1}{2} \sum_{g=1}^G |\G(g)| \log (\lambda'_g) - \frac{(1 - \alpha) 
+	  \lambda}{4} \sum_{g=1}^G \lambda'_g d^{(k)}_g + C,
+	\end{equation}
+	where $C$ is constant in $\blambda'$ (see SM Section 
+	\ref{sm-sec:expectedloglikelihood} for the full 
 	derivation). The $d_g^{(k)}$ terms are calculated as: $d^{(k)}_g = \sum_{j 
 	\in \mathcal{G} (g)} \[\bSigma^{(k)}_{jj} + (\bmu^{(k)}_j)^2\]\(1 + 
 	\alpha \lambda^{1.5} \sqrt{\frac{1 - \alpha}{8 \chi_j^{(k)}}}\)$. An estimate
@@ -470,7 +473,8 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	\end{subequations}
 	Although the solution to (\ref{eq:mmlupdateequation}) is not available in
 	closed form, this convex problem is easily solved by a numerical optimisation 
-	routine. The full procedure is summarized in Section 8 of the SM.
+	routine. The full procedure is summarized in Section 
+	\ref{sm-sec:fullestimationprocedure} of the SM.
 
 	\subsection{Feature selection}
 	Feature selection is often desirable in high-dimensional prediction problems 
@@ -533,11 +537,13 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 		model parameters, and
 		\item a very sparse setting with no signal in some of the groups.
 	\end{enumerate}
-	Full descriptions of the scenarios are given in Section [! section ref here] 
-	of 
+	Full descriptions of the scenarios are given in Section 
+	\ref{sm-sec:simulations} of 
 	the SM. In the first scenario, the distribution of model parameters is far
 	from the assumed ridge/elastic net/lasso distributions, so we expect
-	all methods to underperform. In the second scenario, we expect \texttt{gren}
+	all methods to underperform. In the second scenario, which is similar to
+	the simulations presented in the original group lasso paper 
+	\cite[]{yuan_model_2006}, we expect \texttt{gren}
 	and \texttt{GRridge} to overfit due to the large number of hyperparameters to 
 	estimate, while we expect the other methods to perform better, due to a
 	lack of overfitting. In scenario three, we expect all methods to underperform
@@ -566,10 +572,11 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	
 	- description of results
 	
-	[! results here]
+<<lines_simulations_res1_auc_briers, fig.cap="Estimated (a) AUC and (b) Brier skill score in simulation setting 1.", out.width="100%", fig.asp=1/2>>=
+@
 	
 	Additional results and performance measures are presented in Section 
-	[! section ref here] of the SM.
+	\ref{sm-sec:simulations} of the SM.
 
 	\section{Application to microRNAs in colorectal cancer}
 	\label{sec:colorectal}
@@ -602,7 +609,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   [! section ref here]. For the methods with a
   tuning parameter $\alpha$, we picked the $\alpha$('s) that gave the best
   performance and refer
-  the reader to SM Section [! section ref here] for comparisons with 
+  the reader to SM Section \ref{sm-sec:colorectal} for comparisons with 
   different $\alpha$'s.
   
   To estimate performance, we split the data into 61 training and 27 test 
@@ -611,10 +618,10 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   range of model sizes, together with the estimated 
   penalty multipliers for \texttt{gren} and \texttt{GRridge} in Figure
   \ref{fig:barplot_lines_micrornaseq_colorectal_cancer_res1_auc}. More 
-  performance measures are presented in Section [! section ref here]
+  performance measures are presented in Section \ref{sm-sec:colorectal}
   of the SM. In addition, we investigated the sensitivity of
   the multiplier estimation on this dataset in SM Section 
-  [! section ref here]. We experienced numerical issues with 
+  \ref{sm-sec:colorectal}. We experienced numerical issues with 
   \texttt{GRridge} when cross-validating 
   the global $\lambda$ on the training data. We therefore estimated this
   global parameter on the full data for \texttt{GRridge}.
@@ -630,8 +637,8 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   This is especially pronounced for the larger models. The performance of
   \texttt{cMCP} is somewhat unstable. This unstable estimation is an issue for   
   all group lasso extensions that we investigated.
-  (SM [! section ref here]). Overall, it seems as though the inclusion of the
-  extra information on the 
+  (SM Section \ref{sm-sec:colorectal}). Overall, it seems as though the 
+  inclusion of the extra information on the 
   features benefited predictive performance: both \texttt{GRridge} and 
   \texttt{gren} outperform their respective non-group-regularized versions, 
   albeit it only slightly for \texttt{GRridge}.
@@ -672,7 +679,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   multipliers for \texttt{gren} and \texttt{GRridge}, in Figure 
   \ref{fig:barplot_lines_rnaseq_lymph_node_metastasis_res1_auc}. Additional
   comparisons and performance measures are presented in the SM Section 
-  [! section ref here].
+  \ref{sm-sec:lymphnode}.
   
   The estimated penalty multipliers follow the expected pattern 
   (Figure \ref{fig:barplot_lines_rnaseq_lymph_node_metastasis_res1_auc}a): 
@@ -717,7 +724,8 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	Section \ref{sec:simulations} and the applications to different outcomes 
 	(prognostic or diagnostic) and marker types 
 	(RNAseq, microRNAs, or metabolomics) in Sections \ref{sec:colorectal}--
-	\ref{sec:lymphnode}, and SM Sections [! section refs here], adaptation to 
+	\ref{sec:lymphnode}, and SM Sections \ref{sm-sec:colorectal}--
+	\ref{sm-sec:cervical}, adaptation to 
 	external data may be beneficial for prediction and feature selection. 
 	We believe that this is due to the `borrowing of information' effect: 
 	estimates of feature effects that behave similarly are shrunken similarly, 
@@ -731,27 +739,27 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	the original data and calculated the sizes of all intersections of selected
 	features. We compared \texttt{gren} to the 
 	regular elastic net and found that the inclusion of extra information
-	increased the selection stability (see SM Section [! section ref here]). 
+	increased the selection stability (see SM Section \ref{sm-sec:colorectal}). 
 	In addition, we investigated 
 	the variance and bias in penalty multiplier estimation by examining the
 	distribution
 	of estimated penalty parameters from 100 random partitionings of the features
-  (see SM Section [! section ref here]). We found that the penalty parameters
+  (see SM Section \ref{sm-sec:colorectal}). We found that the penalty parameters
   tend to cluster around one, as expected for an unbiased estimation method.
 
 	As touched upon in Section \ref{sec:introduction}, another obvious 
 	comparison is to the group lasso \cite[]{meier_group_2008,
-	yuan_model_2006} and its extensions. Although it is similar in the sense that 
-	it shrinks on the 
-	group level, the group lasso is built upon an entirely different philosophy: 
+	yuan_model_2006} and its extensions. Although the group lasso is similar in 
+	the sense that it shrinks on the 
+	group level, it is built upon an entirely different philosophy: 
 	its intended application is to small interpretable groups of features, like, 
 	for example, dummies of a categorical variable. Another difference between 
 	\texttt{gren} and the group lasso is the number of penalty parameters. 
 	\texttt{gren} estimates one parameter per group, while the group lasso
 	estimates one overall penalty parameter; it is thereby less flexible in 
-	differential shrinkage of the parameters. In addition, in the simulations and
-	data applications of \cite{van_de_wiel_better_2016}, group lasso prediction 
-	performed inferior to \texttt{GRridge} prediction.
+	differential shrinkage of the parameters. In addition, we show in our 
+	simulations and data applications that \texttt{gren} is competitive and often
+	even superior to (extensions of) the group lasso.
 
 	A possible weak point of the proposed method is the double EM loop. The double
 	loop increases the chance of ending up in a local optimum. In the application
@@ -775,41 +783,40 @@ times1 <- round(bench1$time*10^(-9), 2)
 times2 <- round(bench2$time*10^(-9), 2)
 session <- gsub("_", ".", devtools::session_info()$platform$system)
 @
-  We have investigated the computation time of the algorithm and compared to the
-  other methods introduced in Sections \ref{sec:colorectal}--\ref{sec:lymphnode}
-  on the respective datasets. All timings were obtained on a Macbook Pro 2016 
-  running \Sexpr{session}. 
+  The double EM loop runs the danger of excessive computation time. We have   
+  compared computation times to the
+  other methods introduced in Sections \ref{sec:colorectal}--
+  \ref{sec:lymphnode}. All timings were obtained on a Macbook 
+  Pro 2016 running \Sexpr{session}. 
   The timings of \texttt{gren} are competitive. On the colorectal cancer example
   we achieved the following times:
-  \Sexpr{times1[c(1:3)]} seconds on the colorectal cancer example, 
-  with $\alpha \in \{ 0.05, 0.5, 0.95 \}$, respectively. \texttt{GRridge} is 
+  \Sexpr{times1[c(1:3)]} seconds, with $\alpha \in \{ 0.05, 0.5, 0.95 \}$, 
+  respectively. \texttt{GRridge} is 
   slightly faster with \Sexpr{times1[4]} seconds, while \texttt{SGL} was slightly
   slower: \Sexpr{times1[c(5:7)]} seconds, with 
   $\alpha \in \{ 0.05, 0.5, 0.95 \}$.
   \texttt{cMCP} (\Sexpr{times1[c(8:10)]} seconds) and \texttt{gel} 
   (\Sexpr{times1[c(11:13)]} seconds) are faster than \texttt{gren}. 
-  On the lymph node cancer example \texttt{gren} achieved 
-  \Sexpr{times2[c(1:3)]}, with $\alpha \in \{ 0.05, 0.5, 0.95 \}$, respectively.
+  The results for the lymph node cancer example are similar. \texttt{gren} 
+  achieved 
+  \Sexpr{times2[c(1:3)]} seconds, with $\alpha \in \{ 0.05, 0.5, 0.95 \}$, 
+  respectively.
   \texttt{GRridge} was slightly faster with \Sexpr{times2[4]} seconds, 
   while \texttt{SGL} was slightly slower: \Sexpr{times2[c(5:7)]} seconds, with 
   $\alpha \in \{ 0.05, 0.5, 0.95 \}$.
-  \texttt{cMCP} (\Sexpr{times2[c(8:10)]} seconds) and \texttt{gel} 
-  (\Sexpr{times2[c(11:13)]} seconds) are faster than \texttt{gren}. The 
-  overlapping group methods achieved \Sexpr{times2[c(14:16)]} seconds
-  (\texttt{ocMCP}) and \Sexpr{times2[c(17:19)]} seconds (\texttt{ogel}), for 
-  $\alpha \in \{ 0.05, 0.5, 0.95 \}$, respectively.
-  We note that a considerable speedup may be achieved by 
-  doing one EB update for every few VB updates, instead of running the VB EM 
+  \texttt{cMCP} (\Sexpr{times2[c(14:16)]} seconds) and \texttt{gel} 
+  (\Sexpr{times2[c(17:19)]} seconds) are again faster than \texttt{gren}. 
+  We note that a considerable speedup may be achieved by iterating between 
+  single EB and single VB updates, instead of running the VB EM 
   until convergence. This works in practice, because an EM tends to take a few 
   initial large steps towards the optimum, followed by a series of smaller 
-  steps. We argue that The first few iterations of the VB EM render the 
-  approximate expectation in [! equation ref here] accurate enough for a 
-  reliable EB step. In addition, this is the approach often taken by more
-  computationally oriented disciplines. For example, in many machine learning 
-  domains, the problem is viewed as purely algorithmic [! references here]. The
-  the EB and VB 
-  steps optimisation steps are interpreted as steps along the gradient in the 
-  larger combined space of model- and hyper-parameters. 
+  steps. We argue that the first few iterations of the VB EM render the 
+  approximate expectation in \ref{eq:approximatedloglikelihood}
+  accurate enough for a 
+  reliable EB step. This approach is often used in more 
+  computational disciplines, where the problem is viewed as purely algorithmic 
+  and the EB and VB iterations are interpreted as optimisation steps along the 
+  gradient in the larger combined model- and hyper-parameters space. 
 
 	\section*{Software}
 	A (stable) \texttt{R} package is available from 

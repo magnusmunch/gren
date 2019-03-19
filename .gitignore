@@ -30,6 +30,7 @@
 *.Rcheck
 *.rda
 *.Rdata
+*.rds
 *.Rhistory
 *.Rout
 .Rproj.user
