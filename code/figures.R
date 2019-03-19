@@ -1,4 +1,80 @@
 ################################## manuscript ##################################
+# ---- lines_simulations_res1_auc_briers ----
+library(sp)
+load(file="results/simulations_res1.Rdata")
+plot.data <- c(sapply(c("grridge", "ridge"), function(m) {
+  unname(cbind(NA, mean(sapply(res, function(s) {
+    s$auc[grep(m, names(s$auc))[1]]}), na.rm=TRUE),
+    mean(sapply(res, function(s) {
+      s$auc[grep(m, names(s$briers))[1]]}), na.rm=TRUE)))}, simplify=FALSE),
+  sapply(c(paste0("gren", 1:3), paste0("enet", 1:3),
+           paste0("cmcp", 1:3), paste0("gel", 1:3)), function(m) {
+             cbind(rowMeans(sapply(res, function(s) {
+               vec <- s$psel[grep(m, names(s$psel))]
+               replace(rep(NA, 8), 1:length(vec), vec)}), 
+               na.rm=TRUE),
+               rowMeans(sapply(res, function(s) {
+                 vec <- s$auc[grep(m, names(s$auc))]
+                 replace(rep(NA, 8), 1:length(vec), vec)}), 
+                 na.rm=TRUE),
+               rowMeans(sapply(res, function(s) {
+                 vec <- s$briers[grep(m, names(s$briers))]
+                 replace(rep(NA, 8), 1:length(vec), vec)}), 
+                 na.rm=TRUE))}, simplify=FALSE))
+
+methods <- c("GRridge", "ridge", "gren", "enet", "cmcp", "gel")
+labels <- c(methods, expression(alpha==0.05), expression(alpha==0.5), 
+            expression(alpha==0.95))
+
+col <- bpy.colors(length(methods), cutoff.tail=0.1)
+lty <- c(1:3)
+
+xlim <- range(sapply(plot.data[-c(1, 2)], function(s) {s[, 1]}), na.rm=TRUE)
+ylim1 <- range(sapply(plot.data, function(s) {s[, 2]}), na.rm=TRUE)
+ylim2 <- range(sapply(plot.data[-c(9, 10, 11)], function(s) {s[, 3]}), 
+               na.rm=TRUE)
+
+opar <- par(no.readonly=TRUE)
+par(mar=opar$mar*c(1, 1.3, 1, 1))
+layout(matrix(rep(c(1, 1, 2, 2), 2), 2, 4, byrow=TRUE))
+plot(plot.data[[3]][, c(1, 2)], type="l", main="(a)", ylab="AUC", 
+     xlab="Number of selected features", ylim=ylim1, xlim=xlim, col=col[3], 
+     lty=lty[1])
+lines(plot.data[[4]][, c(1, 2)], col=col[3], lty=lty[2])
+lines(plot.data[[5]][, c(1, 2)], col=col[3], lty=lty[3])
+lines(plot.data[[6]][, c(1, 2)], col=col[4], lty=lty[1])
+lines(plot.data[[7]][, c(1, 2)], col=col[4], lty=lty[2])
+lines(plot.data[[8]][, c(1, 2)], col=col[4], lty=lty[3])
+lines(plot.data[[9]][, c(1, 2)], col=col[5], lty=lty[1])
+lines(plot.data[[10]][, c(1, 2)], col=col[5], lty=lty[2])
+lines(plot.data[[11]][, c(1, 2)], col=col[5], lty=lty[3])
+lines(plot.data[[12]][, c(1, 2)], col=col[6], lty=lty[1])
+lines(plot.data[[13]][, c(1, 2)], col=col[6], lty=lty[2])
+lines(plot.data[[14]][, c(1, 2)], col=col[6], lty=lty[3])
+abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
+abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[1])
+legend("bottomright", legend=labels, fill=c(col, rep(NA, 3)), 
+       border=c(rep(1, length(methods)), rep(NA, 3)),
+       lty=c(rep(NA, length(methods)), lty),
+       seg.len=1, merge=TRUE, bg="white")
+plot(plot.data[[3]][, c(1, 3)], type="l", main="(b)", ylab="Brier skill score", 
+     xlab="Number of selected features", ylim=ylim2, xlim=xlim, col=col[3], 
+     lty=lty[1])
+lines(plot.data[[4]][, c(1, 3)], col=col[3], lty=lty[2])
+lines(plot.data[[5]][, c(1, 3)], col=col[3], lty=lty[3])
+lines(plot.data[[6]][, c(1, 3)], col=col[4], lty=lty[1])
+lines(plot.data[[7]][, c(1, 3)], col=col[4], lty=lty[2])
+lines(plot.data[[8]][, c(1, 3)], col=col[4], lty=lty[3])
+lines(plot.data[[9]][, c(1, 3)], col=col[5], lty=lty[1])
+lines(plot.data[[10]][, c(1, 3)], col=col[5], lty=lty[2])
+lines(plot.data[[11]][, c(1, 3)], col=col[5], lty=lty[3])
+lines(plot.data[[12]][, c(1, 3)], col=col[6], lty=lty[1])
+lines(plot.data[[13]][, c(1, 3)], col=col[6], lty=lty[2])
+lines(plot.data[[14]][, c(1, 3)], col=col[6], lty=lty[3])
+abline(h=plot.data[[1]][, 3], col=col[1], lty=lty[1])
+abline(h=plot.data[[2]][, 3], col=col[2], lty=lty[1])
+par(opar)
+
 # ---- barplot_lines_micrornaseq_colorectal_cancer_res1_auc ----
 library(sp)
 load("results/micrornaseq_colorectal_cancer_fit1.Rdata")

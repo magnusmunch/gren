@@ -1,5 +1,5 @@
 # retrieve coefficients from gren estimated model
-coef.gren <- function(object, s=NULL, type=c("groupreg", "regular")) {
+coef.gren <- function(object, s=NULL, type=c("groupreg", "regular"), ...) {
   if(class(object)!="gren") {
     stop("object should be a gren fit") 
   } else if (!is.null(s) & !is.numeric(s)) {
