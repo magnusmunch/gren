@@ -156,7 +156,7 @@ FUNCTION {output.year.check}
         if$
        month empty$
           { ")" * }
-          { ")" * }
+          { ", " * month * ")" * }
        if$
        mid.sentence 'output.state :=
      }
@@ -289,7 +289,7 @@ FUNCTION {format.names}
                 { " " * " \emph{and others}}" * }
                 {
                    numnames #2 >
-                     { numnames #6 >
+                     { numnames #10 >
                         {"} \emph{and others}" *}
                         {" and " * t * "}" *}
                        if$ 
@@ -331,7 +331,7 @@ FUNCTION {format.names.not.sc}
                 { " " * " \emph{and others}" * }
                 {
                    numnames #2 >
-                     { numnames #6 >
+                     { numnames #10 >
                         {" \emph{and others}" *}
                         {" and " * t * }
                        if$ 
@@ -980,11 +980,11 @@ FUNCTION {calc.label}
 % leave label on the stack, to be popped when required.
 
   "}{" * swap$ * "}{" *
-%  year field.or.null purify$ #-1 #64 substring$ *
+%  year field.or.null purify$ #-1 #4 substring$ *
 %
 % save the year for sort processing afterwards (adding a, b, c, etc.)
 %
-  year field.or.null purify$ #-1 #64 substring$
+  year field.or.null purify$ #-1 #4 substring$
   'label.year :=
 }
 
@@ -1031,11 +1031,11 @@ FUNCTION {calc.label2}
 % leave label on the stack, to be popped when required.
 
   "}{" * swap$ * "}{" *
-%  year field.or.null purify$ #-1 #64 substring$ *
+%  year field.or.null purify$ #-1 #4 substring$ *
 %
 % save the year for sort processing afterwards (adding a, b, c, etc.)
 %
-  year field.or.null purify$ #-1 #64 substring$
+  year field.or.null purify$ #-1 #4 substring$
   'label.year :=
 }
 
@@ -1613,7 +1613,7 @@ FUNCTION {presort}
 % alpha.bst.
 %
 { calc.label2 sortify % recalculate bibitem label
-  year field.or.null purify$ #-1 #64 substring$ * % add year
+  year field.or.null purify$ #-1 #4 substring$ * % add year
   "    "
   *
   type$ "book" =
@@ -1664,14 +1664,14 @@ FUNCTION {forward.pass}
 % if two entries are the same (see presort)
 %
 { last.label
-  calc.label2 year field.or.null purify$ #-1 #64 substring$ * % add year
+  calc.label2 year field.or.null purify$ #-1 #4 substring$ * % add year
   #1 entry.max$ substring$ =     % are they equal?
      { last.extra.num #1 + 'last.extra.num :=
        last.extra.num int.to.chr$ 'extra.label :=
      }
      { "a" chr.to.int$ 'last.extra.num :=
        "" 'extra.label :=
-       calc.label2 year field.or.null purify$ #-1 #64 substring$ * % add year
+       calc.label2 year field.or.null purify$ #-1 #4 substring$ * % add year
        #1 entry.max$ substring$ 'last.label := % assign to last.label
      }
   if$
