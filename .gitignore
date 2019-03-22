@@ -6,6 +6,7 @@
 *.blg
 *-blx.bib
 *.dll
+*.DS_Store
 *.dvi
 *.glg
 *.glo

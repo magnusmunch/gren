@@ -179,7 +179,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 
 	The rest of the paper is structured as follows. We introduce the Bayesian 
 	logistic generalised elastic net model in Section
-	\ref{sec:model}. In Section \ref{seq:estimation} we derive a variational
+	\ref{sec:model}. In Section \ref{sec:estimation} we derive a variational
 	approximation to this model and use this novel approximation in the empirical
 	Bayes estimation of multiple, group-specific penalty parameters. In Section
 	\ref{sec:simulations} we compare the method in a simulation study. In Sections
@@ -267,8 +267,8 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	\lambda_1 & \lambda_2 & \lambda'_1 & \cdots & \lambda'_G \end{bmatrix} \tr$ 
 	play the role of the hyperparameters in a Bayesian hierarchical model.
 
-	\section{Estimation}\label{seq:estimation}
-	\subsection{Empirical Bayes}\label{seq:empiricalbayes}
+	\section{Estimation}\label{sec:estimation}
+	\subsection{Empirical Bayes}\label{sec:empiricalbayes}
 	If the penalty parameters are known, estimation of the frequentist elastic net
 	model parameters or finding the posterior of the generalized elastic net model
 	is feasible with small adjustments of the available algorithms 
@@ -430,7 +430,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	informed calculation of the parameters results in a significant reduction of 
 	computational complexity.
 
-	\subsection{Empirical-variational Bayes}\label{seq:empvarbayes}
+	\subsection{Empirical-variational Bayes}\label{sec:empvarbayes}
 	Variational Bayes was shown to underestimate the posterior variance of the 
 	parameters, both numerically and theoretically, in several settings 
 	\cite[]{rue_approximate_2009,consonni_mean-field_2007,bishop_pattern_2006,
@@ -438,7 +438,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	penalty parameters $\lambda_1$ and $\lambda_2$ tend to be overestimated. To 
 	prevent overestimation we use the parametrisation of the elastic net in 
 	\cite{friedman_regularization_2010} as introduced in Section 
-	\ref{seq:empiricalbayes}: we fix $\alpha$ and estimate $\lambda$ by 
+	\ref{sec:empiricalbayes}: we fix $\alpha$ and estimate $\lambda$ by 
 	cross-validation of the regular elastic net model, such that the overall 
 	penalisation is determined by cross-validation of only $\lambda$. By combining
 	cross-validation of the global penalty parameter $\lambda$ with empirical 
@@ -490,7 +490,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	omics research, so selection by credible intervals is generally inconsistent. 
 	We therefore propose to select features in the frequentist paradigm.
 
-	As shortly touched upon in Section \ref{seq:empiricalbayes}, frequentist 
+	As shortly touched upon in Section \ref{sec:empiricalbayes}, frequentist 
 	feature selection is trivial after estimation of the penalty multipliers. We 
 	simply plug the estimated penalty parameters into some frequentist elastic net
 	algorithm that allows for differential penalization. In our own package 
@@ -501,7 +501,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	number of features.
 
 	\section{Simulations}\label{sec:simulations}
-	To assess variable selection and predictive performance we conducted a 
+	To assess classification and variable selection performance we conducted a 
 	simulation study in which we compared \texttt{gren} to the regular elastic 
 	net and ridge models, \texttt{GRridge} \cite[]{van_de_wiel_better_2016}, 
 	sparse group lasso (\texttt{SGL}) \cite[]{simon_sparse-group_2013}, 
@@ -523,8 +523,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	$\alpha=1$. In \texttt{SGL}, \texttt{cMCP}, and \texttt{gel}, $\alpha$
 	determines the ratio of group-level penalization ($\alpha=0$) to 
 	feature level ($\alpha=1$) penalization. For the methods that do 
-	automatic feature selection, we estimate 
-	the models for a range of model sizes.
+	automatic feature selection, we estimate models for a range of model sizes.
 
 	We simulated data according to five different scenarios:
 	\begin{enumerate}
@@ -545,12 +544,13 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	the simulations presented in the original group lasso paper 
 	\cite[]{yuan_model_2006}, we expect \texttt{gren}
 	and \texttt{GRridge} to overfit due to the large number of hyperparameters to 
-	estimate, while we expect the other methods to perform better, due to a
-	lack of overfitting. In scenario three, we expect all methods to underperform
+	estimate. The group lasso extensions are expected to perform better: they 
+	estimate just one penalty parameter, so are less sensitive to overfitting.
+	In scenario three, we expect all methods to underperform
 	due to the high correlations between the features. The fourth 
-	scenario is conjectured to yield a better \texttt{gren} performance, since
+	scenario is expected to yield a better \texttt{gren} performance, since
 	\texttt{gren} assumes a heavier-tailed distribution and is designed to 
-	incorporate a differential signal between
+	detect differential signal between
 	the groups. Scenario five is expected to yield a bad performance for all 
 	methods, because of the sparse truth and lack of differential 
 	signal.
@@ -559,24 +559,24 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	models and a test set of $n_{\text{test}}=1000$ samples to compute 
 	the performance measures. The features $\x_i$, $i=1, \dots, n$, are taken 
 	from a $p$-dimensional zero-centred Gaussian distribution, where we set 
-	$p=1000$. We varied the covariance matrix of the features and simulation of 
+	$p=900$ in scenario 2 and $p=1000$ in the other scenarios. We varied the 
+	covariance matrix of the features and simulation of 
 	the model parameters $\beta_j$, $j=1, \dots, p$ between the
-	scenarios (see SM Section [! section ref here] for the exact 
+	scenarios (see SM Section \ref{sm-sec:simulations} for the exact 
 	parametrisations). We 
 	simulated the outcomes $y_i$, $i=1, \dots, n$, from a binary logistic model: 
 	$y_i \sim \mathcal{B}(1, \expit (\x_i \tr \bbeta))$. To mitigate the influence
 	of random variation, we repeated each scenario 100 times 
-	and report estimated penalty parameters and predictive performance measures 
+	and report predictive performance measures 
 	area under the receiver operator curve (AUC) and Brier skill score (BSS) in 
-	Table [! table ref here]. 
+	Figures \ref{fig:lines_simulations_res1_auc_briers}--[! figure refs here]. 
+	Additional results and performance measures are presented in Section 
+	\ref{sm-sec:simulations} of the SM.
 	
 	- description of results
 	
 <<lines_simulations_res1_auc_briers, fig.cap="Estimated (a) AUC and (b) Brier skill score in simulation setting 1.", out.width="100%", fig.asp=1/2>>=
 @
-	
-	Additional results and performance measures are presented in Section 
-	\ref{sm-sec:simulations} of the SM.
 
 	\section{Application to microRNAs in colorectal cancer}
 	\label{sec:colorectal}
@@ -712,8 +712,8 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	coverage of credibility intervals than lasso-type priors 
 	\cite[]{van_der_pas_horseshoe_2014}.
 
-	Although our method can be considered weakly adaptive and is essentially 
-	a reweighted elastic net, it is different from 
+	Although our method is essentially a reweighted elastic net and can be
+	considered weakly adaptive, it is different from 
 	the adaptive lasso \cite[]{van_de_geer_adaptive_2011,huang_adaptive_2008,
 	zhang_adaptive_2007,zou_adaptive_2006} and adaptive elastic net 
 	\cite[]{zou_adaptive_2009} in the sense that it adapts to external information
@@ -731,23 +731,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	estimates of feature effects that behave similarly are shrunken similarly, 
 	yielding overall, better estimates.
 	
-	A common criticism of the lasso (and elastic net) is its instability of 
-	feature 
-	selection: different data instances lead to different sets of selected
-	features. We investigated the stability of selection on the data from Section
-	\ref{sec:colorectal}. To that end we created several bootstrap samples from 
-	the original data and calculated the sizes of all intersections of selected
-	features. We compared \texttt{gren} to the 
-	regular elastic net and found that the inclusion of extra information
-	increased the selection stability (see SM Section \ref{sm-sec:colorectal}). 
-	In addition, we investigated 
-	the variance and bias in penalty multiplier estimation by examining the
-	distribution
-	of estimated penalty parameters from 100 random partitionings of the features
-  (see SM Section \ref{sm-sec:colorectal}). We found that the penalty parameters
-  tend to cluster around one, as expected for an unbiased estimation method.
-
-	As touched upon in Section \ref{sec:introduction}, another obvious 
+	As touched upon in Section \ref{sec:introduction}, an obvious 
 	comparison is to the group lasso \cite[]{meier_group_2008,
 	yuan_model_2006} and its extensions. Although the group lasso is similar in 
 	the sense that it shrinks on the 
@@ -759,20 +743,43 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	estimates one overall penalty parameter; it is thereby less flexible in 
 	differential shrinkage of the parameters. In addition, we show in our 
 	simulations and data applications that \texttt{gren} is competitive and often
-	even superior to (extensions of) the group lasso.
+	superior to (extensions of) the group lasso.
+	
+	A common criticism of the lasso (and elastic net) is its instability of 
+	feature 
+	selection: different data instances lead to different sets of selected
+	features. We investigated the stability of selection on the data from Section
+	\ref{sec:colorectal}. To that end we created several bootstrap samples from 
+	the original data and calculated the sizes of all intersections of selected
+	features. We compared \texttt{gren} to the 
+	regular elastic net and found that the inclusion of extra information
+	increased the selection stability (see SM Section \ref{sm-sec:colorectal}). 
+	In addition, we investigated 
+	the bias and variance of the penalty multipliers by examination of the
+	distribution of estimated penalty parameters from 100 random partitionings 
+	of the features
+  (see SM Section \ref{sm-sec:colorectal}). We found that the penalty parameters
+  tend to cluster around one, as expected for an unbiased estimation method, and
+  that the variance of the penalty multipliers is less than for the similar
+  \texttt{GRridge} method.
 
 	A possible weak point of the proposed method is the double EM loop. The double
-	loop increases the chance of ending up in a local optimum. In the application
-	discussed above we investigated the occurrence of multiple optima, but never
-	encountered them. This does not guarantee that local optima do not occur, but 
-	it provides some evidence that local optima are not ubiquitous. Local optima 
-	can often be avoided by an informed choice of starting values. In our 
+	loop increases the chance of ending up in a local optimum. In the applications
+	discussed in Sections \ref{sec:colorectal}--
+	\ref{sec:lymphnode}, and SM Sections \ref{sm-sec:colorectal}--
+	\ref{sm-sec:cervical}, we investigated the occurrence of multiple optima, 
+	but never encountered them. This does not guarantee that local optima do not
+	occur, but 
+	it provides some evidence that local optima are not ubiquitous. In any case,
+	bad local optima can often be avoided by an informed choice of starting 
+	values. In our 
 	experience, reasonable starting values are obtained by running a 
 	group-regularized ridge regression and using the estimated penalty multipliers
 	as starting values for \texttt{gren}. Alternatively, a skeptical user may set 
 	the starting values for all penalty multipliers to one, thereby starting from
 	the regular elastic net and adaptively adjusting the penalty parameters to a
-	group-regularized model.
+	group-regularized model. The latter is the default approach in our \texttt{R}
+	package
 
 <<>>=
 bench1 <- read.table("results/micrornaseq_colorectal_cancer_bench1.csv", 
@@ -813,11 +820,8 @@ session <- gsub("_", ".", devtools::session_info()$platform$system)
   steps. We argue that the first few iterations of the VB EM render the 
   approximate expectation in \ref{eq:approximatedloglikelihood}
   accurate enough for a 
-  reliable EB step. This approach is often used in more 
-  computational disciplines, where the problem is viewed as purely algorithmic 
-  and the EB and VB iterations are interpreted as optimisation steps along the 
-  gradient in the larger combined model- and hyper-parameters space. 
-
+  reliable EB step.
+  
 	\section*{Software}
 	A (stable) \texttt{R} package is available from 
 	\url{https://CRAN.R-project.org/package=gren}. 
@@ -839,6 +843,7 @@ session <- gsub("_", ".", devtools::session_info()$platform$system)
 	\bibliography{refs}
 	
 	\section*{Session info}
+
 <<r session-info, eval=TRUE, echo=TRUE, tidy=TRUE>>=
 devtools::session_info()
 @
