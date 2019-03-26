@@ -1,5 +1,5 @@
-\NeedsTeXFormat{LaTeX2e}[1995/12/01]
-\ProvidesClass{biostatistics}
+  \NeedsTeXFormat{LaTeX2e}[1995/12/01]
+\ProvidesClass{bio}
 \newcommand\@ptsize{}
 \newif\if@restonecol
 \newif\if@titlepage
