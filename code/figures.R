@@ -75,6 +75,10 @@ abline(h=plot.data[[1]][, 3], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 3], col=col[2], lty=lty[1])
 par(opar)
 
+# ---- lines_simulations_res2_auc_briers ----
+library(sp)
+load(file="results/simulations_res2.Rdata")
+
 # ---- lines_simulations_res3_auc_briers ----
 library(sp)
 load(file="results/simulations_res3.Rdata")
