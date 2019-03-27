@@ -128,7 +128,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	for the study at hand.
 
 	Two such studies are introduced in Sections \ref{sec:colorectal} and
-	\ref{sec:lymphnode}. The first study is concerned with treatment 
+	\ref{sec:oral}. The first study is concerned with treatment 
 	response prediction for colorectal cancer patients, based on sequenced
 	microRNAs. In the second study we attempt to predict lymph node metastases,
 	using RNAseq data. In both settings additional information on the 
@@ -141,11 +141,11 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	the group lasso
 	\cite[]{meier_group_2008, yuan_model_2006} or one of its extensions, because
 	the group lasso penalises and selects features at the group level. 
-	There are two limitations to this approach: the group lasso (a) selects groups
-	as a whole instead of single 
+	There are two limitations to this approach: the group lasso (a) selects entire
+	groups instead of single 
 	features and (b) does not penalise adaptively: all groups are penalised 
 	equally. Extensions such as the sparse group lasso 
-	\cite[]{simon_sparse-group_2013} partly deal with (a), but do not address (b).
+	\cite[]{simon_sparse-group_2013} deal with (a), but do not address (b).
 
 	A natural way to deal with (b) is through differential penalization: that is,
 	each group of variables receives its own penalty parameter. An apparent issue
@@ -183,7 +183,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	approximation to this model and use this novel approximation in the empirical
 	Bayes estimation of multiple, group-specific penalty parameters. In Section
 	\ref{sec:simulations} we compare the method in a simulation study. In Sections
-	\ref{sec:colorectal} and \ref{sec:lymphnode}, we demonstrate the approach in 
+	\ref{sec:colorectal} and \ref{sec:oral}, we demonstrate the approach in 
 	two data sets. In Section \ref{sec:discussion} 
 	we conclude by both discussing some differences and
 	parallels between the proposed method, termed \texttt{gren}, and other methods
@@ -448,7 +448,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	robust to underestimation of the variational posterior variances. The 
 	remaining issue is the choice of $\alpha$. \cite{hastie_glmnet_2016} recommend
 	to either fix $\alpha$ \textit{a priori}, or compare the results for several 
-	choices of $\alpha$. We recommend the latter.
+	choices of $\alpha$. We use the latter.
 
 	To estimate the penalty multipliers, the intractable posterior expectation
 	in (\ref{eq:ebEM}) is approximated using the variational posterior:
@@ -618,7 +618,8 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   three methods, we only present \texttt{cMCP} here; the results for 
   \texttt{SGL} and \texttt{gel} are presented in the SM Section 
   [! section ref here]. For the methods with a
-  tuning parameter $\alpha$, we picked the $\alpha$('s) that gave the best
+  tuning parameter $\alpha$, we picked the $\alpha$ 
+  (two $\alpha$'s for \texttt{gren}) that gave the best
   performance and refer
   the reader to SM Section \ref{sm-sec:colorectal} for comparisons with 
   different $\alpha$'s.
@@ -648,7 +649,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   This is especially pronounced for the larger models. The performance of
   \texttt{cMCP} is somewhat unstable. This unstable estimation is an issue for   
   all group lasso extensions that we investigated.
-  (SM Section \ref{sm-sec:colorectal}). Overall, it seems as though the 
+  (SM Section \ref{sm-sec:colorectal}). Overall, the 
   inclusion of the extra information on the 
   features benefited predictive performance: both \texttt{GRridge} and 
   \texttt{gren} outperform their respective non-group-regularized versions, 
@@ -656,20 +657,20 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 <<barplot_lines_micrornaseq_colorectal_cancer_res1_auc, fig.cap="Estimated (a) penalty multipliers and (b) AUC in the colorectal cancer example.", out.width="100%", fig.asp=1/2>>=
 @
   
-  \section{Application to RNAseq in lymph node cancer}\label{sec:lymphnode}
-  The aim of our second example study was to predict lymph node metastasis in
+  \section{Application to RNAseq in oral cancer}\label{sec:oral}
+  The aim of our second example study is to predict lymph node metastasis in
   oral cancer patients using sequenced RNAs from TCGA 
   \cite[]{the_cancer_genome_atlas_network_comprehensive_2015}. The features are 
-  3096 transformed and normalised TCGA RNASeqv2 profiles of head-and-neck 
-  squamous cell carcinomas on 133 patients with HPV-negative tumours in the oral
-  cavity. Of these patients, 76 suffered from lymph node metastasis, while 57 
+  3096 transformed and normalised TCGA RNASeqv2 expression values of 3096 genes 
+  for 133 HPV-negative oral tumours. Of the corresponding patients, 76 suffered 
+  from lymph node metastasis, while 57 
   did not. For a thorough introduction of these data, see 
   \cite{te_beest_improved_2017}.
   
   We considered two sources of external feature information: (a) the 
   cis-correlations between the RNASeqv2 data and TCGA DNA copy numbers on 
   the same patients, quantified by Kendall's $\tau$ and binned into five groups.
-  In addition, we used (b) $p$-values from a microarray data set
+  In addition, we used (b) $p$-values from an independent microarray data set
   described in \cite{mes_prognostic_2017}, again binned into five groups. 
   We expected features 
   with a large positive Kendall's $\tau$ to be more important in 
@@ -690,7 +691,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   multipliers for \texttt{gren} and \texttt{GRridge}, in Figure 
   \ref{fig:barplot_lines_rnaseq_lymph_node_metastasis_res1_auc}. Additional
   comparisons and performance measures are presented in the SM Section 
-  \ref{sm-sec:lymphnode}.
+  \ref{sm-sec:oral}.
   
   The estimated penalty multipliers follow the expected pattern 
   (Figure \ref{fig:barplot_lines_rnaseq_lymph_node_metastasis_res1_auc}a): 
@@ -703,6 +704,25 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   identical, while \texttt{gren} outperforms the regular elastic net.
 <<barplot_lines_rnaseq_lymph_node_metastasis_res1_auc, fig.cap="Estimated (a) penalty multipliers for the cis-correlations and (b) external $p$-values, and (c) estimated AUC in the lymph node metastasis example.", out.width="100%", fig.asp=1>>=
 @
+  
+  \section{Additional applications}\label{sec:applications}
+  Two more applications are presented in SM Sections \ref{sm-sec:alzheimer} and
+  \ref{sm-sec:cervical}. The first one is concerned with diagnosis of 
+  Alzheimer's from 230 metabolites' expression levels in 174 subjects. We 
+  included several sources of extra information on the metabolites. In this 
+  example, \texttt{gren} performs worse than the group lasso methods. This is 
+  due to the smaller number of features to learn the penalty parameters from. 
+  Additionally, the metabolites are highly collinear, which further impairs 
+  estimation. The group lasso extensions depend on just one penalty parameter,
+  so suffer less from the small number of features.
+  
+  In the second extra example, we attempt to diagnose 56 women with cervical 
+  lesions using 2576 sequenced microRNAs with the purpose of 
+  selecting relevent markers for cervical cancer screening programmes. We use 
+  include one partitioning of the features to enhance predictive performance and 
+  feature selection. In this example, \texttt{gren} outperforms the 
+  regular elastic net with respect to predictive performance for a range of 
+  model sizes.
   
 	\section{Discussion}\label{sec:discussion}
 	In a taxonomy of Bayesian methods, \texttt{gren} may be considered a 
@@ -735,7 +755,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	Section \ref{sec:simulations} and the applications to different outcomes 
 	(prognostic or diagnostic) and marker types 
 	(RNAseq, microRNAs, or metabolomics) in Sections \ref{sec:colorectal}--
-	\ref{sec:lymphnode}, and SM Sections \ref{sm-sec:colorectal}--
+	\ref{sec:oral}, and SM Sections \ref{sm-sec:colorectal}--
 	\ref{sm-sec:cervical}, adaptation to 
 	external data may be beneficial for prediction and feature selection. 
 	We believe that this is due to the `borrowing of information' effect: 
@@ -777,7 +797,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	A possible weak point of the proposed method is the double EM loop. The double
 	loop increases the chance of ending up in a local optimum. In the applications
 	discussed in Sections \ref{sec:colorectal}--
-	\ref{sec:lymphnode}, and SM Sections \ref{sm-sec:colorectal}--
+	\ref{sec:oral}, and SM Sections \ref{sm-sec:colorectal}--
 	\ref{sm-sec:cervical}, we investigated the occurrence of multiple optima, 
 	but never encountered them. This does not guarantee that local optima do not
 	occur, but 
@@ -795,24 +815,29 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 <<>>=
 bench1 <- read.table("results/micrornaseq_colorectal_cancer_bench1.csv", 
                      stringsAsFactors=FALSE)
+
 bench2 <- read.table("results/rnaseq_lymph_node_metastasis_bench1.csv", 
                      stringsAsFactors=FALSE)
 times1 <- round(bench1$time*10^(-9), 2)
 times2 <- round(bench2$time*10^(-9), 2)
 session <- gsub("_", ".", devtools::session_info()$platform$system)
 @
-  The double EM loop runs the danger of excessive computation time. We have   
-  compared computation times to the
+  The double EM loop runs the danger of excessive computation time. In our 
+  implementation we have reduced computational time considerably by applying
+  some computational tricks (see SM Section 
+  \ref{sm-sec:computationalcomplexity}). In addition, the computationally heavy
+  parts were implemented in \texttt{C++} to further reduce the computation time. 
+  To assess this reduction, we have compared computation times to the
   other methods introduced in Sections \ref{sec:colorectal}--
-  \ref{sec:lymphnode}. All timings were obtained on a Macbook 
+  \ref{sec:oral}. All timings were obtained on a Macbook 
   Pro 2016 running \Sexpr{session}. 
   The timings of \texttt{gren} are competitive. On the colorectal cancer example
   we achieved the following times:
   \Sexpr{times1[c(1:3)]} seconds, with $\alpha \in \{ 0.05, 0.5, 0.95 \}$, 
-  respectively. \texttt{GRridge} is 
-  slightly faster with \Sexpr{times1[4]} seconds, while \texttt{SGL} was slightly
-  slower: \Sexpr{times1[c(5:7)]} seconds, with 
-  $\alpha \in \{ 0.05, 0.5, 0.95 \}$.
+  respectively. \texttt{GRridge} and \texttt{SGL} with 
+  $\alpha \in \{ 0.05, 0.5, 0.95 \}$ are 
+  slightly faster with \Sexpr{times1[4]} and \Sexpr{times1[c(5:7)]} seconds, 
+  respectively.
   \texttt{cMCP} (\Sexpr{times1[c(8:10)]} seconds) and \texttt{gel} 
   (\Sexpr{times1[c(11:13)]} seconds) are faster than \texttt{gren}. 
   The results for the lymph node cancer example are similar. \texttt{gren} 
@@ -824,14 +849,14 @@ session <- gsub("_", ".", devtools::session_info()$platform$system)
   $\alpha \in \{ 0.05, 0.5, 0.95 \}$.
   \texttt{cMCP} (\Sexpr{times2[c(14:16)]} seconds) and \texttt{gel} 
   (\Sexpr{times2[c(17:19)]} seconds) are again faster than \texttt{gren}. 
-  We note that a considerable speedup may be achieved by iterating between 
-  single EB and single VB updates, instead of running the VB EM 
-  until convergence. This works in practice, because an EM tends to take a few 
-  initial large steps towards the optimum, followed by a series of smaller 
-  steps. We argue that the first few iterations of the VB EM render the 
-  approximate expectation in \ref{eq:approximatedloglikelihood}
-  accurate enough for a 
-  reliable EB step.
+  % We note that a considerable speedup may be achieved by iterating between 
+  % single EB and single VB updates, instead of running the VB EM 
+  % until convergence. This works in practice, because an EM tends to take a few 
+  % initial large steps towards the optimum, followed by a series of smaller 
+  % steps. We argue that the first few iterations of the VB EM render the 
+  % approximate expectation in \ref{eq:approximatedloglikelihood}
+  % accurate enough for a 
+  % reliable EB step.
   
 	\section*{Software}
 	A (stable) \texttt{R} package is available from 

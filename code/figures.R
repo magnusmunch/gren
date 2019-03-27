@@ -646,22 +646,24 @@ methods <- c("ridge", "grridge", paste0("gren", c(1:3)), paste0("enet", c(1:3)),
              paste0("sgl", c(1:3)), paste0("cmcp", c(1:3)), 
              paste0("gel", c(1:3)), paste0("ocmcp", c(1:3)), 
              paste0("ogel", c(1:3)))
-col <- bpy.colors(length(methods), cutoff.tail=0.1)
+col <- bpy.colors(9, cutoff.tail=0.1)
 lty <- 1:length(methods)
-labels <- expression("ridge", "GRridge", "gren,"~alpha==0.05, 
-                     "gren,"~alpha==0.5, "gren,"~alpha==0.95, 
-                     "enet,"~alpha==0.05, "enet,"~alpha==0.5, 
-                     "enet,"~alpha==0.95, "SGL,"~alpha==0.05, "SGL,"~alpha==0.5, 
-                     "SGL,"~alpha==0.95, "cMCP,"~alpha==0.05, 
-                     "cMCP,"~alpha==0.5, "cMCP,"~alpha==0.95, 
-                     "gel,"~alpha==0.05, "gel,"~alpha==0.5, "gel,"~alpha==0.95,
-                     "OcMCP,"~alpha==0.05, "OcMCP,"~alpha==0.5, 
-                     "OcMCP,"~alpha==0.95, "Ogel,"~alpha==0.05, 
-                     "Ogel,"~alpha==0.5, "Ogel,"~alpha==0.95)
+labels <- list(expression("ridge", "GRridge", "gren,"~alpha==0.05, 
+                          "enet,"~alpha==0.05, "SGL,"~alpha==0.05, 
+                          "cMCP,"~alpha==0.05, "gel,"~alpha==0.05, 
+                          "OcMCP,"~alpha==0.05, "Ogel,"~alpha==0.05),
+               expression("ridge", "GRridge", "gren,"~alpha==0.5, 
+                          "enet,"~alpha==0.5, "SGL,"~alpha==0.5, 
+                          "cMCP,"~alpha==0.5, "gel,"~alpha==0.5, 
+                          "OcMCP,"~alpha==0.5, "Ogel,"~alpha==0.5),
+               expression("ridge", "GRridge", "gren,"~alpha==0.95, 
+                          "enet,"~alpha==0.95, "SGL,"~alpha==0.95, 
+                          "cMCP,"~alpha==0.95, "gel,"~alpha==0.95, 
+                          "OcMCP,"~alpha==0.95, "Ogel,"~alpha==0.95))
 
 plot.data <- lapply(methods, function(m) {
-  aggregate(auc[, grepl(m, colnames(auc))], 
-            list(psel=psel[, grepl(m, colnames(psel))]), mean)})
+  aggregate(auc[, substr(colnames(auc), 1, nchar(m))==m], 
+            list(psel=psel[, substr(colnames(psel), 1, nchar(m))==m]), mean)})
 names(plot.data) <- methods
 
 opar <- par(no.readonly=TRUE)
@@ -669,26 +671,12 @@ par(mar=opar$mar*c(1, 1.3, 1, 1))
 plot(plot.data[[3]], type="l", xlab="Number of selected features", ylab="AUC", 
      main="", ylim=range(auc), xlim=c(0, 500), col=col[3], 
      lty=lty[3])
-lines(plot.data[[4]], col=col[4], lty=lty[4])
-lines(plot.data[[5]], col=col[5], lty=lty[5])
-lines(plot.data[[6]], col=col[6], lty=lty[6])
-lines(plot.data[[7]], col=col[7], lty=lty[7])
-lines(plot.data[[8]], col=col[8], lty=lty[8])
-lines(plot.data[[9]], col=col[9], lty=lty[9])
-lines(plot.data[[10]], col=col[10], lty=lty[10])
-lines(plot.data[[11]], col=col[11], lty=lty[11])
-lines(plot.data[[12]], col=col[12], lty=lty[12])
-lines(plot.data[[13]], col=col[13], lty=lty[13])
-lines(plot.data[[14]], col=col[14], lty=lty[14])
-lines(plot.data[[15]], col=col[15], lty=lty[15])
-lines(plot.data[[16]], col=col[16], lty=lty[16])
-lines(plot.data[[17]], col=col[17], lty=lty[17])
-lines(plot.data[[18]], col=col[18], lty=lty[18])
-lines(plot.data[[19]], col=col[19], lty=lty[19])
-lines(plot.data[[20]], col=col[20], lty=lty[20])
-lines(plot.data[[21]], col=col[21], lty=lty[21])
-lines(plot.data[[22]], col=col[22], lty=lty[22])
-lines(plot.data[[23]], col=col[23], lty=lty[23])
+lines(plot.data[[6]], col=col[4], lty=lty[6])
+lines(plot.data[[9]], col=col[5], lty=lty[9])
+lines(plot.data[[12]], col=col[6], lty=lty[12])
+lines(plot.data[[15]], col=col[7], lty=lty[15])
+lines(plot.data[[18]], col=col[8], lty=lty[18])
+lines(plot.data[[21]], col=col[9], lty=lty[21])
 abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
 legend("bottomright", legend=labels, col=col, 
