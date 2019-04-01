@@ -43,7 +43,7 @@ for(i in 1:p) {
     Sigma[i, j] <- rho^abs(i - j)
   }
 }
-b <- 2*p*beta.mean/sum(rg*f^(c(1:G) - 1))
+b1 <- 2*p*beta.mean/sum(rg*f^(c(1:G) - 1))
 beta <- numeric(p)
 
 part <- rep(c(1:G), each=p/G)
@@ -66,7 +66,7 @@ res <- foreach(k=c(1:nreps), .errorhandling="pass") %dopar% {
     idz <- c(((g-1)*p/G + 1):(g*p/G - rg))
     ida <- c(((g*p/G - rg) + 1):(g*p/G))
     beta[idz] <- 0
-    beta[ida] <- runif(rg, 0, b*f^(g-1))
+    beta[ida] <- runif(rg, 0, b1*f^(g-1))
   }
   xtrain <- rmvnorm(n, rep(0, p), Sigma)
   ytrain <- rbinom(n, 1, as.numeric(1/(1 + exp(-xtrain %*% beta))))
@@ -611,6 +611,14 @@ for(i in 1:p) {
 beta.group <- c(rep(0, 8), 0.2, 0.5)
 q.zero <- 0.85
 
+beta <- numeric(p)
+for(g in 1:G) {
+  beta[((g - 1)*p/G + 1):(g*p/G)] <- rep(beta.group[g], p/G)
+  if(beta.group[g]!=0) {
+    beta[((g - 1)*p/G + 1):((g - 1)*p/G + q.zero*p/G)] <- 0
+  }
+}
+
 part <- rep(c(1:G), each=p/G)
 csel <- 2^c(1:8)
 nreps <- 100
@@ -628,14 +636,6 @@ res <- foreach(k=c(1:nreps), .errorhandling="pass") %dopar% {
   
   print(paste("rep", k))
   set.seed(2019 + k)
-  
-  beta <- numeric(p)
-  for(g in 1:G) {
-    beta[((g - 1)*p/G + 1):(g*p/G)] <- rep(beta.group[g], p/G)
-    if(beta.group[g]!=0) {
-      beta[((g - 1)*p/G + 1):((g - 1)*p/G + q.zero*p/G)] <- 0
-    }
-  }
   
   xtrain <- rmvnorm(n, mean=rep(0, p), sigma=Sigma)
   ytrain <- rbinom(n, 1, as.numeric(1/(1 + exp(-xtrain %*% beta))))

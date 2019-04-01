@@ -159,7 +159,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	estimation in the Bayesian prior framework. Because of the ubiquity of binary
 	outcome data in omics research, we focus on the logistic elastic net. 
 	
-	Recently, \cite{zhang_novel_2018} introduced VBVS, a method similar to ours in
+	Recently, \cite{zhang_novel_2019} introduced VBVS, a method similar to ours in
 	spirit. Nevertheless, one clear advantage of our method over VBVS is the
 	possibility of adaptive inclusion of external information on the features to
 	aid in prediction and feature selection. Bayesian versions of support vector 
@@ -174,7 +174,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	Bayesian analysis or cross-validation, and (d) requires minimal input by the 
 	user: only the data and grouping of the features is required. We emphasize that 
 	our method is different from recent developments in grouped penalized 
-	regression such as \cite{dondelinger_joint_nodate}, where instead of the 
+	regression such as \cite{dondelinger_joint_2018}, where instead of the 
 	features, the observations are partitioned.
 
 	The rest of the paper is structured as follows. We introduce the Bayesian 
@@ -298,7 +298,8 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	This approach introduces two issues. Firstly, the choice of hyperprior is not 
 	straightforward. Many authors suggest a hyperprior from the gamma family of 
 	distributions 
-	\cite[]{alhamzawi_bayesian_2017,mallick_bayesian_2013,kyung_penalized_2010}, 
+	\cite[]{alhamzawi_bayesian_2018,nengjun_yi_bayesian_2013,
+	kyung_penalized_2010}, 
 	but the precise parametrisation of this gamma prior is not so obvious. A 
 	second issue is the loss of correspondence between the  Bayesian and 
 	frequentist elastic net. If the ultimate goal is feature selection, this 
@@ -838,12 +839,12 @@ session <- gsub("_", ".", devtools::session_info()$platform$system)
 
 	\section*{Supplementary Material}
 	Supplementary Material is available online from 
-	\url{http://pub.math.leidenuniv.nl/~munchmm/}. All results may be recreated
-	from \url{https://github.com/magnusmunch/gren}.
+	\url{http://pub.math.leidenuniv.nl/~munchmm/}. The results and documents may 
+	be recreated from \url{https://github.com/magnusmunch/gren}.
 
 	\section*{Acknowledgements}
-	\textit{Conflict of Interest}: None declared. We thank the editors and 
-	referees for their useful suggestions and comments.
+	We thank the editor and referees for their useful suggestions and comments. 
+	\textit{Conflict of Interest}: None declared.
 
 	\section*{Funding}
 	This research has received funding from the European Research Council under 

@@ -1,13 +1,13 @@
 % set options
 <<settings, include=FALSE, echo=FALSE>>=
-opts_knit$set(root.dir="..", base.dir="../figs")
-opts_chunk$set(fig.align='center', fig.path="../figs/", 
-               echo=FALSE, cache=FALSE, message=FALSE, fig.pos='!ht')
+knitr::opts_knit$set(root.dir="..", base.dir="../figs")
+knitr::opts_chunk$set(fig.align='center', fig.path="../figs/", 
+                      echo=FALSE, cache=FALSE, message=FALSE, fig.pos='!ht')
 @
 
 % read figure code
 <<figures, include=FALSE>>=
-read_chunk("code/figures.R")
+knitr::read_chunk("code/figures.R")
 @
 
 \documentclass[a4paper,hidelinks]{article}
@@ -839,56 +839,89 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	  \beta_{j}^g & \sim \mathcal{U} (0, b_1 \cdot1.6^{g-1}) \text{, } g=1, \dots,
 	  5  \text{, } j=1, \dots, 50,
 	\end{align*}
-	where $\mathcal{U} (a, b)$ denotes the uniform distribution on $(a,b)$. The
+	where $\mathcal{U} (a, b)$ denotes the uniform distribution on $(a,b)$. We set
+	$b_1 \approx 0.18$ such that the mean expected signal 
+	$\overline{\E(\beta_j^g)}=0.07$. Furthermore, we
+	introduce correlation between the features by setting the covariances
+	$\bSigma_{ij} = 0.5^{|i-j|}$.The
 	model parameters clearly do not follow the relatively heavy-tailed elastic net
 	distribution. Because of this mismatch between the assumed and true 
-	distributions, we expect poor performance by \texttt{gren}. Furthermore, we
-	introduce correlation between the features by having covariance elements
-	$\bSigma_{ij} = 0.5^{|i-j|}$.
+	distributions, we expect poor performance by \texttt{gren}. 
 	
 	\subsection{Scenario 2}
+	For this scenario we loosely follow the simulation setup in 
+	\cite{meier_group_2008}. We create $G=300$ groups of features and $p=900$
+	features in total, such that we
+	have 3 features per group. There are 50 active groups, with 2 active 
+	parameters with the same value and one inactive parameter per group, such 
+	that in total we have 100 non-zero model parameters. The active model 
+	parameters are fixed and decrease linearly from $30/51$ to $3/510$, such that
+	the mean parameter $\overline{\beta}_j=1/30$. In this example, we included
+	an intercept; $\beta_0=10$. 
+	
+	The predictors are sampled in such a way that they represent dummy variables
+	for categorical variables. We start with sampling 300 latent variables:
+	$\mathbf{z} \sim \mathcal{N} (\mathbf{0}, \bSigma)$, with 
+	$\bSigma_{ij} = 0.5^{|i-j|}$, $i,j=1, \dots, G$. These latent latent 
+	variables are then transformed to dummies by:
+	$$
+	x_{ij} = 
+	\begin{cases}
+	  1 & \text{if } z_g \in (q_i, q_{i+1}), \\
+	  0 & \text{otherwise},
+	\end{cases}
+	$$
+	where the $q_i$ are the $0$, $1/3$, $2/3$, and $1$th quantiles of the normal
+	distribution.
+	
 	The second scenario contains many groups of features and is geared towards the
-	non-adaptive group-regularized methods. These methods are able to incorporate
-	the grouping of the features, but were originally designed for small 
+	group lasso and its extensions. These methods are able to incorporate
+	the grouping of the features, and were originally designed for small 
 	interpretable groups, such as dummies of a categorical variable. \texttt{gren}
 	on the other hand, relies on large groups of features to accurately estimate
 	group-specific penalty weights. The estimation of many penalty weights in
 	small groups is inefficient and computationally challenging. We therefore
 	expect \texttt{gren} to under-perform compared to the other methods.
 	
-	For this scenario we follow the second simulation example in 
-	\cite{meier_group_2008}. They set $n=100$, $G=250$, and $p=1000$, such that we
-	have 4 features per group. The first 10 groups are active and those 40 model
-	parameters are set to 0.2. The predictors are simulated from a $p$-dimensional
-	Gaussian distribution with covariance matrix $\bSigma_{ij} = 0.5^{|i-j|}$.
-	
 	\subsection{Scenario 3}
-	A third scenario is modelled by considering a situation in which there is no
-	differential signal between the groups, but the correlation within groups is
-	very high. We conjecture that this leads to overestimation of effect within
-	the groups by \texttt{gren} and consequently, performance will suffer.
-	
-	To that end we sample the predictors in $G=5$ separate blocks of 200 
-	variables, corresponding to the partitioning. The variances of the features
-	are set to one, while all covariances are 0.7. The 1000 model parameters are
-	simulated in two steps. First, we draw 1000 parameters from the elastic net
-	distribution, parametrised as in \cite{friedman_regularization_2010}, where
-	$\alpha=0.5$ and $\lambda=100$. The second step consists of setting the 
+	In this scenario we sample the 1000 model parameters in $G=5$ groups of 200.
+	For each group we generate the parameters in two steps. First we draw 200
+	parameters from the elastic net distribution, parametrised as in 
+	\cite{friedman_regularization_2010}, where $\alpha=0.5$ and $\lambda=100$.
+	The second step consists of setting the 
 	(in absolute value) smallest 100 parameters in a group to zero. This results
 	in a total of 500 zero and 500 non-zero parameters, evenly distributed over
-	the five groups.
+	the five groups. We sample the features from a multivariate normal 
+	distribution with all variances 1 and all covariances 0.7.
+	
+	This third scenario is modelled by considering a situation in which there is no
+	differential signal between the groups, but the correlation within groups is
+	very high. We conjecture that this leads to unstable estimation of the 
+	penalty multipliers by \texttt{gren} and consequently, performance will suffer.
 	
 	\subsection{Scenario 4}
-	This scenario is similar to Scenario 3, except each groups penalty parameter
-	is multiplied by one of : $\lambda' \in \{ 0.14, 0.51, 1.95, 7.39 \}$ and the
-	covariance matrix of the predictors is block diagonal, with block sizes $25
-	\times 25$, off-diagonals set to $\rho=0.7$, and diagonals to $\sigma^2 = 1$.
+	This scenario is similar to Scenario 3, except that we apply differential 
+	shrinkage over the groups with penalty multipliers: 
+	$\lambda' \in \{ 0.14, 0.51, 1.95, 7.39 \}$. 
+	Furthermore, we change the covariance matrix of the predictors to a block
+	diagonal, with block sizes $25
+	\times 25$, such that each group of 200 features consists of 8 blocks of 
+	correlated features. The covariance off-diagonals and diagonal in each block 
+	are set to $\rho=0.7$ and $\sigma^2 = 1$, respectively.
 	We expect \texttt{gren} to pick up this differential signal and outperform the
 	other methods. 
 	
 	\subsection{Scenario 5}
-	In the last scenario we create a sparse true model that contains some 
-	differential signal. We impl
+	In this last scenario, we create $G=10$ groups of 100 features.
+	Of the 10 groups 8 do not contain any signal. In the two active groups, we set 
+	85 model parameters to zero and 15 to 0.2 and 0.5, respectively, such that the
+	mean signal $\overline{\beta}_j=21/2000$. The features are simulated from the
+	same distribution as in Scenario 1.
+	
+	This sparse truth with differential signal between the groups is expected to
+	yield a somewhat better performance by \texttt{gren} than the regular elastic
+	net and \texttt{GRridge}. The group lasso extensions are expected to give a 
+	similar performance.
 
   \section{Application to MicroRNAs in colorectal cancer}\label{sec:colorectal}
   \subsection{Additional comparisons}
@@ -1157,6 +1190,18 @@ medians <- round(sapply(c("grridge", paste0("gren", 1:3)), function(s) {
   Note that the $\phi_g$ are updated after every penalty multiplier update  
   iteration as well, in contrast to the elastic net.
 
+  \section{Gibbs sampler}
+    
+  \begin{align*}
+    \bbeta | \bomega, \bpsi & \sim \mathcal{N} (\bSigma, \bmu) \\
+      & \text{with } \bSigma = [\X \tr \diag (\bomega_i) \X + 
+      \lambda_2 \bLambda' + \lambda_2 \bLambda' \diag (\psi_j^{-1})]^{-1} 
+      \text{ and } \bmu = \bSigma \X \tr (\y - \frac{1}{2} \mathbf{m}), \\
+    \omega_i | \bbeta & \sim \mathcal{PG} (m_i, |\x_i \tr \bbeta|), \\
+    \psi_j^{-1} | \beta_j & \sim \mathcal{IG} (\lambda_1/ (2 \lambda_2 
+    \sqrt{\lambda'_{g(j)}} |\beta_j|), \lambda_1^2/(4 \lambda_2)).
+  \end{align*}
+    
   \bibliographystyle{author_short3.bst} 
   \bibliography{refs}
 
