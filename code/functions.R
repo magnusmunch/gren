@@ -61,4 +61,86 @@ sel.grpreg <- function(X, y, group=1:ncol(X),
   
 }
 
+n <- 100
+p <- 20
+x <- matrix(rnorm(n*p), ncol=p, nrow=n)
+beta <- -9.5:9.5
+y <- rbinom(n, 1, as.numeric(1/(1 + exp(-x %*% beta))))
+m <- rep(1, n)
+alpha <- 0.5
+lambda <- 1
+lambdamult <- rep(1, p)
+intercept <- FALSE
+control <- list(nsamples=1000)
+
+fit.mcmc <- mcmc.gren(x, y, m=rep(1, nrow(x)), 
+                      alpha=0.5, lambda=1, lambdamult=rep(1, p), 
+                      intercept=FALSE, control=list(nsamples=1000))
+plot(c(beta), apply(fit.mcmc$samples$beta, 1, mean))
+
+
+# mcmc version of VB steps
+# devtools::install_version("BayesLogit", "0.2-0")
+mcmc.gren <- function(x, y, m=rep(1, nrow(x)), alpha=0.5, lambda=NULL, 
+                      lambdamult, intercept=TRUE, control=list(nsamples=1000)) {
+  
+  n <- nrow(x)
+  p <- ncol(x)
+  
+  lambda1 <- alpha*lambda
+  lambda2 <- 0.5*(1 - alpha)*lambda
+  
+  # create matrices for samples
+  seq.beta <- matrix(NA, ncol=control$nsamples, nrow=p + intercept)
+  seq.psi <- matrix(NA, ncol=control$nsamples, nrow=p)
+  seq.omega <- matrix(NA, ncol=control$nsamples, nrow=n)
+  
+  # starting values
+  beta <- as.numeric(coef(glmnet::glmnet(x, y, "binomial", alpha=0, 
+                                         lambda=lambda/n, intercept=intercept)))
+  if(!intercept) {beta <- beta[-(p + 1)]}
+  psi <- rep(1, p)
+  Sigma <- matrix(NA, ncol=p + intercept, nrow=p + intercept)
+  
+  # creating mcmc samples
+  for(k in 1:control$nsamples) {
+    h <- lambda2*lambdamult + lambda2*lambdamult/psi
+    hinvxtr <- t(x)/h
+    if(intercept) {
+      omega <- BayesLogit::rpg(n, m, abs(as.numeric(cbind(1, x) %*% beta)))
+      
+      # calculating Sigma with block inversion
+      omtrx <- t(matrix(omega)) %*% x
+      Dinv <- diag(1/h) - hinvxtr %*% solve(diag(1/omega) + x %*% hinvxtr) %*% 
+        t(hinvxtr)
+      omtrxDinv <- omtrx %*% Dinv
+      val <- 1/as.numeric(sum(omega) - omtrxDinv %*% t(omtrx))
+      Sigma[1, 1] <- val
+      Sigma[1, 2:(p + 1)] <- - val*omtrxDinv
+      Sigma[2:(p + 1), 1] <- t(Sigma[1, 2:(p + 1)])
+      Sigma[2:(p + 1), 2:(p + 1)] <- Dinv - Sigma[2:(p + 1), 1] %*% omtrxDinv
+      beta <- as.numeric(rmvnorm(1, Sigma %*% rbind(1, t(x)) %*% (y - m/2), 
+                                 Sigma))
+      psi <- 1/statmod::rinvgauss(p, lambda/(2*lambda*sqrt(lambdamult)*
+                                               abs(beta[-1])),
+                                  rep(lambda1^2/(4*lambda2), p))
+    } else {
+      omega <- BayesLogit::rpg(n, m, abs(as.numeric(x %*% beta)))
+      Sigma <- diag(1/h) - hinvxtr %*% solve(diag(1/omega) + x %*% hinvxtr) %*% 
+        t(hinvxtr)
+      beta <- as.numeric(rmvnorm(1, Sigma %*% t(x) %*% (y - m/2), Sigma))
+      psi <- 1/statmod::rinvgauss(p, lambda/(2*lambda*sqrt(lambdamult)*abs(beta)),
+                                  rep(lambda1^2/(4*lambda2), p))
+    }
+    
+    seq.omega[, k] <- omega
+    seq.beta[, k] <- beta
+    seq.psi[, k] <- psi
+  }
+  
+  out <- list(samples=list(omega=seq.omega, beta=seq.beta, psi=seq.psi))
+  return(out)
+  
+}
+
                 
