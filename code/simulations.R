@@ -12,7 +12,7 @@ if(substr(system('git log -n 1 --format="%h %aN %s %ad"', intern=TRUE), 1, 7)!=
 }
 
 ### parallelisation
-parallel <- TRUE
+parallel <- FALSE
 
 ### libraries
 library(gren)
@@ -197,7 +197,8 @@ csel <- 2^c(1:8)
 nreps <- 100
 
 ### analysis splits in parallel
-ncores <- min(detectCores() - 1, nreps)
+# ncores <- min(detectCores() - 1, nreps)
+ncores <- 50
 cluster <- makeForkCluster(ncores)
 if(parallel) {
   registerDoParallel(cluster)
@@ -233,11 +234,14 @@ res <- foreach(k=c(1:nreps), .errorhandling="pass") %dopar% {
   
   # fitting models
   fit.gren1 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.05, 
-                    standardize=TRUE, trace=FALSE, psel=csel)
+                    standardize=TRUE, trace=FALSE, psel=csel,
+                    control=list(maxit.vb=10, maxit=200))
   fit.gren2 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.5, 
-                    standardize=TRUE, trace=FALSE, psel=csel)
+                    standardize=TRUE, trace=FALSE, psel=csel,
+                    control=list(maxit.vb=10, maxit=200))
   fit.gren3 <- gren(xtrain, ytrain, partitions=list(part=part), alpha=0.95, 
-                    standardize=TRUE, trace=FALSE, psel=csel)
+                    standardize=TRUE, trace=FALSE, psel=csel,
+                    control=list(maxit.vb=10, maxit=200))
   
   fit.grridge <- grridge(t(xtrain), ytrain, list(part=split(1:p, part)))
   
