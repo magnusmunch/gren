@@ -47,5 +47,5 @@
 !data/forMagnusN88.Rdata
 !data/mirsData.Rdata
 
-code/metabolomics_alzheimer_data.Rdata
+code/data_metabolomics_alzheimer.R
 revision/
