@@ -51,5 +51,10 @@ code/data_metabolomics_alzheimer.R
 data/NwkDegreePartition.txt
 
 revision/
-biostatistics.Rnw
+docs/biostatistics.Rnw
+docs/bio.cls
+docs/biorefs.bst
+docs/color.sty
+
+
 arxiv.Rnw
