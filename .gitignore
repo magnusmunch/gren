@@ -48,5 +48,8 @@
 !data/mirsData.Rdata
 
 code/data_metabolomics_alzheimer.R
+<<<<<<< HEAD
 data/NwkDegreePartition.txt
+=======
+>>>>>>> 2cfe3679cb615685ebfe47e794de381d5d41d205
 revision/
