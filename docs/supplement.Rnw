@@ -144,8 +144,12 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   explained in Section \ref{md-sec:estimation} of the MD. The full procedure of
   the
   proposed method is shown in Section \ref{sec:fullestimationprocedure}. 
+  Extensions of our method are
+  presented in Section \ref{sec:extensions}. The simulations in MD Section
+  \ref{md-sec:simulations} are elaborated in Section \ref{sec:simulations}. 
   Additional results to the applications in the MD Sections 
-  \ref{md-sec:colorectal}--\ref{md-sec:oral}. We
+  \ref{md-sec:colorectal}--\ref{md-sec:oral} are presented in Sections 
+  \ref{sec:colorectal}--\ref{sec:oral}. We
   apply our method to a study on metabolomics in Alzheimer's in Section
   \ref{sec:alzheimer} and to study in microRNAs in cervical cancer data 
   in Section \ref{sec:cervical}. Finally, 
@@ -291,7 +295,8 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
     \end{align}
   \end{subequations}
 
-  Inspection of the updating equations in the MD, learns us that the 
+  Inspection of the updating equations (\ref{md-eq:VBupdateequations}) in the 
+  MD, learns us that the 
   last term in the right-hand side of (\ref{eq:elboomega3}) equals zero, so that
   we are left with just (\ref{eq:elboomega4}). After a change of variables 
   $\psi_j = \tau_j - 1$, the two terms in (\ref{eq:elbobeta}) are as follows:
@@ -922,6 +927,26 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	yield a somewhat better performance by \texttt{gren} than the regular elastic
 	net and \texttt{GRridge}. The group lasso extensions are expected to give a 
 	similar performance.
+	
+	\subsection{Additional results}
+	Additional results to MD Section \ref{md-sec:simulations} are given in 
+	Figures \ref{fig:lines2_simulations_res1_auc_briers}-
+	\ref{fig:lines2_simulations_res5_auc_briers}.
+	
+<<lines2_simulations_res1_auc_briers, fig.cap="Estimated (a) AUC and (b) Brier skill score in simulation setting 1.", out.width="100%", fig.asp=1/2>>=
+@
+
+<<lines2_simulations_res2_auc_briers, fig.cap="Estimated (a) AUC and (b) Brier skill score in simulation setting 2.", out.width="100%", fig.asp=1/2>>=
+@
+
+<<lines2_simulations_res3_auc_briers, fig.cap="Estimated (a) AUC and (b) Brier skill score in simulation setting 3.", out.width="100%", fig.asp=1/2>>=
+@
+
+<<lines2_simulations_res4_auc_briers, fig.cap="Estimated (a) AUC and (b) Brier skill score in simulation setting 4.", out.width="100%", fig.asp=1/2>>=
+@
+
+<<lines2_simulations_res5_auc_briers, fig.cap="Estimated (a) AUC and (b) Brier skill score in simulation setting 5.", out.width="100%", fig.asp=1/2>>=
+@
 
   \section{Application to MicroRNAs in colorectal cancer}\label{sec:colorectal}
   \subsection{Additional comparisons}
@@ -934,10 +959,10 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   on the test set in Figures 
   \ref{fig:lines_micrornaseq_colorectal_cancer_res1_auc}--
   \ref{fig:lines_micrornaseq_colorectal_cancer_res1_briers}.
-<<lines_micrornaseq_colorectal_cancer_res1_auc, fig.cap="Estimated AUC for the colorectal cancer example.", out.width="100%", fig.asp=1>>=
+<<lines_micrornaseq_colorectal_cancer_res1_auc, fig.cap="Estimated AUC for the colorectal cancer example with (a) $\\alpha=0.05$, (b) $\\alpha=0.5$, and (c) $\\alpha=0.95$.", fig.asp=1>>=
 @
   
-<<lines_micrornaseq_colorectal_cancer_res1_briers, fig.cap="Estimated Brier skill score for the colorectal cancer example.", out.width="100%", fig.asp=1>>=
+<<lines_micrornaseq_colorectal_cancer_res1_briers, fig.cap="Estimated Brier skill score for the colorectal cancer example with (a) $\\alpha=0.05$, (b) $\\alpha=0.5$, and (c) $\\alpha=0.95$.", out.width="100%", fig.asp=1>>=
 @
   
   \subsection{Random groups}\label{sec:randomgroups}
@@ -1019,12 +1044,12 @@ medians <- round(sapply(c("grridge", paste0("gren", 1:3)), function(s) {
   methods that require this extra tuning parameter. The AUCs and Brier skill 
   scores calculated on the
   validation set are presented in Figures 
-  \ref{fig:lines_rnaseq_lymph_node_metastasis_res1_auc}--
-  \ref{fig:lines_rnaseq_lymph_node_metastasis_res1_briers}
-<<lines_rnaseq_lymph_node_metastasis_res1_auc, fig.cap="Estimated AUC for the lymph node cancer example.", out.width="100%", fig.asp=1>>=
+  \ref{fig:lines_rnaseq_oral_cancer_res1_auc}--
+  \ref{fig:lines_rnaseq_oral_cancer_res1_briers}
+<<lines_rnaseq_oral_cancer_res1_auc, fig.cap="Estimated AUC for the oral cancer example with (a) $\\alpha=0.05$, (b) $\\alpha=0.5$, and (c) $\\alpha=0.95$.", out.width="100%", fig.asp=1>>=
 @
   
-<<lines_rnaseq_lymph_node_metastasis_res1_briers, fig.cap="Estimated Briers skill score for the lymph node cancer example.", out.width="100%", fig.asp=1>>=
+<<lines_rnaseq_oral_cancer_res1_briers, fig.cap="Estimated Briers skill score for the oral cancer example with (a) $\\alpha=0.05$, (b) $\\alpha=0.5$, and (c) $\\alpha=0.95$.", out.width="100%", fig.asp=1>>=
 @
   
   \section{Application to metabolomics in alzheimer}\label{sec:alzheimer}
@@ -1060,10 +1085,27 @@ medians <- round(sapply(c("grridge", paste0("gren", 1:3)), function(s) {
 <<lines_metabolomics_alzheimer_res1_briers, fig.cap="Estimated Brier skill score for the alzheimer example.", out.width="100%", fig.asp=1>>=
 @
 
-  In this example, \texttt{GRridge} and \texttt{gren} underperform due to a 
-  small number of features to learn the penalty parameters from. The other 
+  In this example, \texttt{GRridge} and \texttt{gren} underperform due to:
+  (i) a small number of features to learn the penalty parameters from and (ii)
+  Large negative correlations between the metabolites (see Figure 
+  \ref{fig:heatmap_metabolomics_alzheimer_res1_cor}). Both (i) and (ii) make 
+  estimation of the penalty multipliers difficult. The other 
   methods estimate one global penalty parameter, so do not suffer from the 
-  lower dimensionality of the problem.
+  lower dimensionality of the problem and the large negative correlation.
+  
+<<heatmap_metabolomics_alzheimer_res1_cor, fig.cap="Correlations between the metabolites.", out.width="50%", fig.asp=1>>=
+library(Biobase)
+library(lattice)
+load("data/ESetMbolCSFPR2.Rdata")
+pheno <- pData(ESetMbolCSFPR2)
+metabol <- t(exprs(ESetMbolCSFPR2))
+metabol.apoe <- metabol[(pheno$D_diag_name=="Probable AD" & 
+                           pheno$APOE=="E4YES") |
+                          (pheno$D_diag_name=="Subjectieve klachten" & 
+                             pheno$APOE=="E4NO"), ]
+cor.mat <- cor(scale(metabol.apoe))
+levelplot(cor.mat, xlab=NULL, ylab=NULL, scales=list(draw=FALSE))
+@
   
   \section{Application to microRNAs in cervical cancer}\label{sec:cervical}
   A deep sequencing analysis on small non-coding ribonucleic acid (microRNAseq) 
@@ -1082,6 +1124,12 @@ medians <- round(sapply(c("grridge", paste0("gren", 1:3)), function(s) {
   conserved across most vertebrates (147). We expect (c) to contain the most 
   important microRNAs, followed by (b) and (a), because these microRNAs have not
   been lost during evolution and might therefore regulate important processes.
+  
+  The estimated multipliers, AUC, and Brier skill score
+  are in Figures \ref{fig:barplot_micrornaseq_cervical_cancer_res1}--
+  \ref{fig:lines_micrornaseq_cervical_cancer_res1_briers}, respectively. In this
+  example the group regularized methods outperform the regular methods with
+  respect to discrimination (AUC) and calibration (Brier skill score).
 
 <<barplot_micrornaseq_cervical_cancer_res1, fig.cap="Estimated penalty multiplies for conservation status in cervical cancer example.", out.width="50%", fig.asp=1>>=
 @
@@ -1190,17 +1238,17 @@ medians <- round(sapply(c("grridge", paste0("gren", 1:3)), function(s) {
   Note that the $\phi_g$ are updated after every penalty multiplier update  
   iteration as well, in contrast to the elastic net.
 
-  \section{Gibbs sampler}
-    
-  \begin{align*}
-    \bbeta | \bomega, \bpsi & \sim \mathcal{N} (\bSigma, \bmu) \\
-      & \text{with } \bSigma = [\X \tr \diag (\bomega_i) \X + 
-      \lambda_2 \bLambda' + \lambda_2 \bLambda' \diag (\psi_j^{-1})]^{-1} 
-      \text{ and } \bmu = \bSigma \X \tr (\y - \frac{1}{2} \mathbf{m}), \\
-    \omega_i | \bbeta & \sim \mathcal{PG} (m_i, |\x_i \tr \bbeta|), \\
-    \psi_j^{-1} | \beta_j & \sim \mathcal{IG} (\lambda_1/ (2 \lambda_2 
-    \sqrt{\lambda'_{g(j)}} |\beta_j|), \lambda_1^2/(4 \lambda_2)).
-  \end{align*}
+  % \section{Gibbs sampler}
+  %   
+  % \begin{align*}
+  %   \bbeta | \bomega, \bpsi & \sim \mathcal{N} (\bSigma, \bmu) \\
+  %     & \text{with } \bSigma = [\X \tr \diag (\bomega_i) \X + 
+  %     \lambda_2 \bLambda' + \lambda_2 \bLambda' \diag (\psi_j^{-1})]^{-1} 
+  %     \text{ and } \bmu = \bSigma \X \tr (\y - \frac{1}{2} \mathbf{m}), \\
+  %   \omega_i | \bbeta & \sim \mathcal{PG} (m_i, |\x_i \tr \bbeta|), \\
+  %   \psi_j^{-1} | \beta_j & \sim \mathcal{IG} (\lambda_1/ (2 \lambda_2 
+  %   \sqrt{\lambda'_{g(j)}} |\beta_j|), \lambda_1^2/(4 \lambda_2)).
+  % \end{align*}
     
   \bibliographystyle{author_short3.bst} 
   \bibliography{refs}

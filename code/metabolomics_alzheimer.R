@@ -13,6 +13,7 @@ if(substr(system('git log -n 1 --format="%h %aN %s %ad"', intern=TRUE), 1, 7)!=
 
 ### libraries
 library(Biobase)
+library(lattice)
 library(gren)
 library(GRridge)
 library(grpregOverlap)
