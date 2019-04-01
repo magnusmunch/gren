@@ -43,9 +43,9 @@
 *.toc
 *.xlsx
 
-!data/NwkDegreePartition.Rdata
-!data/EsetMbolCSFPR2.Rdata
+!data/metabolomics_alzheimer_data.Rdata
 !data/forMagnusN88.Rdata
 !data/mirsData.Rdata
 
+metabolomics_alzheimer_data.Rdata
 revision/

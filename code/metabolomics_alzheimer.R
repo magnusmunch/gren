@@ -12,7 +12,6 @@ if(substr(system('git log -n 1 --format="%h %aN %s %ad"', intern=TRUE), 1, 7)!=
 }
 
 ### libraries
-library(Biobase)
 library(lattice)
 library(gren)
 library(GRridge)
@@ -20,20 +19,7 @@ library(grpregOverlap)
 library(SGL)
 
 ### load data
-load("data/ESetMbolCSFPR2.Rdata")
-load("data/NwkDegreePartition.Rdata")
-
-### select the patients with APOE E4 allel and controls without APOE E4
-pheno <- pData(ESetMbolCSFPR2)
-pheno.apoe <- pheno[(pheno$D_diag_name=="Probable AD" & pheno$APOE=="E4YES") |
-                      (pheno$D_diag_name=="Subjectieve klachten" & 
-                         pheno$APOE=="E4NO"), ]
-
-metabol <- t(exprs(ESetMbolCSFPR2))
-metabol.apoe <- metabol[(pheno$D_diag_name=="Probable AD" & 
-                           pheno$APOE=="E4YES") |
-                          (pheno$D_diag_name=="Subjectieve klachten" & 
-                             pheno$APOE=="E4NO"), ]
+load("data/metabolomics_alzheimer_data.Rdata")
 
 ### randomly split in test and train data (30% and 70%, respectively)
 set.seed(2019)
@@ -43,9 +29,6 @@ id.train <- c(sample(which(pheno.apoe$D_diag_name=="Probable AD"),
               sample(which(pheno.apoe$D_diag_name=="Subjectieve klachten"), 
                      size=floor(sum(
                        pheno.apoe$D_diag_name=="Subjectieve klachten")*0.7)))
-
-### create co-data
-feat <- fData(ESetMbolCSFPR2)
 
 # platformcode gives the type of metabolites
 platformcode <- feat$PlatformCode2
