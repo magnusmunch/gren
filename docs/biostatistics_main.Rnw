@@ -10,112 +10,84 @@ opts_chunk$set(fig.align='center', fig.path="../figs/",
 read_chunk("code/figures.R")
 @
 
-\documentclass[a4paper,hidelinks]{article}
-\usepackage{url,bm,algorithm,algpseudocode,bbm,amsmath,amssymb,amsthm,
-amsfonts,graphics,graphicx,epsfig,rotating,caption,subcaption,natbib,appendix,
-titlesec,multicol,verbatim,threeparttable,booktabs,dsfont,parskip,
-xr-hyper,hyperref,enumerate}
-\externaldocument[sm-]{supplement}
+\documentclass[oupdraft]{bio}
+\usepackage{xr-hyper}
+% \usepackage[colorlinks=true, urlcolor=citecolor, linkcolor=citecolor, 
+% citecolor=citecolor]{hyperref}
+\usepackage{url,bm,algorithm,algpseudocode,mathtools,bbm,pgfplotstable,
+enumerate}
+
+\externaldocument[sm-]{biostatistics_supp}
+
+% Add history information for the article if required
+%\history{Received August 1, 2010;
+%	revised October 1, 2010;
+%	accepted for publication November 1, 2010}
 
 % objects
+\newcommand{\x}{\mathbf{x}}
 \newcommand{\bbeta}{\bm{\beta}}
+\newcommand{\X}{\mathbf{X}}
+\newcommand{\y}{\mathbf{y}}
+\newcommand{\G}{\mathcal{G}}
 \newcommand{\btau}{\bm{\tau}}
-\newcommand{\balpha}{\bm{\alpha}}
+\newcommand{\blambda}{\bm{\lambda}}
 \newcommand{\bomega}{\bm{\omega}}
-\newcommand{\bOmega}{\bm{\Omega}}
-\newcommand{\bSigma}{\bm{\Sigma}}
-\newcommand{\bkappa}{\bm{\kappa}}
 \newcommand{\btheta}{\bm{\theta}}
 \newcommand{\bmu}{\bm{\mu}}
+\newcommand{\bSigma}{\bm{\Sigma}}
 \newcommand{\bpsi}{\bm{\psi}}
-\newcommand{\blambda}{\bm{\lambda}}
-\newcommand{\bLambda}{\bm{\Lambda}}
-\newcommand{\bphi}{\bm{\phi}}
-\newcommand{\Y}{\mathbf{Y}}
-\newcommand{\y}{\mathbf{y}}
-\newcommand{\X}{\mathbf{X}}
-\newcommand{\x}{\mathbf{x}}
-\newcommand{\I}{\mathbf{I}}
-\newcommand{\T}{\mathbf{T}}
+\newcommand{\bOmega}{\bm{\Omega}}
 \newcommand{\Z}{\mathbf{Z}}
-\newcommand{\W}{\mathbf{W}}
-\renewcommand{\O}{\mathbf{O}}
-\newcommand{\B}{\mathbf{B}}
-\renewcommand{\H}{\mathbf{H}}
-\newcommand{\U}{\mathbf{U}}
-\newcommand{\D}{\mathbf{D}}
-\newcommand{\Vm}{\mathbf{V}}
-\newcommand{\rv}{\mathbf{r}}
-\newcommand{\A}{\mathbf{A}}
-\newcommand{\Q}{\mathbf{Q}}
-\newcommand{\Sm}{\mathbf{S}}
-\newcommand{\0}{\bm{0}}
-\newcommand{\tx}{\tilde{\mathbf{x}}}
-\newcommand{\hy}{\hat{y}}
-\newcommand{\tm}{\tilde{m}}
-\newcommand{\tkappa}{\tilde{\kappa}}
+\newcommand{\bLambda}{\bm{\Lambda}}
 \newcommand{\m}{\mathbf{m}}
-\newcommand{\C}{\mathbf{C}}
-\renewcommand{\v}{\mathbf{v}}
-\newcommand{\g}{\mathbf{g}}
-\newcommand{\s}{\mathbf{s}}
-\newcommand{\ones}{\mathbf{1}}
 
 % functions and operators
-\renewcommand{\L}{\mathcal{L}}
-\newcommand{\G}{\mathcal{G}}
-\renewcommand{\P}{\mathcal{P}}
-\newcommand{\argmax}{\text{argmax} \,}
-\newcommand{\expit}{\text{expit}}
-\newcommand{\erfc}{\text{erfc}}
-\newcommand{\E}{\mathbb{E}}
-\newcommand{\V}{\mathbb{V}}
 \newcommand{\tr}{^{\text{T}}}
+\newcommand{\expit}{\text{expit}}
+\newcommand{\argmax}{\text{argmax} \,}
+\renewcommand{\L}{\mathcal{L}}
+\newcommand{\E}{\mathbb{E}}
 \newcommand{\diag}{\text{diag}}
-\newcommand{\KL}{D_{\text{KL}}}
 \newcommand{\trace}{\text{tr}}
-\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
-
-% distributions
-\newcommand{\N}{\text{N}}
-\newcommand{\TG}{\text{TG}}
-\newcommand{\Bi}{\text{Binom}}
-\newcommand{\PG}{\text{PG}}
-\newcommand{\Mu}{\text{Multi}}
-\newcommand{\GIG}{\text{GIG}}
-\newcommand{\IGauss}{\text{IGauss}}
-\newcommand{\Un}{\text{U}}
 
 % syntax and readability
 \renewcommand{\(}{\left(}
 \renewcommand{\)}{\right)}
 \renewcommand{\[}{\left[}
 \renewcommand{\]}{\right]}
-\renewcommand*{\thefootnote}{\fnsymbol{footnote}}
-\newcommand{\pkg}[1]{{\fontseries{b}\selectfont #1}} 
-\renewcommand{\algorithmicrequire}{\textbf{Input:}}
-\renewcommand{\algorithmicensure}{\textbf{Output:}}
-
-% settings
-\graphicspath{{../figs/}}
-\setlength{\evensidemargin}{.5cm} \setlength{\oddsidemargin}{.5cm}
-\setlength{\textwidth}{15cm}
-\title{Adaptive group-regularized logistic elastic net regression}
-\date{\today}
-\author{Magnus M. M\"unch$^{1,2}$\footnote{Correspondence to: 
-\href{mailto:m.munch@vumc.nl}{m.munch@vumc.nl}}, Carel F.W. Peeters$^{1}$, 
-Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
 
 \begin{document}
-	
+
+	% Title of paper
+	\title{Adaptive group-regularized logistic elastic net regression}
+
+	% List of authors, with corresponding author marked by asterisk
+	\author{MAGNUS M. M\"UNCH$^{\ast 1,2}$, CAREL F.W. PEETERS$^{1}$, AAD W. VAN
+	DER VAART$^{2}$, \\* MARK A. VAN DE WIEL$^{1,3}$\\[4pt]
+	% Author addresses
+	\textit{1. Department of Epidemiology \& Biostatistics, Amsterdam Public
+	Health research institute, Amsterdam University medical centers, PO Box 7057,
+	1007 MB Amsterdam, The Netherlands \\*
+	2. Mathematical Institute, Leiden University, Leiden, The Netherlands \\*
+	3. MRC Biostatistics Unit, Cambridge University, Cambridge, United Kingdom}
+	\\[2pt]
+	% E-mail address for correspondence
+	{m.munch@vumc.nl}}
+
+	% Running headers of paper:
+	\markboth%
+	% First field is the short list of authors
+	{M. M. M\"unch and others}
+	% Second field is the short title of the paper
+	{Adaptive group-regularized logistic elastic net regression}
+
 	\maketitle
 
-	\noindent
-	1. Department of Epidemiology \& Biostatistics, Amsterdam Public Health
-	research institute, Amsterdam University medical centers, PO Box 7057, 1007 MB
-	Amsterdam, The Netherlands \\*
-	2. Mathematical Institute, Leiden University, Leiden, The Netherlands \\*
-	3. MRC Biostatistics Unit, Cambridge University, Cambridge, United Kingdom
+	% Add a footnote for the corresponding author if one has been
+	% identified in the author list
+	\footnotetext{To whom correspondence should be addressed.}
 
 	\begin{abstract}
 		{In high-dimensional data settings, additional information on the features 
@@ -130,17 +102,12 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 		\texttt{gren}, makes use of the Bayesian formulation of logistic elastic net
 		regression to estimate both the model and penalty parameters in an 
 		approximate empirical-variational Bayes framework. Simulations and
-		applications in two different cancer studies show
+		applications in two different molecular marker and cancer type studies show
 		that, if the partitioning of the features is informative, classification 
 		performance and feature
 		selection are indeed enhanced.}
+		{Empirical Bayes; High-dimensional data; Prediction; Variational Bayes}
 	\end{abstract}
-
-	\noindent\textbf{Keywords}: Empirical Bayes; High-dimensional data; 
-	Prediction; Variational Bayes
-
-	\noindent\textbf{Software available from}: 
-	\url{https://CRAN.R-project.org/package=gren}
 
 	\section{Introduction}\label{sec:introduction}
 	Prediction from high-dimensional data is a challenge common to many fields of
@@ -642,21 +609,6 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	Surprisingly, in Scenario (\ref{it:scenario5}), \texttt{gren} outperforms all
 	other methods, which is an indication that \texttt{gren} is able to pick up 
 	the sparse differential signal.
-	
-<<lines_simulations_res1_auc_briers, fig.cap="Average (a) AUC and (b) Brier skill score in simulation Scenario (\\ref{it:scenario1}).", out.width="100%", fig.asp=1/2>>=
-@
-
-<<lines_simulations_res2_auc_briers, fig.cap="Average (a) AUC and (b) Brier skill score in simulation Scenario (\\ref{it:scenario2}).", out.width="100%", fig.asp=1/2>>=
-@
-
-<<lines_simulations_res3_auc_briers, fig.cap="Average (a) AUC and (b) Brier skill score in simulation Scenario (\\ref{it:scenario3}).", out.width="100%", fig.asp=1/2>>=
-@
-
-<<lines_simulations_res4_auc_briers, fig.cap="Average (a) AUC and (b) Brier skill score in simulation Scenario (\\ref{it:scenario4}).", out.width="100%", fig.asp=1/2>>=
-@
-
-<<lines_simulations_res5_auc_briers, fig.cap="Average (a) AUC and (b) Brier skill score in simulation Scenario (\\ref{it:scenario5}).", out.width="100%", fig.asp=1/2>>=
-@
 
 	\section{Application to microRNAs in colorectal cancer}
 	\label{sec:colorectal}
@@ -718,8 +670,6 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   features benefits predictive performance: both \texttt{GRridge} and 
   \texttt{gren} outperform their respective non-group-regularized versions, 
   albeit only slightly for \texttt{GRridge}.
-<<barplot_lines_micrornaseq_colorectal_cancer_res1_auc, fig.cap="Estimated (a) penalty multipliers and (b) AUC in the colorectal cancer example.", out.width="100%", fig.asp=1/2>>=
-@
   
   \section{Application to RNAseq in oral cancer}\label{sec:oral}
   The aim of this second study is to predict lymph node metastasis in
@@ -765,8 +715,6 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   \texttt{gren} is slighty better than the other methods for a range of model
   sizes. In this example, ridge and \texttt{GRridge} perform almost 
   identical, while \texttt{gren} outperforms the regular elastic net.
-<<barplot_lines_rnaseq_oral_cancer_res1_auc, fig.cap="Estimated (a) penalty multipliers for the cis-correlations and (b) external $p$-values, and (c) estimated AUC in the oral cancer example.", out.width="100%", fig.asp=1>>=
-@
   
   \section{Additional applications}\label{sec:applications}
   Two additional applications are presented in SM Sections 
@@ -905,7 +853,7 @@ session <- gsub("_", ".", devtools::session_info()$platform$system)
   while \texttt{SGL} was slightly slower: \Sexpr{times2[c(5:7)]} seconds, with 
   $\alpha \in \{ 0.05, 0.5, 0.95 \}$.
   \texttt{cMCP} (\Sexpr{times2[c(14:16)]} seconds) and \texttt{gel} 
-  (\Sexpr{times2[c(17:19)]} seconds) are again faster than \texttt{gren}. 
+  (\Sexpr{times2[c(17:19)]} seconds) are again faster than \texttt{gren}.  
   
 	\section*{Software}
 	A (stable) \texttt{R} package is available from 
@@ -926,14 +874,30 @@ session <- gsub("_", ".", devtools::session_info()$platform$system)
 	\section*{Acknowledgements}
 	We thank the editor and referees for their useful suggestions and comments. 
 	\textit{Conflict of Interest}: None declared.
-
-	\bibliographystyle{author_short3.bst}
+	
+	\bibliographystyle{biorefs}
 	\bibliography{refs}
 	
-	\section*{Session info}
-
-<<r session-info, eval=TRUE, echo=TRUE, tidy=TRUE>>=
-devtools::session_info()
+<<lines_simulations_res1_auc_briers, fig.cap="Average (a) AUC and (b) Brier skill score in simulation Scenario (\\ref{it:scenario1}).", out.width="100%", fig.asp=1/2>>=
 @
-	
+
+<<lines_simulations_res2_auc_briers, fig.cap="Average (a) AUC and (b) Brier skill score in simulation Scenario (\\ref{it:scenario2}).", out.width="100%", fig.asp=1/2>>=
+@
+
+<<lines_simulations_res3_auc_briers, fig.cap="Average (a) AUC and (b) Brier skill score in simulation Scenario (\\ref{it:scenario3}).", out.width="100%", fig.asp=1/2>>=
+@
+
+<<lines_simulations_res4_auc_briers, fig.cap="Average (a) AUC and (b) Brier skill score in simulation Scenario (\\ref{it:scenario4}).", out.width="100%", fig.asp=1/2>>=
+@
+
+<<lines_simulations_res5_auc_briers, fig.cap="Average (a) AUC and (b) Brier skill score in simulation Scenario (\\ref{it:scenario5}).", out.width="100%", fig.asp=1/2>>=
+@
+
+<<barplot_lines_micrornaseq_colorectal_cancer_res1_auc, fig.cap="Estimated (a) penalty multipliers and (b) AUC in the colorectal cancer example.", out.width="100%", fig.asp=1/2>>=
+@
+
+<<barplot_lines_rnaseq_oral_cancer_res1_auc, fig.cap="Estimated (a) penalty multipliers for the cis-correlations and (b) external $p$-values, and (c) estimated AUC in the oral cancer example.", out.width="100%", fig.asp=1>>=
+@
+
 \end{document}
+

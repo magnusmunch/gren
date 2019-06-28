@@ -1048,10 +1048,10 @@ methods <- c("ridge", "grridge", paste0("gren", c(1:3)), paste0("enet", c(1:3)),
              paste0("sgl", c(1:3)), paste0("cmcp", c(1:3)), 
              paste0("gel", c(1:3)), paste0("ocmcp", c(1:3)), 
              paste0("ogel", c(1:3)))
-col <- bpy.colors(9, cutoff.tail=0.1)
-lty <- 1:length(methods)
 labels <- list("ridge", "GRridge", "gren", "enet", "SGL", "cMCP", 
                "gel", "OcMCP", "Ogel")
+col <- bpy.colors(length(labels), cutoff.tail=0.1)
+lty <- 1:length(labels)
 
 plot.data <- lapply(methods, function(m) {
   aggregate(auc[, substr(colnames(auc), 1, nchar(m))==m], 
@@ -1065,12 +1065,12 @@ layout(matrix(c(rep(c(1, 1, 2, 2), 2), rep(c(0, 3, 3, 0), 2)),
 plot(plot.data[[3]], type="l", xlab="Number of selected features", 
      ylab="AUC", main="(a)", ylim=range(auc), xlim=c(0, 500), 
      col=col[3], lty=lty[3])
-lines(plot.data[[6]], col=col[4], lty=lty[6])
-lines(plot.data[[9]], col=col[5], lty=lty[9])
-lines(plot.data[[12]], col=col[6], lty=lty[12])
-lines(plot.data[[15]], col=col[7], lty=lty[15])
-lines(plot.data[[18]], col=col[8], lty=lty[18])
-lines(plot.data[[21]], col=col[9], lty=lty[21])
+lines(plot.data[[6]], col=col[4], lty=lty[4])
+lines(plot.data[[9]], col=col[5], lty=lty[5])
+lines(plot.data[[12]], col=col[6], lty=lty[6])
+lines(plot.data[[15]], col=col[7], lty=lty[7])
+lines(plot.data[[18]], col=col[8], lty=lty[8])
+lines(plot.data[[21]], col=col[9], lty=lty[9])
 abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
 legend("bottomright", legend=labels, col=col, 
@@ -1079,24 +1079,24 @@ legend("bottomright", legend=labels, col=col,
 plot(plot.data[[4]], type="l", xlab="Number of selected features", 
      ylab="AUC", main="(b)", ylim=range(auc), xlim=c(0, 500), 
      col=col[3], lty=lty[3])
-lines(plot.data[[7]], col=col[4], lty=lty[6])
-lines(plot.data[[10]], col=col[5], lty=lty[9])
-lines(plot.data[[13]], col=col[6], lty=lty[12])
-lines(plot.data[[16]], col=col[7], lty=lty[15])
-lines(plot.data[[19]], col=col[8], lty=lty[18])
-lines(plot.data[[22]], col=col[9], lty=lty[21])
+lines(plot.data[[7]], col=col[4], lty=lty[4])
+lines(plot.data[[10]], col=col[5], lty=lty[5])
+lines(plot.data[[13]], col=col[6], lty=lty[6])
+lines(plot.data[[16]], col=col[7], lty=lty[7])
+lines(plot.data[[19]], col=col[8], lty=lty[8])
+lines(plot.data[[22]], col=col[9], lty=lty[9])
 abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
 
 plot(plot.data[[5]], type="l", xlab="Number of selected features", ylab="AUC", 
      main="(c)", ylim=range(auc), xlim=c(0, 500), col=col[3], 
      lty=lty[3])
-lines(plot.data[[8]], col=col[4], lty=lty[6])
-lines(plot.data[[11]], col=col[5], lty=lty[9])
-lines(plot.data[[14]], col=col[6], lty=lty[12])
-lines(plot.data[[17]], col=col[7], lty=lty[15])
-lines(plot.data[[20]], col=col[8], lty=lty[18])
-lines(plot.data[[23]], col=col[9], lty=lty[21])
+lines(plot.data[[8]], col=col[4], lty=lty[4])
+lines(plot.data[[11]], col=col[5], lty=lty[5])
+lines(plot.data[[14]], col=col[6], lty=lty[6])
+lines(plot.data[[17]], col=col[7], lty=lty[7])
+lines(plot.data[[20]], col=col[8], lty=lty[8])
+lines(plot.data[[23]], col=col[9], lty=lty[9])
 abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
 par(opar)
@@ -1114,10 +1114,10 @@ methods <- c("ridge", "grridge", paste0("gren", c(1:3)), paste0("enet", c(1:3)),
              paste0("sgl", c(1:3)), paste0("cmcp", c(1:3)), 
              paste0("gel", c(1:3)), paste0("ocmcp", c(1:3)), 
              paste0("ogel", c(1:3)))
-col <- bpy.colors(9, cutoff.tail=0.1)
-lty <- 1:length(methods)
 labels <- list("ridge", "GRridge", "gren", "enet", "SGL", "cMCP", 
                "gel", "OcMCP", "Ogel")
+col <- bpy.colors(length(labels), cutoff.tail=0.1)
+lty <- 1:length(labels)
 
 plot.data <- lapply(methods, function(m) {
   aggregate(briers[, substr(colnames(briers), 1, nchar(m))==m], 
@@ -1131,12 +1131,12 @@ layout(matrix(c(rep(c(1, 1, 2, 2), 2), rep(c(0, 3, 3, 0), 2)),
 plot(plot.data[[3]], type="l", xlab="Number of selected features", 
      ylab="Brier skill score", main="(a)", ylim=range(briers), xlim=c(0, 500), 
      col=col[3], lty=lty[3])
-lines(plot.data[[6]], col=col[4], lty=lty[6])
-lines(plot.data[[9]], col=col[5], lty=lty[9])
-lines(plot.data[[12]], col=col[6], lty=lty[12])
-lines(plot.data[[15]], col=col[7], lty=lty[15])
-lines(plot.data[[18]], col=col[8], lty=lty[18])
-lines(plot.data[[21]], col=col[9], lty=lty[21])
+lines(plot.data[[6]], col=col[4], lty=lty[4])
+lines(plot.data[[9]], col=col[5], lty=lty[5])
+lines(plot.data[[12]], col=col[6], lty=lty[6])
+lines(plot.data[[15]], col=col[7], lty=lty[7])
+lines(plot.data[[18]], col=col[8], lty=lty[8])
+lines(plot.data[[21]], col=col[9], lty=lty[9])
 abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
 legend("bottomright", legend=labels, col=col, 
@@ -1145,24 +1145,24 @@ legend("bottomright", legend=labels, col=col,
 plot(plot.data[[4]], type="l", xlab="Number of selected features", 
      ylab="Brier skill score", main="(b)", ylim=range(briers), xlim=c(0, 500), 
      col=col[3], lty=lty[3])
-lines(plot.data[[7]], col=col[4], lty=lty[6])
-lines(plot.data[[10]], col=col[5], lty=lty[9])
-lines(plot.data[[13]], col=col[6], lty=lty[12])
-lines(plot.data[[16]], col=col[7], lty=lty[15])
-lines(plot.data[[19]], col=col[8], lty=lty[18])
-lines(plot.data[[22]], col=col[9], lty=lty[21])
+lines(plot.data[[7]], col=col[4], lty=lty[4])
+lines(plot.data[[10]], col=col[5], lty=lty[5])
+lines(plot.data[[13]], col=col[6], lty=lty[6])
+lines(plot.data[[16]], col=col[7], lty=lty[7])
+lines(plot.data[[19]], col=col[8], lty=lty[8])
+lines(plot.data[[22]], col=col[9], lty=lty[9])
 abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
 
 plot(plot.data[[5]], type="l", xlab="Number of selected features", 
      ylab="Brier skill score", main="(c)", ylim=range(briers), xlim=c(0, 500), 
      col=col[3], lty=lty[3])
-lines(plot.data[[8]], col=col[4], lty=lty[6])
-lines(plot.data[[11]], col=col[5], lty=lty[9])
-lines(plot.data[[14]], col=col[6], lty=lty[12])
-lines(plot.data[[17]], col=col[7], lty=lty[15])
-lines(plot.data[[20]], col=col[8], lty=lty[18])
-lines(plot.data[[23]], col=col[9], lty=lty[21])
+lines(plot.data[[8]], col=col[4], lty=lty[4])
+lines(plot.data[[11]], col=col[5], lty=lty[5])
+lines(plot.data[[14]], col=col[6], lty=lty[6])
+lines(plot.data[[17]], col=col[7], lty=lty[7])
+lines(plot.data[[20]], col=col[8], lty=lty[8])
+lines(plot.data[[23]], col=col[9], lty=lty[9])
 abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
 par(opar)
@@ -1221,10 +1221,10 @@ methods <- c("ridge", "grridge", paste0("gren", c(1:3)), paste0("enet", c(1:3)),
              paste0("sgl", c(1:3)), paste0("cmcp", c(1:3)), 
              paste0("gel", c(1:3)), paste0("ocmcp", c(1:3)), 
              paste0("ogel", c(1:3)))
-col <- bpy.colors(9, cutoff.tail=0.1)
-lty <- 1:length(methods)
 labels <- list("ridge", "GRridge", "gren", "enet", "SGL", "cMCP", 
                "gel", "OcMCP", "Ogel")
+col <- bpy.colors(length(labels), cutoff.tail=0.1)
+lty <- 1:length(labels)
 
 plot.data <- lapply(methods, function(m) {
   aggregate(auc[, substr(colnames(auc), 1, nchar(m))==m], 
@@ -1238,12 +1238,12 @@ layout(matrix(c(rep(c(1, 1, 2, 2), 2), rep(c(0, 3, 3, 0), 2)),
 plot(plot.data[[3]], type="l", xlab="Number of selected features", 
      ylab="AUC", main="(a)", ylim=range(auc), xlim=range(psel), 
      col=col[3], lty=lty[3])
-lines(plot.data[[6]], col=col[4], lty=lty[6])
-lines(plot.data[[9]], col=col[5], lty=lty[9])
-lines(plot.data[[12]], col=col[6], lty=lty[12])
-lines(plot.data[[15]], col=col[7], lty=lty[15])
-lines(plot.data[[18]], col=col[8], lty=lty[18])
-lines(plot.data[[21]], col=col[9], lty=lty[21])
+lines(plot.data[[6]], col=col[4], lty=lty[4])
+lines(plot.data[[9]], col=col[5], lty=lty[5])
+lines(plot.data[[12]], col=col[6], lty=lty[6])
+lines(plot.data[[15]], col=col[7], lty=lty[7])
+lines(plot.data[[18]], col=col[8], lty=lty[8])
+lines(plot.data[[21]], col=col[9], lty=lty[9])
 abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
 legend("bottomright", legend=labels, col=col, 
@@ -1252,24 +1252,24 @@ legend("bottomright", legend=labels, col=col,
 plot(plot.data[[4]], type="l", xlab="Number of selected features", 
      ylab="AUC", main="(b)", ylim=range(auc), xlim=range(psel), 
      col=col[3], lty=lty[3])
-lines(plot.data[[7]], col=col[4], lty=lty[6])
-lines(plot.data[[10]], col=col[5], lty=lty[9])
-lines(plot.data[[13]], col=col[6], lty=lty[12])
-lines(plot.data[[16]], col=col[7], lty=lty[15])
-lines(plot.data[[19]], col=col[8], lty=lty[18])
-lines(plot.data[[22]], col=col[9], lty=lty[21])
+lines(plot.data[[7]], col=col[4], lty=lty[4])
+lines(plot.data[[10]], col=col[5], lty=lty[5])
+lines(plot.data[[13]], col=col[6], lty=lty[6])
+lines(plot.data[[16]], col=col[7], lty=lty[7])
+lines(plot.data[[19]], col=col[8], lty=lty[8])
+lines(plot.data[[22]], col=col[9], lty=lty[9])
 abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
 
 plot(plot.data[[5]], type="l", xlab="Number of selected features", ylab="AUC", 
      main="(c)", ylim=range(auc), xlim=range(psel), col=col[3], 
      lty=lty[3])
-lines(plot.data[[8]], col=col[4], lty=lty[6])
-lines(plot.data[[11]], col=col[5], lty=lty[9])
-lines(plot.data[[14]], col=col[6], lty=lty[12])
-lines(plot.data[[17]], col=col[7], lty=lty[15])
-lines(plot.data[[20]], col=col[8], lty=lty[18])
-lines(plot.data[[23]], col=col[9], lty=lty[21])
+lines(plot.data[[8]], col=col[4], lty=lty[4])
+lines(plot.data[[11]], col=col[5], lty=lty[5])
+lines(plot.data[[14]], col=col[6], lty=lty[6])
+lines(plot.data[[17]], col=col[7], lty=lty[7])
+lines(plot.data[[20]], col=col[8], lty=lty[8])
+lines(plot.data[[23]], col=col[9], lty=lty[9])
 abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
 par(opar)
@@ -1287,10 +1287,10 @@ methods <- c("ridge", "grridge", paste0("gren", c(1:3)), paste0("enet", c(1:3)),
              paste0("sgl", c(1:3)), paste0("cmcp", c(1:3)), 
              paste0("gel", c(1:3)), paste0("ocmcp", c(1:3)), 
              paste0("ogel", c(1:3)))
-col <- bpy.colors(9, cutoff.tail=0.1)
-lty <- 1:length(methods)
 labels <- list("ridge", "GRridge", "gren", "enet", "SGL", "cMCP", 
                "gel", "OcMCP", "Ogel")
+col <- bpy.colors(length(labels), cutoff.tail=0.1)
+lty <- 1:length(labels)
 
 plot.data <- lapply(methods, function(m) {
   aggregate(briers[, substr(colnames(briers), 1, nchar(m))==m], 
@@ -1304,12 +1304,12 @@ layout(matrix(c(rep(c(1, 1, 2, 2), 2), rep(c(0, 3, 3, 0), 2)),
 plot(plot.data[[3]], type="l", xlab="Number of selected features", 
      ylab="Brier skill score", main="(a)", ylim=range(briers), xlim=range(psel), 
      col=col[3], lty=lty[3])
-lines(plot.data[[6]], col=col[4], lty=lty[6])
-lines(plot.data[[9]], col=col[5], lty=lty[9])
-lines(plot.data[[12]], col=col[6], lty=lty[12])
-lines(plot.data[[15]], col=col[7], lty=lty[15])
-lines(plot.data[[18]], col=col[8], lty=lty[18])
-lines(plot.data[[21]], col=col[9], lty=lty[21])
+lines(plot.data[[6]], col=col[4], lty=lty[4])
+lines(plot.data[[9]], col=col[5], lty=lty[5])
+lines(plot.data[[12]], col=col[6], lty=lty[6])
+lines(plot.data[[15]], col=col[7], lty=lty[7])
+lines(plot.data[[18]], col=col[8], lty=lty[8])
+lines(plot.data[[21]], col=col[9], lty=lty[9])
 abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
 legend("bottomright", legend=labels, col=col, 
@@ -1318,24 +1318,24 @@ legend("bottomright", legend=labels, col=col,
 plot(plot.data[[4]], type="l", xlab="Number of selected features", 
      ylab="Brier skill score", main="(b)", ylim=range(briers), xlim=range(psel), 
      col=col[3], lty=lty[3])
-lines(plot.data[[7]], col=col[4], lty=lty[6])
-lines(plot.data[[10]], col=col[5], lty=lty[9])
-lines(plot.data[[13]], col=col[6], lty=lty[12])
-lines(plot.data[[16]], col=col[7], lty=lty[15])
-lines(plot.data[[19]], col=col[8], lty=lty[18])
-lines(plot.data[[22]], col=col[9], lty=lty[21])
+lines(plot.data[[7]], col=col[4], lty=lty[4])
+lines(plot.data[[10]], col=col[5], lty=lty[5])
+lines(plot.data[[13]], col=col[6], lty=lty[6])
+lines(plot.data[[16]], col=col[7], lty=lty[7])
+lines(plot.data[[19]], col=col[8], lty=lty[8])
+lines(plot.data[[22]], col=col[9], lty=lty[9])
 abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
 
 plot(plot.data[[5]], type="l", xlab="Number of selected features", 
      ylab="Brier skill score", main="(c)", ylim=range(briers), xlim=range(psel), 
      col=col[3], lty=lty[3])
-lines(plot.data[[8]], col=col[4], lty=lty[6])
-lines(plot.data[[11]], col=col[5], lty=lty[9])
-lines(plot.data[[14]], col=col[6], lty=lty[12])
-lines(plot.data[[17]], col=col[7], lty=lty[15])
-lines(plot.data[[20]], col=col[8], lty=lty[18])
-lines(plot.data[[23]], col=col[9], lty=lty[21])
+lines(plot.data[[8]], col=col[4], lty=lty[4])
+lines(plot.data[[11]], col=col[5], lty=lty[5])
+lines(plot.data[[14]], col=col[6], lty=lty[6])
+lines(plot.data[[17]], col=col[7], lty=lty[7])
+lines(plot.data[[20]], col=col[8], lty=lty[8])
+lines(plot.data[[23]], col=col[9], lty=lty[9])
 abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
 par(opar)
