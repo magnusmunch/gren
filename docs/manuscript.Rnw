@@ -93,8 +93,8 @@ xr-hyper,hyperref,enumerate}
 \renewcommand{\]}{\right]}
 \renewcommand*{\thefootnote}{\fnsymbol{footnote}}
 \newcommand{\pkg}[1]{{\fontseries{b}\selectfont #1}} 
-\renewcommand{\algorithmicrequire}{\textbf{Input:}}
-\renewcommand{\algorithmicensure}{\textbf{Output:}}
+\renewcommand{\algorithmicrequire}{\textbf{input:}}
+\renewcommand{\algorithmicensure}{\textbf{output:}}
 
 % settings
 \graphicspath{{../figs/}}
@@ -118,22 +118,21 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	3. MRC Biostatistics Unit, Cambridge University, Cambridge, United Kingdom
 
 	\begin{abstract}
-		{In high-dimensional data settings, additional information on the features 
+		{In high-dimensional data settings, additional information on the features
 		is often available. Examples of such external information in omics research
-		are: (a) $p$-values from a previous study, (b) a summary of prior 
-		information, and (c) omics annotation. The inclusion of this information in
+		are: (a) $p$-values from a previous study, and (b) omics annotation. The
+		inclusion of this information in
 		the analysis may enhance classification performance and feature selection,
-		but is not straightforward in the standard regression setting. As a solution
-		to this problem, we propose a group-regularized (logistic) elastic net
+		but is not straightforward. We propose a
+		group-regularized (logistic) elastic net
 		regression method, where each penalty parameter corresponds to a group of
-		features based on the external information. The method, termed 
+		features based on the external information. The method, termed
 		\texttt{gren}, makes use of the Bayesian formulation of logistic elastic net
-		regression to estimate both the model and penalty parameters in an 
+		regression to estimate both the model and penalty parameters in an
 		approximate empirical-variational Bayes framework. Simulations and
-		applications in two different cancer studies show
-		that, if the partitioning of the features is informative, classification 
-		performance and feature
-		selection are indeed enhanced.}
+		applications to three cancer genomics studies and one Alzheimer metabolomics
+		study show that, if the partitioning of the features is informative, 
+		classification performance and feature selection are indeed enhanced.}
 	\end{abstract}
 
 	\noindent\textbf{Keywords}: Empirical Bayes; High-dimensional data; 
@@ -143,100 +142,103 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	\url{https://CRAN.R-project.org/package=gren}
 
 	\section{Introduction}\label{sec:introduction}
-	Prediction from high-dimensional data is a challenge common to many fields of
-	research. Examples of such high-dimensional prediction problems arise in
-	computer vision, stock market prediction and disease diagnosis from omics 
-	data. In this paper, we specifically focus on the latter setting. High
-	dimensionality of data introduces several issues in the estimation of 
-	prediction models, especially: (a) unidentifiable models, (b) highly 
-	correlated predictor variables and (c) non-trivial variable selection.
+	In cancer genomics studies one is often faced with relatively small sample 
+	sizes as compared to the number of features. Data pooling may alleviate the 
+	curse of dimensionality, but does not apply to research settings with a unique
+	set up, and cannot integrate other sources of information. However, external
+	information on the features (e.g. genes) is often ubiquitously available in 
+	the public domain. We aim to use this information to improve sparse 
+	prediction. The information may come in as feature groups: e.g. the chromosome
+	on which a gene is located (24 groups), relation to a CpG island for 
+	methylation probes (around 6 groups), or membership of a known gene signature 
+	(2 groups). Alternatively, it may be continuous, such as $p$-values from a an
+	external study. We introduce a method that allows to systematically use
+	multiple sources of such external information to improve high-dimensional
+	prediction.
+  
+  Our methodology is motivated by four recent, small $n$ clinical omics 
+  studies, discussed in detail in Section 
+  \ref{sec:simandapp}. The studies concern 
+  treatment response prediction for colorectal cancer patients, based on 
+  sequenced microRNAs ($n$ = 88); Lymph node metastasis prediction for oral 
+  cancer, using RNAseq data ($n$=133); Cervival cancer diagnostics based on 
+  microRNAs ($n$=56) and Alzheimer diagnosis based on metabolomics ($n$=87).
+  Several
+  sources of information on the features were used including: external 
+  $p$-values, correlation with DNA markers, the conservation status of microRNAs 
+  and node degree in an estimated molecular network.
 
-	Attempts to tackle one or more of these issues have lead to the development of
-	many prediction methods \cite[]{fan_selective_2010}. Here we will focus on the
-	penalization approach. A well-known and popular penalization method is elastic
-	net regression \cite[]{zou_regularization_2005}, with its special cases ridge
-	regression \cite[]{hoerl_ridge_1970} and lasso regression 
-	\cite[]{tibshirani_regression_1996}. The elastic net approach takes issues 
-	(a)-(c) into account and has yielded many successful extensions. Recent work 
-	on elastic net regression (and its special cases) has focussed on increasing
-	prediction accuracy by the inclusion of prior knowledge on the variables
-	\cite[]{lee_variable_2017,van_de_wiel_better_2016,tai_incorporating_2007}.
+  As basic prediction model we use the (logistic) elastic net 
+  regression \cite[]{zou_regularization_2005}, which combines the 
+  desirable properties of its special cases ridge
+  \cite[]{hoerl_ridge_1970} and lasso regression 
+  \cite[]{tibshirani_regression_1996}: de-correlation and feature selection. 
+  It has been demonstrated that the prediction accuracy of penalised regression
+  can improve by the inclusion of prior knowledge on the variables. Available
+  methods, however, either handle one source of external information only
+  \cite[]{lee_variable_2017,tai_incorporating_2007}, or do not aim for sparsity
+  \cite[]{van_de_wiel_better_2016}.
 
-	In omics research, sources of such prior knowledge on the variables are often
-	available. The information can, for example, come in the form of (a) results 
-	on the same molecular features obtained in a previous study (e.g. $p$-values),
-	(b) information from a publicly available database that summarizes the prior
-	information on the molecular features involved (e.g., the Cancer Gene Census
-	\cite[]{futreal_census_2004}), and (c) omics annotation (e.g. a gene's 
-	chromosome location). Although this information can rarely be directly
-	included in the statistical analysis, it may still be useful and informative
-	for the study at hand.
+  Like others, we assume the external information to be available as feature 
+  groups; for continuous information like $p$-values we propose a simple, 
+  data-based discretisation (see Section \ref{sec:external}).  At first sight, 
+  such \textit{a priori} grouping of the features suggests the group lasso 
+  \cite[]{meier_group_2008} 
+  or one of its extensions such as the group smoothly clipped absolute 
+  deviations (\texttt{grSCAD}) and the group minimax concave penalty 
+  (\texttt{grMCP}) 
+  \cite[]{huang_selective_2012}. These methods penalise and select 
+  features at the group level. This comes with two limitations: the group lasso 
+  (a) selects entire groups instead of single features and (b) does not
+  penalise adaptively: all groups are penalised
+  equally. Extensions such as the sparse group lasso 
+  \cite[]{simon_sparse-group_2013} partly deal with (a), but do not address (b).
+  Our way to deal with (b) is through differential penalization. That is, each
+  group of features receives its own penalty parameter: the group-regularized 
+  elastic net (\texttt{gren}). An apparent issue with differential 
+  penalization 
+  is the estimation of the penalty parameters. Naive estimation may be done by
+  cross-validation (CV). However, CV requires re-estimation of the 
+  model over a grid, which grows
+  exponentially with the number of penalty parameters. Consequently, it quickly
+  becomes computationally infeasible. We therefore propose an efficient 
+  alternative: empirical-variational Bayes estimation of the penalty parameters,
+  which corresponds to hyperparameter estimation in the Bayesian prior 
+  framework. Because of the ubiquity of binary outcome data in clinical omics
+  research, we focus on the logistic elastic net.
 
-	Two such studies are introduced in Sections \ref{sec:colorectal} and
-	\ref{sec:oral}. The first study is concerned with treatment 
-	response prediction for colorectal cancer patients, using sequenced
-	microRNAs. In the second study we predict lymph node metastases in oral cancer
-	patients, using RNAseq data. In both settings additional information on the 
-	features is available in the form of a partitioning. Furthermore, in both
-	studies data is sparse, so any extra included information may help to boost
-	predictive performance. Inclusion of such extra information in 
-	the analysis is not straightforward with standard methods. 
-	
-	At first sight, such an \textit{a priori} grouping of the features suggests 
-	the group lasso
-	\cite[]{meier_group_2008, yuan_model_2006}, because
-	the group lasso penalises and selects features at the group level. 
-	There are two limitations to this approach: the group lasso (a) selects entire
-	groups instead of single 
-	features and (b) does not penalise adaptively: all groups are penalised 
-	equally. Extensions such as the sparse group lasso 
-	\cite[]{simon_sparse-group_2013} deal with (a), but do not address (b).
-
-	A natural way to deal with (b) is through differential penalization: that is,
-	each group of variables receives its own penalty parameter. An apparent issue
-	with differential penalization is the estimation of the penalty 
-	parameters. Naive estimation may be done by cross-validation. However, 
-	cross-validation requires re-estimation of the model over a grid of penalty
-	parameters. The size of this grid increases exponentially with the number of
-	penalty parameters. Consequently, it quickly becomes computationally 
-	infeasible. We therefore propose an efficient alternative: empirical Bayes
-	estimation of the penalty parameters, which corresponds to hyperparameter
-	estimation in the Bayesian prior framework. Because of the ubiquity of binary
-	outcome data in omics research, we focus on the logistic elastic net. 
-
-	In line with the above, our proposed method is (a) objective: the 
-	hyper-parameters are estimated from the data and not chosen on subjective 
-	grounds, (b) adaptive: prior information is automatically and subjectively 
-	weighed with respect to its informativeness, (c) fast compared to full 
-	Bayesian analysis or cross-validation, and (d) requires minimal input by the 
-	user: only the data and grouping of the features is required. We emphasize 
-	that our method is different from recent developments in grouped penalized 
-	regression such as \cite{dondelinger_joint_2018}, where instead of the 
-	features, the observations are partitioned.
-	
-	Recently, \cite{zhang_novel_2019} introduced Variational Bayes Variable
-	Selection (VBVS), a method similar to ours in
-	spirit. Nevertheless, one clear advantage of our method over VBVS is the
-	possibility of adaptive inclusion of external information on the features. 
-	Bayesian versions of support vector 
-	machines have been used in classification problems as well 
-	\cite[]{chakraborty_bayesian_2011}, but these methods lack 
-	adaptive inclusion of external information on the features. 
-
-	The rest of the paper is structured as follows. We introduce the Bayesian 
-	logistic generalised elastic net model in Section
-	\ref{sec:model}. In Section \ref{sec:estimation} we derive a variational
-	approximation to this model and use this novel approximation in the empirical
-	Bayes estimation of multiple, group-specific penalty parameters. In Section
-	\ref{sec:simulations} we compare the method in a simulation study. In Sections
-	\ref{sec:colorectal} and \ref{sec:oral}, we demonstrate the approach in 
-	two data sets. In Section \ref{sec:discussion} 
-	we conclude by both discussing some differences and
-	parallels between the proposed method, termed \texttt{gren}, and other methods
-	in the literature.
+  Recently, \cite{zhang_novel_2019} introduced a method similar to ours as
+  it also applies variational Bayes (VB) for feature selection in logistic
+  regression. An advantage of our method, however, is the adaptive inclusion of
+  external information on the features to aid in prediction and feature 
+  selection, as \cite{zhang_novel_2019} do not estimate feature- or 
+  group-specific penalty 
+  weights. Bayesian versions of support vector machines have been used in
+  classification problems as well \cite[]{chakraborty_bayesian_2011},
+  but these methods also lack adaptive inclusion of external information on the
+  features. In line with the
+  above, our proposed method is (a) data-driven: the
+  hyperparameters are estimated from the data, (b) adaptive: prior information
+  is automatically
+  weighted with respect to its informativeness, (c) fast compared to full 
+  Bayesian analysis or CV, and (d) easy to use: only the data and
+  grouping of the features are required as input.
+  
+  The paper is structured as follows. We introduce the model in Section 
+  \ref{sec:model}. In Section 
+  \ref{sec:external} we shortly discuss possible sources of co-data.
+  In Section \ref{sec:estimation} we derive a VB approximation to the
+  model introduced in Section \ref{sec:model}
+  and use this novel approximation in the empirical Bayes (EB) estimation of 
+  multiple, group-specific penalty parameters. In Section \ref{sec:simandapp}
+  we compare the method in a simulation study, demonstrate the benefit of the 
+  approach for two 
+  data sets, and summarise results for two additional data sets. 
+  We conclude with a 
+  discussion.
 
 	\section{Model}\label{sec:model}
-	In logistic regression the outcome variables are assumed to be binary or sums
+	The outcome variables are assumed to be binary or sums
 	of $m_i$ disjoint binary Bernoulli trials ($y_i = \sum_{l=1}^{m_i} k_l, k_l 
 	\in \{0,1\}$ for $i=1, \dots, n$). The binomial logistic model relates the
 	responses to the $p$-dimensional covariate vectors $\x_i = \begin{bmatrix}
@@ -244,59 +246,51 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	\( m_i, \expit ( \x_i\tr \bbeta ) \)$, where $\mathcal{B} (m,\upsilon)$ is 
 	the binomial distribution with number of trials $m$ and probability 
 	$\upsilon$, and $\expit \( \x_i\tr \bbeta \) = \exp(\x\tr_i \bbeta)/[1 + 
-	\exp(\x\tr_i \bbeta)]$. Note that if $m_i=1$ for $i=1, \dots, n$, the model
-	reduces to a binary logistic regression model. Throughout the rest of the 
+	\exp(\x\tr_i \bbeta)]$. Throughout the rest of the 
 	paper we assume that the model matrix $\X = \begin{bmatrix} \x_1 & \cdots &
 	\x_n \end{bmatrix}\tr$ is standardized such that $\frac{1}{n}\sum_{i=1}^n
 	x_{ij}=0$ and $\frac{1}{n}\sum_{i=1}^n x_{ij}^2=1$ for $j=1, \dots, p$.
 
 	Assume we have a partitioning of the features in $G$ groups, such that each
 	feature belongs to one group. Let $\G(g)$ be the feature index set of group 
-	$g$ for $g=1, \dots, G$ and let $w_g \in \mathbb{R}_{>0}$ denote a 
-	group-specific weight. In a generalised elastic net regression, the penalised 
-	likelihood is maximised to yield parameter estimates:
-	\begin{align}
-	  \hat{\bbeta} & := \underset{\bbeta}{\argmax} \log \L(\y ; \bbeta) - 
-	  \frac{\lambda_1}{2} \sum_{g=1}^G \sum_{j \in \G(g)} |w_g \cdot \beta_j| - 
-	  \frac{\lambda_2}{2} \sum_{g=1}^G \sum_{j \in \G(g)}\( w_g \cdot \beta_j\)^2 
-	  \label{eq:weightedlik}\\
-	  & = \underset{\bbeta}{\argmax} \log \L(\y ; \bbeta) -  \frac{\lambda_1}{2} 
+	$g$ for $g=1, \dots, G$ and let $\lambda'_g \in \mathbb{R}_{>0}$ denote a 
+	group-specific penalty weight. In a generalised elastic net regression, the
+	penalised likelihood is maximised to yield parameter estimates:
+	\begin{equation}\label{eq:weightedlik}
+	  \hat{\bbeta} := \underset{\bbeta}{\argmax} \log \L(\y ; \bbeta) -  
+	  \frac{\lambda_1}{2} 
 	  \sum_{g=1}^G \sqrt{\lambda'_g} \sum_{j \in \G(g)} | \beta_j| - 
 	  \frac{\lambda_2}{2} \sum_{g=1}^G \lambda'_g \sum_{j \in \G(g)} \beta_j^2, 
-	  \nonumber
-	\end{align}
+	\end{equation}
 	where $\L(\y ; \bbeta)$ denotes the likelihood function of the 
 	observed data $\y = \begin{bmatrix} 
 	y_1 & \cdots & y_n \end{bmatrix} \tr$, and 
 	$\lambda_1, \lambda_2 \in \mathbb{R}_{>0}$ are the `global' penalty 
-	parameters. We wrote $w^2_g = \lambda'_g$ to emphasise that these 
-	group-specific weights may be interpreted as penalty multipliers. Note that
+	parameters. From (\ref{eq:weightedlik}) we see that the
+	$\lambda'_g$'s may be interpreted as penalty multipliers. Note that
 	the regular elastic net is recovered by setting $\forall g: \lambda'_g=1$.
 	
-  Throughout the following we assume that the geometric mean of the multipliers, 
-	weighted by their 
+  Throughout the following we assume that the geometric mean of the multipliers,
+  weighted by their 
 	respective group sizes, is one, such that the average shrinkage of the model
 	parameters is determined by $\lambda_1$ and $\lambda_2$. That is,
 	we calibrate the $\lambda'_g$ such that $\prod_{g=1}^G 
-	(\lambda'_g)^{|\G(g)|}=1$. The multiplier appears in square root form in the
-	$L_1$-norm term to ensure that penalisation on the parameter level is the same
-	for the $L_1$ and $L_2$-norm terms, as can be seen from the parametrisation in
-	(\ref{eq:weightedlik}). The elastic net combines $L_1$ and $L_2$-norm 
-	penalisation such that the model parameters are shrunken towards zero. 
-	The $L_1$-norm may set some of the estimates exactly to zero, thus 
-	automatically selecting features. The $L_2$-norm ensures that correlated 
-	features behave similarly, as one would generally require. 
+	(\lambda'_g)^{|\G(g)|}=1$. The multipliers appear in square root form in the
+	$L_1$-norm term to ensure that penalisation on the parameter level scales
+	with the norm. The $L_1$-norm sets some of the estimates exactly to zero, thus 
+	automatically selecting features. The $L_2$-norm ensures collinearity is 
+	well-handled.
 	
 	The maximiser of the penalised likelihood in the elastic net, corresponds 
 	to the posterior mode of a 
-	Bayesian elastic model \cite[]{li_bayesian_2010,zou_regularization_2005}.
+	Bayesian elastic model \cite[]{zou_regularization_2005}.
 	\cite{li_bayesian_2010} show that the elastic net prior 
 	(see Supplementary Material (SM) Section \ref{sm-sec:enetprior} for 
-	details on this prior) may be written as
+	details) may be written as
 	a computationally more convenient scale mixture of normals, with mixing 
 	parameter $\btau = \begin{bmatrix} \tau_1 & \cdots & \tau_p \end{bmatrix} 
 	\tr$. Using this result, we write the generalised elastic net model in its 
-	Bayesian form as:
+	Bayesian form:
 	\begin{subequations}\label{eq:enmodel2}
 		\begin{align}
 		\y| \bbeta & \sim \prod_{i=1}^n \mathcal{B} \left( m_i, \expit ( \x\tr_i 
@@ -313,30 +307,72 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	\lambda_1 & \lambda_2 & \lambda'_1 & \cdots & \lambda'_G \end{bmatrix} \tr$ 
 	play the role of the hyperparameters in a Bayesian hierarchical model.
 
+  \section{External information sources}\label{sec:external}
+  We describe possible sources of external information in omics
+  studies that may provide the feature groups $\G(g)$. Firstly, there are 
+  biologically motivated partitioning of features that are
+  easily retrieved from online repositories. These are already 
+  discretised and may be included in the analysis as-is. Examples are:
+  (i) pathway memberships of genes,
+  (ii) classes of metabolites (see SM Section \ref{sm-sec:alzheimer}),
+  and (iii) conservation status of microRNAs (see SM Section 
+  \ref{sm-sec:cervical}).
+  A second type of external information comes in the form of continuous data.
+  Examples are:
+  (iv) $p$-values or false discovery rates (FDRs) from a 
+  different, related study (see Section \ref{sec:colorectal}), and
+  (v) quality scores of the features (see SM Section \ref{sm-sec:alzheimer}), 
+  and (vii) the node degrees of a network estimated on the feature 
+  data (see SM Section \ref{sm-sec:alzheimer}).
+  
+  \texttt{gren} requires discretised external information, so in the case of 
+  continuous external data, some form of discretisation is required. In some
+  cases discretisation comes naturally. For example, with external data 
+  type (iv) one might consider the `standard' cut-offs 0.05, 0.01,
+  and 0.001. If the choice of cut-offs is not straightforward, we propose a 
+  a data-driven heuristic, which renders a relatively finer discretisation grid 
+  for data dense than for data sparse domains. Then,
+  adaptation to external information is more pronounced in high density areas.
+  We propose to fit a piecewise linear spline to the empirical cumulative
+  distribution function of the external data and automatically select knot
+  locations as cut-offs \cite[]{spiriti_knot_2013}. They also provide a 
+  data-driven method to choose the
+  number of knots, for a given maximum number of knots. The maximum number
+  of knots should be chosen such that each group contains enough features for 
+  stable estimation of the penalty weights. As a rule of thumb, we advise
+  at least 20 features per group.
+  
+  In many practical settings, the external information will be incomplete. 
+  We suggest to use a separate
+  group of features with missing external information. We prefer this solution
+  to setting the penalty multipliers for this group to one, because the absence 
+  of external information might be informative from the perspective of 
+  prediction.
+
 	\section{Estimation}\label{sec:estimation}
 	\subsection{Empirical Bayes}\label{sec:empiricalbayes}
-	If the penalty parameters are known, estimation of the frequentist elastic net
-	model parameters or finding the posterior of the generalized elastic net model
+	If the penalty parameters are known, estimation of the elastic net
+	model parameters
 	is feasible with small adjustments of the available algorithms 
-	\cite[]{friedman_regularization_2010,zou_regularization_2005} or MCMC samplers
-	\cite[]{li_bayesian_2010}. Determining these penalty parameters, however, is 
+	\cite[]{friedman_regularization_2010,zou_regularization_2005}. Determining 
+	these penalty parameters, however, is 
 	not straightforward.
 
 	In the frequentist elastic net without group-wise penalisation, two main 
 	strategies are used: (i) estimate both $\lambda_1$ and $\lambda_2$ by 
-	cross-validation over a two-dimensional grid of values or (ii) re-parametrise 
+	CV over a two-dimensional grid of values \cite[]{waldron_optimized_2011} or 
+	(ii) re-parametrise 
 	the problem in terms of penalty parameters $\alpha= \frac{\lambda_1}{2 
 	\lambda_2 + \lambda_1}$ and $\lambda = 2 \lambda_2 + \lambda_1$, fix the 
 	proportion of $L_1$-norm penalty $\alpha$ and cross-validate the global 
-	penalty parameter $\lambda$. Strategy (i) is advised by 
-	\cite{waldron_optimized_2011}, while (ii) is proposed by 
-	\cite{friedman_regularization_2010}. In the generalised elastic net setting, 
+	penalty parameter $\lambda$ \cite[]{friedman_regularization_2010}. In the
+	generalised elastic net setting, 
 	strategies (i) and (ii) imply $2 + G$ and $1 + G$ penalty parameters, 
-	respectively. $K$-fold cross validation over $D$ values then results in $K 
+	respectively. $K$-fold CV over $D$ values then results in $K 
 	\cdot D^{2 + G}$ and $K \cdot D^{1 + G}$ models to estimate. Typically $K$ is 
 	set to 5, 10, or to the number of samples $n$, while $D$ is in the order of 
 	$100$, so that even for small $G$, the number of models to estimate is 
-	prohibitively large.
+	very large.
 
 	In the Bayesian framework, estimation of penalty parameters may be avoided by 
 	the addition of a hyperprior to the model hierarchy. The hyperprior takes the 
@@ -344,38 +380,32 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	This approach introduces two issues. Firstly, the choice of hyperprior is not 
 	straightforward. Many authors suggest a hyperprior from the gamma family of 
 	distributions 
-	\cite[]{alhamzawi_bayesian_2018,nengjun_yi_bayesian_2013,
+	\cite[]{alhamzawi_bayesian_2018,
 	kyung_penalized_2010}, 
-	but the precise parametrisation of this gamma prior is not so obvious. A 
-	second issue is the loss of correspondence between the  Bayesian and 
-	frequentist elastic net. If the ultimate goal is feature selection, this 
+	but the precise parametrisation of this gamma prior is not so obvious. 
+	Secondly, the correspondence between the  Bayesian and 
+	frequentist elastic net is lost. This 
 	correspondence may be exploited through the automatic feature selection 
 	property of the frequentist elastic net. Endowing the penalty parameters with 
 	a hyperprior obstructs their point estimation and, consequently, impedes 
 	automatic feature selection. Therefore, to circumvent the problem of 
 	hyperprior choice and allow for feature selection by the frequentist elastic 
-	net, we propose to estimate the penalty parameters by empirical Bayes.
+	net, we propose to estimate the penalty parameters by EB.
 
-	Many forms of empirical Bayes exist, the most formal one being maximisation of
+	The most formal form of EB is maximisation of
 	the marginal likelihood with respect to the hyperparameters. The resulting 
 	hyperparameter estimates are then plugged into the prior. The marginal 
 	likelihood is often introduced as a measure of model evidence given the 
 	observed data and is computed by integrating the product of likelihood and 
 	prior with respect to the model parameters. In the case of the elastic net 
-	introduced in (\ref{eq:enmodel2}) this results in the following marginal 
-	empirical Bayes posterior for $\bbeta$:
-	\begin{align}
-	  p_{\hat{\blambda}}(\bbeta | \y) & =
-	  \frac{\int_{\btau} \L_{\hat{\blambda}}(\y, 
-	  \bbeta, \btau) \, d\btau}{p_{\hat{\blambda}}(\y)} = 
-	  \frac{\int_{\btau} \L (\y ; \bbeta) 
-	  \pi_{\hat{\blambda}}(\bbeta | \btau) \pi_{\hat{\blambda}}(\btau) \,
-	  d\btau}{p_{\hat{\blambda}}(\y)} \nonumber \\
-	  \hat{\blambda} & := 
+	introduced in (\ref{eq:enmodel2}) EB comes down to finding:
+	\begin{equation}\label{eq:mmlestimate}
+	  \hat{\blambda} := 
 	  \underset{\blambda}{\argmax} p_{\blambda}(\y) = 
 	  \underset{\blambda}{\argmax} \int_{\bbeta} \int_{\btau} 
-	  \L_{\blambda}(\y, \bbeta, \btau) \, d\bbeta d\btau. \label{eq:mmlestimate}
-	\end{align}
+	  \L (\y ; \bbeta) \pi_{\blambda}(\bbeta | \btau) \pi_{\blambda}(\btau) \, 
+	  d\bbeta d\btau. 
+	\end{equation}
 	The integrals in (\ref{eq:mmlestimate}) are intractable in the case of the 
 	elastic net. In the omics setting the integrals are also high-dimensional, in 
 	which case numerical and Monte Carlo approximation methods become tedious and 
@@ -386,7 +416,8 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	maximises the expected joint log likelihood, such that the sequence:
 	\begin{equation}\label{eq:ebEM}
 	  \blambda^{(k + 1)} = \underset{\blambda}{\argmax} \E_{\bbeta, \btau | \y} \[ 
-	  \log \L_{\blambda}(\y, \bbeta, \btau) | \blambda^{(k)} \]
+	  \log \[ \L (\y ; \bbeta) \pi_{\blambda}(\bbeta | \btau) 
+	  \pi_{\blambda}(\btau) \] | \blambda^{(k)} \]
 	\end{equation}
 	converges to a local maximum of the marginal likelihood. The difficulty herein
 	is in the calculation of the expected joint log likelihood. 
@@ -398,30 +429,29 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	just need a limited, pre-specified number of MCMC chains. However, this still
 	requires several converged chains, so is not feasible in many high-dimensional
 	omics settings. We propose to tackle this problem by approximating the
-	expectation in (\ref{eq:ebEM}) using variational Bayes.
+	expectation in (\ref{eq:ebEM}) using VB.
 
 	\subsection{Variational Bayes}\label{sec:variationalbayes}
 	Variational Bayes is a widely used method to approximate Bayesian posteriors. 
 	It has successfully been applied in a wide range of applications, including 
 	genetic association studies \cite[]{carbonetto_scalable_2012} and gene network
-	reconstruction \cite[]{leday_gene_2017}. In variational Bayes, the posterior 
+	reconstruction \cite[]{leday_gene_2017}. In VB, the posterior 
 	is approximated by a tractable form and estimated by optimizing a lower bound 
-	on the marginal likelihood of this model (see Section 
-	\ref{sm-sec:objectivefunction} of the SM for the 
+	on the marginal likelihood of this model (see SM Section 
+	\ref{sm-sec:objectivefunction} for the 
 	lower bound of the proposed model). For an extensive introduction and concise 
-	review, see \cite{beal_variational_2003} and \cite{blei_variational_2017}, 
-	respectively.
+	review, see \cite{beal_variational_2003} and \cite{blei_variational_2017}.
 
-	To simplify the computations of our variational approximation, we follow
+	To simplify the computations of our VB approximation, we follow
 	\cite{polson_bayesian_2013} and introduce latent variables $\omega_i$, for 
 	$i=1, \dots, n$. Conditional on $\bbeta$, the $\omega_i$ are independent of
-	the $y_i$ and P\'{o}lya-Gamma distributed (see Section 
-	\ref{sm-sec:polyagamma} of the SM for more 
+	$y_i$ and P\'{o}lya-Gamma distributed (see SM Section 
+	\ref{sm-sec:polyagamma} for more 
 	details). We augment Model (\ref{eq:enmodel2}) with:
 	\begin{equation}\label{eq:logmodel}
 	  \bomega | \bbeta \sim \prod_{i=1}^n \mathcal{PG}\(m_i, |\x_i \tr \bbeta| \).
 	\end{equation}
-	Our variational Bayes approximation to the posterior distribution of 
+	Our VB approximation to the posterior distribution of 
 	(\ref{eq:enmodel2}) and (\ref{eq:logmodel}) factorizes over blocks of 
 	parameters. We choose the blocks such that:
 	\begin{equation}\label{eq:varbayesapproximation}
@@ -430,13 +460,14 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	\end{equation}
 	Writing $\btheta = \begin{bmatrix} \btheta_1 & \btheta_2 & \btheta_3 
 	\end{bmatrix} = \begin{bmatrix} \bomega & \bbeta & \btau \end{bmatrix}$, 
-	calculus of variations gives the optimal distributions 
+	calculus of variations renders the optimal distributions 
 	$q^*_{\btheta_j} (\btheta_j) \propto \exp \{\E_{\btheta \backslash \btheta_j} 
 	[\log p (\btheta | \y)]\}$, where optimality is achieved in terms of the 
 	Kullback-Leibler divergence of the posterior to the approximate distribution 
-	\cite[]{neal_view_1998}. The approximation in (\ref{eq:varbayesapproximation})
+	\cite[]{beal_variational_2003}. The approximation in 
+	(\ref{eq:varbayesapproximation})
 	renders both the posterior parameter calculations and the expected joint log 
-	likelihood as introduced in (\ref{eq:ebEM}) tractable.
+	likelihood in (\ref{eq:ebEM}) tractable.
 
 	After a change of variables $\psi_j = \tau_j - 1$, we find the optimal 
 	distributions as:
@@ -450,52 +481,37 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	distribution (See SM Section \ref{sm-sec:variationaldistributions} 
 	for the derivations). The so-called variational
 	parameters in (\ref{eq:varbayesdistr}) contain cyclic dependencies, so we 
-	update them by:
-	\begin{subequations}\label{eq:VBupdateequations}
-		\begin{align}
-		  \bSigma^{(t + 1)} &= \( \X \tr \bOmega^{(t)} \X + \lambda_2 \bLambda' + 
-		  \frac{\lambda_1 \sqrt{\lambda_2}}{2} \bLambda' \Z^{(t)}\)^{-1}, \\ 
-		  & \text{with } \bOmega^{(t)} = \diag\[ \(\frac{m_i}{2 c_i^{(t)}}\) \tanh 
-		  \( \frac{c_i^{(t)}}{2} \)\] \text{ and } \Z^{(t)}=
-		  \diag\[(\chi_j^{(t)})^{-1/2}\], \nonumber \\
-		  \bmu^{(t + 1)} &= \bSigma^{(t + 1)} \X \tr (\y - \m/2), \\
-		  c_i^{(t + 1)} &= \sqrt{\x_i \tr \bSigma^{(t + 1)} \x_i + 
-		  (\x_i \tr \bmu^{(t + 1)})^2} \text{, for } i=1, \dots, n, \\
-		  \chi_j^{(t + 1)} &= \lambda'_{g(j)} \lambda_2 \[\bSigma^{(t + 1)}_{jj} + 
-		  (\bmu^{(t + 1)}_j)^2 \] \text{, for } j=1, \dots, p,
-		\end{align}
-	\end{subequations}
-	until convergence. Here, $\bLambda'$ is a diagonal matrix with entries 
-	$\lambda'_g$, each repeated $|\G(g)|$ times and $\m = \begin{bmatrix} m_1 & 
-	\cdots & m_n \end{bmatrix} \tr$. Furthermore, $\mathbf{A}_{jj}$ and 
-	$\mathbf{a}_j$ denote the $j$th diagonal element of a square matrix and $j$th
-	element of a column vector, respectively. Naive calculation of the variational
-	parameters is computationally expensive. In Section 
-	\ref{sm-sec:computationalcomplexity} of the SM we show that 
+	update them by (\ref{sm-eq:VBupdateequations}) in SM Section 
+	\ref{sm-sec:updatingequations} until convergence. 
+	Naive calculation of the variational
+	parameters is computationally expensive. In SM Section 
+	\ref{sm-sec:computationalcomplexity} we show that 
 	informed calculation results in a significant reduction of 
 	computational complexity.
 
 	\subsection{Empirical-variational Bayes}\label{sec:empvarbayes}
-	Variational Bayes was shown to underestimate the posterior variance of the 
+	VB was shown to underestimate the posterior variance of the 
 	parameters, both numerically and theoretically, in several settings 
-	\cite[]{rue_approximate_2009,consonni_mean-field_2007,bishop_pattern_2006,
+	\cite[]{rue_approximate_2009,
 	wang_inadequacy_2005}. This coincides with our experience that the global 
-	penalty parameters $\lambda_1$ and $\lambda_2$ tend to be overestimated. To 
-	prevent overestimation we use the parametrisation of the elastic net in 
-	\cite{friedman_regularization_2010} as introduced in Section 
+	penalty parameters $\lambda_1$ and $\lambda_2$ tend to be overestimated,
+	because they are inversely related to the posterior variances of the 
+	$\beta_j$. To 
+	prevent overestimation we use the parametrisation of
+	\cite{friedman_regularization_2010} as discussed in Section 
 	\ref{sec:empiricalbayes}: we fix $\alpha$ and estimate $\lambda$ by 
-	cross-validation of the regular elastic net model, such that the overall 
-	penalisation is determined by cross-validation of only $\lambda$. By combining
-	cross-validation of the global penalty parameter $\lambda$ with empirical 
-	Bayes estimation of the penalty multipliers $\blambda' = \begin{bmatrix} 
-	\lambda'_1 & \cdots & \lambda'_G \end{bmatrix} \tr$, the estimation is more 
-	robust to underestimation of the variational posterior variances. The 
-	remaining issue is the choice of $\alpha$. \cite{hastie_glmnet_2016} recommend
-	to either fix $\alpha$ \textit{a priori}, or compare the results for several 
+	CV of the regular elastic net model, such that the overall 
+	penalisation is determined by CV of only $\lambda$. By combining
+	CV of the global penalty parameter $\lambda$ with EB estimation 
+	of the penalty multipliers $\blambda' = \begin{bmatrix} 
+	\lambda'_1 & \cdots & \lambda'_G \end{bmatrix} \tr$, the estimation is 
+	robust to underestimation of the VB posterior variances. 
+	For $\alpha$, \cite{hastie_glmnet_2016} recommend
+	to either fix it \textit{a priori}, or compare results for several 
 	choices of $\alpha$. We use the latter.
 
 	To estimate the penalty multipliers, the intractable posterior expectation
-	in (\ref{eq:ebEM}) is approximated using the variational posterior:
+	in (\ref{eq:ebEM}) is approximated using the VB posterior:
 	\begin{equation}\label{eq:approximatedloglikelihood}
 	  \E_{Q} \[ \log \L_{\blambda'}(\y, \bomega, \bbeta, \btau) | 
 	  \blambda'^{(k)} \]
@@ -503,50 +519,61 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	  \lambda}{4} \sum_{g=1}^G \lambda'_g d^{(k)}_g + C,
 	\end{equation}
 	where $C$ is constant in $\blambda'$ (see SM Section 
-	\ref{sm-sec:expectedloglikelihood} for the full 
-	derivation). The $d_g^{(k)}$ terms are calculated as: $d^{(k)}_g = \sum_{j 
-	\in \mathcal{G} (g)} \[\bSigma^{(k)}_{jj} + (\bmu^{(k)}_j)^2\]\(1 + 
-	\alpha \lambda^{1.5} \sqrt{\frac{1 - \alpha}{8 \chi_j^{(k)}}}\)$. An estimate
-	of the new penalty multipliers is now given by:
-	\begin{subequations}\label{eq:mmlupdateequation}
-		\begin{align}
-		  \blambda'^{(k+1)} & = \underset{\blambda'}{\argmax} \frac{1}{2} 
-		  \sum_{g=1}^G |\G(g)| \log (\lambda'_g) - \frac{(1 - \alpha) \lambda}{4} 
-		  \sum_{g=1}^G \lambda'_g d^{(k)}_g \\
-		  & \text{subject to } \prod_{g=1}^G (\lambda'_g)^{|\G(g)|} = 1.
-		\end{align}
-	\end{subequations}
-	Although the solution to (\ref{eq:mmlupdateequation}) is not available in
+	\ref{sm-sec:updatingequations} for the full 
+	derivation and the $d^{(k)}_g$ terms). An estimate
+	of the new penalty multipliers is now given by 
+	(\ref{sm-eq:mmlupdateequation}) in SM Section \ref{sm-sec:updatingequations}. 
+	Although the solution to
+	(\ref{sm-eq:mmlupdateequation}) in the SM is not available in
 	closed form, this convex problem is easily solved by a numerical optimisation 
-	routine. The full procedure is summarized in Section 
-	\ref{sm-sec:fullestimationprocedure} of the SM.
+	routine. The full estimation procedure is summarised in Algorithm 
+	\ref{alg:summaryalg}.
+	\begin{algorithm}[h!]
+    \caption{Group-regularized empirical Bayes elastic net}
+    \label{alg:summaryalg}
+	  \begin{algorithmic}[h!]
+		  \Require $\X, \y, \G, \alpha, \epsilon_1, \epsilon_2$
+		  \Ensure $\lambda, \blambda', \bSigma, \bmu$
+		  \State{Estimate $\lambda$ by CV of the regular elastic net
+		  model}
+		  \While{$|\frac{\blambda'^{(k + 1)} - \blambda'^{(k)}}{\blambda'^{(k)}}| >
+		  \epsilon_1$} 
+		  \While{$\underset{ij}{\max} \, |\frac{\bSigma_{ij}^{(k+1)} - 
+		  \bSigma_{ij}^{(k)}}{\bSigma_{ij}^{(k)}}| > \epsilon_2$ or 
+		  $\underset{i}{\max} \, |\frac{\bmu_{i}^{(k+1)} - 
+		  \bmu_{i}^{(k)}}{\bmu_{i}^{(k)}}| > \epsilon_2$}
+		  \State{Update $\bSigma$, $\bmu$, $c_i$ for $i=1, \dots, n$ and $\chi_j$ 
+		  for $j=1, \dots, p$ using (\ref{sm-eq:VBupdateequations}) in the SM}
+		  \EndWhile 
+		  \State{Update $\blambda'$ by (\ref{sm-eq:mmlupdateequation}) in the SM}
+		  \EndWhile
+	  \end{algorithmic}
+  \end{algorithm}
 
-	\subsection{Feature selection}
-	Feature selection is often desirable in high-dimensional prediction problems 
-	and omics data problems are no exception. For example, biomarker selection 
-	may lead 
+	\subsection{Feature selection}\label{sec:featureselection}
+	Feature selection is often desirable in high-dimensional prediction problems. 
+	For example, biomarker selection may lead 
 	to a large reduction in costs by supporting targeted assays. Bayesian feature
 	selection is often done by inspection of posterior credible intervals. 
-	Similarly as in frequentist hypothesis testing, we may select a feature if 
-	zero is not in the credible interval. However, the Bayesian lasso's 
+	However, the Bayesian lasso's 
 	(a special case of the elastic net) credible intervals  are known to suffer 
-	from low frequentist coverage in sparse settings 
-	\cite[]{castillo_bayesian_2015}. We often assume sparsity of the features in 
-	omics research, so selection by credible intervals is generally inconsistent. 
+	from low frequentist coverage \cite[]{castillo_bayesian_2015}. 
 	We therefore propose to select features in the frequentist paradigm.
 
-	As shortly touched upon in Section \ref{sec:empiricalbayes}, frequentist 
+	Frequentist 
 	feature selection is trivial after estimation of the penalty multipliers. We 
-	simply plug the estimated penalty parameters into some frequentist elastic net
-	algorithm that allows for differential penalization. In our own package 
-	\texttt{gren}, we use the \texttt{R}-package \texttt{glmnet} 
-	\cite[]{friedman_regularization_2010}. In the frequentist elastic net, feature
-	selection is then done automatically. Furthermore, to select a specific number
-	of features, we simply adjust the global $\lambda$ until we select the desired
-	number of features.
+	therefore simply plug the estimated penalty parameters into some frequentist
+	elastic net
+	algorithm that allows for differential penalization. In our package 
+	\texttt{gren}, we involve the \texttt{R}-package \texttt{glmnet} 
+	\cite[]{friedman_regularization_2010}, which automatically selects features.
+	Furthermore, to select a specific number
+	of features, we simply adjust the global $\lambda$ to render the desired
+	number.
 
-	\section{Simulations}\label{sec:simulations}
-	To assess classification and variable selection performance we conducted a 
+  \section{Simulations and applications}\label{sec:simandapp}
+	\subsection{Simulations}\label{sec:simulations}
+	We conducted a 
 	simulation study in which we compared \texttt{gren} to the regular elastic 
 	net and ridge models, \texttt{GRridge} \cite[]{van_de_wiel_better_2016},     
 	composite mimimax concave penalty (\texttt{cMCP}) 
@@ -559,141 +586,81 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	However, in contrast to the original group lasso,
 	they select single features, instead of complete groups.
 
-	For the regular elastic net, \texttt{gren}, \texttt{cMCP}, 
-	and \texttt{gel}, we fix $\alpha \in \{0.05, 0.5, 0.95 \}$. In \texttt{gren}
-	and the elastic net, $\alpha$ determines the proportion of $L_1$-norm penalty,
-	such that the first setting closely resembles the ridge setting, 
-	where $\alpha=0$, while the third setting is similar to the lasso with 
-	$\alpha=1$. In \texttt{cMCP} and \texttt{gel}, $\alpha$
-	determines the ratio of group-level penalization ($\alpha=0$) to 
-	feature level ($\alpha=1$) penalization. For the methods that do 
-	automatic feature selection, we estimate models for a range of model sizes:
-	$\hat{p} \in \{2, 4, 8, 16, 32, 64, 128, 256\}$.
-
 	We simulated data according to five different scenarios:
-	\begin{enumerate}[(i)]
-		\item \label{it:scenario1} differential signal between the groups and uniformly
-		distributed model
-		parameters,
-		\item \label{it:scenario2} a large number of small groups of features,
-		\item \label{it:scenario3} no differential signal between the groups, but 
-		strong correlations 
-		within groups of features,
-		\item \label{it:scenario4} differential signal between the groups and 
-		heavy-tailed distributed 
-		model parameters, and
-		\item \label{it:scenario5}a very sparse setting with no signal in some of 
-		the groups.
-	\end{enumerate}
-	Full descriptions of the scenarios are given in Section 
-	\ref{sm-sec:simulations} of 
-	the SM. In Scenario (\ref{it:scenario1}), the distribution of model 
-	parameters is far
-	from the assumed ridge/elastic net/lasso distributions, so we expect
-	all methods to underperform. In Scenario (\ref{it:scenario2}), 
-	which is similar to
-	the simulations presented in the original group lasso paper 
-	\cite[]{yuan_model_2006}, we expect \texttt{gren}
-	and \texttt{GRridge} to overfit due to the large number of hyperparameters to 
-	estimate. In Scenario (\ref{it:scenario3}), we expect all methods to 
-	underperform due to the high correlations between the features. The
-	Scenario (\ref{it:scenario4}) is expected to yield a better \texttt{gren}
-	performance, since
-	\texttt{gren} assumes a heavier-tailed distribution and is designed to 
-	detect differential signal between
-	the groups. Scenario (\ref{it:scenario5}) is expected to yield a bad 
-	performance for all methods, because of the sparse truth.
-
-	In all scenarios we created a training set of $n=100$ samples to estimate the 
-	models and a test set of $n_{\text{test}}=1000$ samples to compute 
-	the performance measures. The features $\x_i$, $i=1, \dots, n$, are taken 
-	from a $p$-dimensional zero-centred Gaussian distribution, where $p$ varies 
-	from $p=900$ to $p=1000$. The covariance matrix of the features and 
-	simulation of the model parameters $\beta_j$, $j=1, \dots, p$ varies between
-  Scenarios. We 
-	simulated the outcomes $y_i$, $i=1, \dots, n$, from a binary logistic model: 
-	$y_i \sim \mathcal{B}(1, \expit (\x_i \tr \bbeta))$. To mitigate the influence
-	of random variation, we repeated each scenario 100 times 
-	and report average area under the receiver operator curve (AUC) and 
-	Brier skill score in Figures \ref{fig:lines_simulations_res1_auc_briers}-
-	\ref{fig:lines_simulations_res5_auc_briers}. AUC and Brier skill score are 
-	measures of discrimination and calibration, respectively, and for both a 
-	higher value indicates better predictive performance.
-	For the methods with an $\alpha$ parameter, we display the best-performing 
-	$\alpha$. Results for the other $\alpha$'s are presented in 
-	Section \ref{sm-sec:simulations} of the SM.
+	(i) differential signal between the groups and uniformly distributed model
+	parameters; (ii) a large number of small groups of features; (iii) no 
+	differential signal between the groups, but strong correlations within groups
+	of features; (iv) differential signal between the groups and 
+	heavy-tailed distributed model parameters; and (v) a very sparse setting with 
+	no signal in some of the groups. 
 	
-	Overall, the ridge methods outperform the elastic net methods, which in turn
-	outperform the group lasso methods, in terms of Brier skill score.
-	In Scenario (\ref{it:scenario1})
+	In all scenarios the $y_i$ are sampled from the logistic model introduced in
+	Section \ref{sec:model}, where the $\x_i \tr$ are multivariate Gaussian and
+	$\bbeta$ is scenario-dependent. Area under the receiver operator curve (AUC)
+	and Brier skill score, averaged over 100 repeats, were used to evaluate 
+	performance for models trained on $n=100$ samples and $p \approx 1000$ 
+	features. Full descriptions of the scenarios and 
+	corresponding results are given in SM Section 
+	\ref{sm-sec:simulations}. Here, we summarise the results.
+	
+	In terms of Brier skill score, the ridge methods generally outperform the 
+	elastic net methods, which in turn outperform the group lasso methods.
+	In Scenario (i)
 	\texttt{gren} and \texttt{GRridge} outperform the other methods in terms
 	of AUC.
-	Scenario (\ref{it:scenario2}) the AUC follows our expectation: \texttt{gren}, 
+	In scenario (ii) the AUC follows our expectation: \texttt{gren}, 
 	and to
-	a lesser extent \texttt{GRridge} underperform due to overfitting. Suprisingly,
-	the regular elastic net outperforms the group lasso methods.
-	In Scenario (\ref{it:scenario3}), \texttt{gren} and to a lesses extent the
+	a lesser extent \texttt{GRridge} underperform due to overfitting. 
+	The regular elastic net outperforms the group lasso methods.
+	In Scenario (iii), \texttt{gren} and to a lesser extent the
 	regular elastic net suffer from the high correlations. The regular elastic net 
 	outperforms \texttt{gren}, which is an indication that high correlations
-	impair penalty parameter estimation. Scenario (\ref{it:scenario4}) follows the 
+	impair penalty parameter estimation. Scenario (iv) follows the 
 	expected pattern, with \texttt{GRridge} and
 	\texttt{gren} outperforming their respective non group-regularized 
 	counterparts, as well as the sparse group lasso extensions.
-	Surprisingly, in Scenario (\ref{it:scenario5}), \texttt{gren} outperforms all
+	In Scenario (v), \texttt{gren} outperforms all
 	other methods, which is an indication that \texttt{gren} is able to pick up 
 	the sparse differential signal.
-	
-<<lines_simulations_res1_auc_briers, fig.cap="Average (a) AUC and (b) Brier skill score in simulation Scenario (\\ref{it:scenario1}).", out.width="100%", fig.asp=1/2>>=
-@
 
-<<lines_simulations_res2_auc_briers, fig.cap="Average (a) AUC and (b) Brier skill score in simulation Scenario (\\ref{it:scenario2}).", out.width="100%", fig.asp=1/2>>=
-@
-
-<<lines_simulations_res3_auc_briers, fig.cap="Average (a) AUC and (b) Brier skill score in simulation Scenario (\\ref{it:scenario3}).", out.width="100%", fig.asp=1/2>>=
-@
-
-<<lines_simulations_res4_auc_briers, fig.cap="Average (a) AUC and (b) Brier skill score in simulation Scenario (\\ref{it:scenario4}).", out.width="100%", fig.asp=1/2>>=
-@
-
-<<lines_simulations_res5_auc_briers, fig.cap="Average (a) AUC and (b) Brier skill score in simulation Scenario (\\ref{it:scenario5}).", out.width="100%", fig.asp=1/2>>=
-@
-
-	\section{Application to microRNAs in colorectal cancer}
+	\subsection{Application to microRNAs in colorectal cancer}
 	\label{sec:colorectal}
   We investigated the performance of \texttt{gren} on data from a 
-  deep sequencing study in microRNAs 
+  microRNA sequencing study
   \cite[]{neerincx_combination_2018}. The aim of the study was to predict 
-  treatment response in 88 treated colorectal cancer patients, coded as either
+  treatment response in 88 colorectal cancer patients, coded as either
   non-progressive/remission (70 patients) or progressive 
   (18 patients). After pre-processing and normalisation, 2114 microRNAs 
-  remained. In addition to the microRNAs, four unpenalized clinical
+  remained. Four unpenalized clinical
   covariates were included in the analysis: prior use of adjuvant therapy 
-  (binary), the type of systemic treatment regimen (ternary), age, and primary 
+  (binary), type of systemic treatment regimen (ternary), age, and primary 
   tumor differentiation (binary).
 
   In a preliminary experiment on different subjects, the microRNA expression 
-  levels of metastatic colorectal tumour tissue were compared to normal 
-  non-colorectal tissue and primary colorectal tumour tissue was compared to
-  primary colorectal tumour tissue \cite[]{neerincx_mir_2015}. This yielded 127
-  microRNAs that were differentially expressed in both comparisons with
-  $\text{FDR} \leq 0.001$, 95 with and $\text{FDR} \leq 0.05$, and 1893 
-  microRNAs that were not differentially expressed. We expect that incorporation
-  of this partitioning enhances therapy response 
+  levels of primary and metastatic colorectal tumour tissues were compared to 
+  their normal tissue counterparts \cite[]{neerincx_mir_2015}. The two resulting
+  FDRs were combined through the harmonic mean \cite[]{wilson_harmonic_2019} 
+  and discretised using the method
+  described in Section \ref{sec:external}. This yielded four groups of features:
+  (i) $\text{FDR} \leq 0.0001$, (ii) $0.0001 < \text{FDR} \leq 0.0186$,
+  (iii) $0.0186 < \text{FDR}$, and (iv) missing FDR. We expect that 
+  incorporation of this partitioning enhances therapy response 
   classification, because tumor-specific microRNAs are likely to be more 
-  relevant than non-specific microRNAs.
+  relevant than non-specific ones.
   
   We compared the performance of \texttt{gren} to ridge, \texttt{GRridge}, 
+  random forest \cite[]{breiman_random_2001},
   elastic net, sparse group lasso (\texttt{SGL}) by 
   \cite{simon_sparse-group_2013}, \texttt{cMCP}, and
   \texttt{gel}. Of the latter 
-  three methods, we only present the best performing one, \texttt{cMCP} here.
+  three methods, we only present the best performing one, \texttt{cMCP}, here.
   The results for \texttt{SGL} and \texttt{gel} are presented in SM Section 
   \ref{sm-sec:colorectal}. For the methods with a
   tuning parameter $\alpha$, we show the best performing $\alpha$ here and refer
   the reader to SM Section \ref{sm-sec:colorectal} for the remaining $\alpha$'s.
   
   To estimate performance, we split the data into 61 training and 27 test 
-  instances, stratified by treatment response. We estimated the models on the 
+  samples, stratified by treatment response. We estimated the models on the 
   training data and calculated AUC on the test data. We present AUC for a
   range of model sizes, together with the estimated 
   penalty multipliers for \texttt{gren} and \texttt{GRridge} in Figure
@@ -701,15 +668,15 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   scores are presented in SM Section \ref{sm-sec:colorectal}. 
   In addition, we investigated the sensitivity of
   the multiplier estimation in SM Section 
-  \ref{sm-sec:colorectal}. Cross-validation of the global $\lambda$ in 
-  \texttt{GRridge} resulted in numerical issues. We therefore estimated this
-  global parameter on the full data for \texttt{GRridge}.
+  \ref{sm-sec:colorectal}.
   
-  The estimated penalty multipliers are according to expectation: the highly
-  expressed group receives the lowest penalty, followed by the medium expressed
-  group and the non-expressed group. 
-  \texttt{gren} seems to outperform the other methods for a range of smaller 
-  model sizes. Selection of larger models is impaired by the large
+  The estimated penalty multipliers are according to expectation: the small
+  FDR group receives the lowest penalty, followed by the medium and large
+  FDR groups. The missing FDR group receives the strongest penalty, thereby
+  confirming that absence of 
+  information is informative itself. We observe that
+  \texttt{gren} outperforms the other methods for smaller 
+  models. Selection of larger models is impaired by the large
   $\alpha$, a property inherent to $L_1$-norm penalization. With a smaller
   $\alpha$ larger models are possible (see SM Section \ref{sm-sec:colorectal}). 
   The performance of \texttt{cMCP} is somewhat unstable. This unstable 
@@ -717,11 +684,12 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   Overall, the inclusion of the extra information on the 
   features benefits predictive performance: both \texttt{GRridge} and 
   \texttt{gren} outperform their respective non-group-regularized versions, 
-  albeit only slightly for \texttt{GRridge}.
+  albeit only slightly for \texttt{GRridge}. The random forest performs worse 
+  here.
 <<barplot_lines_micrornaseq_colorectal_cancer_res1_auc, fig.cap="Estimated (a) penalty multipliers and (b) AUC in the colorectal cancer example.", out.width="100%", fig.asp=1/2>>=
 @
   
-  \section{Application to RNAseq in oral cancer}\label{sec:oral}
+  \subsection{Application to RNAseq in oral cancer}\label{sec:oral}
   The aim of this second study is to predict lymph node metastasis in
   oral cancer patients using sequenced RNAs from TCGA 
   \cite[]{the_cancer_genome_atlas_network_comprehensive_2015}. The features are 
@@ -733,7 +701,8 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   
   We considered two sources of external feature information: (a) the 
   cis-correlations between the RNASeqv2 data and TCGA DNA copy numbers on 
-  the same patients, quantified by Kendall's $\tau$ and binned into five groups.
+  the same patients, quantified by Kendall's $\tau$ and binned into five groups
+  using the rule from Section \ref{sec:external}.
   In addition, we used (b) $p$-values from an independent microarray data set
   described in \cite{mes_prognostic_2017}, again binned into five groups. 
   We expect features 
@@ -747,14 +716,16 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   \texttt{cMCP} and \texttt{gel} that allow for
   overlapping groups \cite[]{zeng_overlapping_2016}. In \texttt{SGL} we
   cross-tabulated the two partitions to create one grouping of the features.
-  We estimated AUC on an independent validation set of 97 
-  patients \cite[]{mes_prognostic_2017}, containing features with
-  microarray expression levels, normalised to account
-  for a scale difference with the RNAseq training data. We present estimated
-  AUC on this validation set for \texttt{GRridge}, ridge, \texttt{gren}, 
+  We estimated AUC on another independent validation set of 97 
+  patients \cite[]{mes_prognostic_2017}, containing microarray features, 
+  normalised to account
+  for a scale difference with the RNAseq data. We present estimated
+  AUC on this validation set for \texttt{GRridge}, ridge, random forest,
+  \texttt{gren}, 
   elastic net, and the best performing group lasso extension,
   \texttt{cMCP}, together with the estimated penalty multipliers in Figure
-  \ref{fig:barplot_lines_rnaseq_oral_cancer_res1_auc}. For the methods with
+  \ref{fig:barplot_lines_rnaseq_oral_cancer_metastasis_res1_auc}. For the 
+  methods with
   an $\alpha$ parameter, we pick the best performing one.
   Results for \texttt{SGL}, \texttt{gel}, other values of $\alpha$, and the 
   Brier skill scores are presented in SM Section \ref{sm-sec:oral}.
@@ -763,18 +734,20 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   larger cis-correlations receive smaller penalties and smaller $p$-values are
   penalized less. The AUC of
   \texttt{gren} is slighty better than the other methods for a range of model
-  sizes. In this example, ridge and \texttt{GRridge} perform almost 
+  sizes. In this example, ridge, \texttt{GRridge}, and random forest
+  perform almost 
   identical, while \texttt{gren} outperforms the regular elastic net.
-<<barplot_lines_rnaseq_oral_cancer_res1_auc, fig.cap="Estimated (a) penalty multipliers for the cis-correlations and (b) external $p$-values, and (c) estimated AUC in the oral cancer example.", out.width="100%", fig.asp=1>>=
+<<barplot_lines_rnaseq_oral_cancer_metastasis_res1_auc, fig.cap="Estimated (a) penalty multipliers for the cis-correlations and (b) external $p$-values, and (c) estimated AUC in the oral cancer example.", out.width="100%", fig.asp=1>>=
 @
   
-  \section{Additional applications}\label{sec:applications}
+  \subsection{Additional applications}\label{sec:applications}
   Two additional applications are presented in SM Sections 
   \ref{sm-sec:alzheimer} and \ref{sm-sec:cervical}. The first one is concerned
   with diagnosis of 
   Alzheimer's from 230 metabolites' expression levels in 174 subjects. We 
   included several sources of extra information on the metabolites. In this 
-  example, \texttt{gren} performs worse than the group lasso methods. This is 
+  example, \texttt{gren} performs worse than the group lasso methods for larger
+  models. This is 
   due to the smaller number of features to learn the penalty parameters from. 
   Additionally, many metabolites are strongly negatively correlated, which
   further impairs penalty parameter estimation.
@@ -784,19 +757,20 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   to enhance predictive performance and 
   feature selection. In this example, \texttt{gren} outperforms the 
   regular elastic net with respect to predictive performance for a range of 
-  model sizes.
+  model sizes. Random forest is competitive to \texttt{gren}, but requires all
+  features. 
   
 	\section{Discussion}\label{sec:discussion}
 	In a taxonomy of Bayesian methods, \texttt{gren} may be considered a 
 	local shrinkage model, as opposed to the global-local shrinkage priors that 
-	\cite{polson_local_2012,bernardo_shrink_2011} discuss. They characterise 
+	\cite{polson_local_2012} discuss. They characterise 
 	certain desirable properties of these global-local shrinkage priors in high 
 	dimensions, which, for example, the horseshoe possesses 
-	\cite[]{carvalho_horseshoe_2010,carvalho_handling_2009}. In our case, global 
+	\cite[]{carvalho_horseshoe_2010}. In our case, global 
 	shrinkage would imply adding another hyperprior for the global $\lambda_1$ 
 	and $\lambda_2$ (or $\alpha$ and $\lambda$) hyperparameters. We argue however,
-	that if the groups are informative, the empirical Bayes estimation of the 
-	(semi-)global shrinkage parameters $\lambda'_g$ may be more beneficial than 
+	that if the groups are informative, the EB estimation of the 
+	(semi-) global shrinkage parameters $\lambda'_g$ may be more beneficial than 
 	full Bayes shrinkage of the global penalty parameters, because the latter does
 	not use any known structure to model variability in the hyperparameters. 
 	Nonetheless, an interesting direction of future research is the extension of 
@@ -807,105 +781,86 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 
 	Although our method is essentially a reweighted elastic net and can be
 	considered weakly adaptive, it is different from 
-	the adaptive lasso \cite[]{van_de_geer_adaptive_2011,huang_adaptive_2008,
-	zhang_adaptive_2007,zou_adaptive_2006} and adaptive elastic net 
-	\cite[]{zou_adaptive_2009} in the sense that it adapts to external information
+	the adaptive lasso \cite[]{huang_adaptive_2008,zou_adaptive_2006} and adaptive
+	elastic net 
+	\cite[]{zou_adaptive_2009} because it adapts to external information
 	rather than to the primary data. It also differs in the scale of adaptation: 
 	in the adaptive lasso and elastic net the adaptive weights are feature 
 	specific, while in our case they are estimated on the group level, rendering
-	the adaptation more robust. As can be seen from both the simulations in 
-	Section \ref{sec:simulations} and the applications in Sections 
-	\ref{sec:colorectal}-\ref{sec:oral}, and SM Sections \ref{sm-sec:colorectal}-
-	\ref{sm-sec:cervical} adaptation to 
-	external data may be beneficial for prediction and feature selection. 
-	We show that to be true for both prognostic and diagnostic targets,
-	as well as a range of marker types (RNAseqs, microRNAs, and metabolites).
-	We believe that this is due to the `borrowing of information' effect: 
+	the adaptation more robust. Both the simulations and the applications
+	illustrate that adaptation to 
+	external data may be beneficial for prediction and feature selection for a 
+	range of marker types (RNAseqs, microRNAs, and metabolites) due to the 
+	`borrowing of information' effect: 
 	estimates of feature effects that behave similarly are shrunken similarly, 
-	yielding overall, better estimates.
+	yielding overall, better predictions.
 	
 	As touched upon in Section \ref{sec:introduction}, an obvious 
-	comparison is to the group lasso \cite[]{meier_group_2008,
-	yuan_model_2006} and its extensions. Although the group lasso is similar in 
+	comparison is to the group lasso \cite[]{meier_group_2008} and its extensions.
+	Although the group lasso is similar in 
 	the sense that it shrinks on the 
 	group level, it is built upon an entirely different philosophy: 
 	its intended application is to small interpretable groups of features, like, 
-	for example, dummies of a categorical variable. Another difference between 
-	\texttt{gren} and the group lasso is the form of the penalty. 
+	for example, gene pathways. Another difference between 
+	\texttt{gren} and the group lasso is the form of the penalty: 
 	\texttt{gren} estimates one parameter per group. Once these are estimated
-	\texttt{gren} fits a reweigthed elastic net. The group lasso uses a 
-	qualitatively different penalty with one overall penalty parameter; 
+	\texttt{gren} fits a reweigthed elastic net. The group lasso uses one overall
+	penalty parameter; 
 	it is thereby less flexible in differential shrinkage of the parameters. Our 
 	simulations and data applications show that \texttt{gren} is competitive and
 	often superior to (extensions of) the group lasso.
+	
+	A recent development is to group samples
+	rather than features \cite[]{dondelinger_joint_2018} to allow different levels 
+	of sparsity across sample groups. This approach does not incorporate feature
+	information, and uses CV to estimate the penalty parameters. An
+	interesting future line of research would be to combine this approach with 
+	\texttt{gren}.
 	
 	A common criticism of the lasso (and elastic net) is its instability of 
 	feature 
 	selection: different data instances lead to different sets of selected
 	features. To investigate the stability of selection on the data from Section
 	\ref{sec:colorectal} we created bootstrap samples from 
-	the original data and calculated the intersections sizes of selected
-	features. Compared to the regular elastic net, the inclusion of extra 
+	the original data and calculated the sizes of the selected feature set 
+	intersections. Compared to the regular elastic net, the inclusion of extra 
 	information
-	increased the selection stability (see SM Section \ref{sm-sec:colorectal}). 
-	In addition, we investigated the performance of penalty multiplier estimation 
-	by creating 100 random partitionings of the features
+	increases the selection stability (see SM Section \ref{sm-sec:colorectal}). 
+	In addition, we investigated penalty multiplier estimation 
+	on 100 random partitionings of the features
   (see SM Section \ref{sm-sec:colorectal}). We found that the estimated penalty 
-  parameters tend to cluster around one, as expected with a random grouping.
+  parameters tend to cluster around one, as desired with random groups.
 
-	A possible weak point of the proposed method is the double EM loop, which has
-	positive probability of ending up in a local optimum. In the applications
-	discussed in Sections \ref{sec:colorectal}-
-	\ref{sec:oral}, and SM Sections \ref{sm-sec:colorectal}-
-	\ref{sm-sec:cervical}, we investigated the occurrence of multiple optima, 
-	but never encountered them. This does not guarantee that local optima do not
-	occur, but 
-	it provides some evidence that local optima are not ubiquitous. In any case,
-	bad local optima can often be avoided by an informed choice of starting 
-	values. In our 
-	experience, reasonable starting values are obtained from an initial 
-	\texttt{GRridge} fit. Alternatively, a skeptical user may set 
-	the starting values for all penalty multipliers to one, thereby starting from
-	the regular elastic net and adaptively adjusting the penalty parameters to a
-	group-regularized model. The latter is the default approach in our \texttt{R}
-	package
+	A possible weak point of the proposed method is the double EM loop, which may
+	end up in a local optimum, depending on the starting values of the algorithm.
+	Reasonable starting values, e.g. obtained by applying \texttt{GRridge}, could
+	alleviate this issue.
+	The default of \texttt{gren}, however, is to simply start from the regular
+	elstic net, i.e., penalty multipliers equal to one, and than adapt these. In 
+	the applications, we investigated the occurrence of multiple optima, but never
+	encountered them. This does not guarantee that local optima do not occur, but 
+	it provides some evidence that local optima are not ubiquitous. 
 
-<<>>=
-bench1 <- read.table("results/micrornaseq_colorectal_cancer_bench1.csv", 
-                     stringsAsFactors=FALSE)
+	Proper uncertainty quantification in the elastic net is an open problem.
+	If uncertainy quantification is required, Gibbs samples from 
+  the posterior (with the estimated hyperparameters) could be drawn. However,
+  we do not recommend Bayesian uncertainty quantification
+  for the Bayesian elastic net due to bad frequentist properties of lasso-like
+  posteriors \cite[]{castillo_bayesian_2015} in sparse (omics) settings. Hence,
+  selected features should be interpreted with caution, but are nonetheless
+  deemed useful in prediction.
 
-bench2 <- read.table("results/rnaseq_oral_cancer_bench1.csv", 
-                     stringsAsFactors=FALSE)
-times1 <- round(bench1$time*10^(-9), 2)
-times2 <- round(bench2$time*10^(-9), 2)
-session <- gsub("_", ".", devtools::session_info()$platform$system)
-@
   An EM algorithm runs the danger of excessive computation time. In our 
-  implementation we have reduced computational time considerably by applying
-  some computational tricks (see SM Section 
-  \ref{sm-sec:computationalcomplexity}) and implementing computationally heavy
+  implementation we have reduced computational time considerably by
+  some computational shortcuts (see SM Section 
+  \ref{sm-sec:computationalcomplexity}) and implementing some
   parts in \texttt{C++}. To assess computation times we compared \texttt{gren}
   other methods introduced in Sections \ref{sec:simulations}-
-  \ref{sec:oral}. All timings were obtained on a Macbook 
-  Pro 2016 running \Sexpr{session}. 
-  The timings of \texttt{gren} are competitive. On the colorectal cancer example
-  we achieved the following times:
-  \Sexpr{times1[c(1:3)]} seconds, with $\alpha \in \{ 0.05, 0.5, 0.95 \}$, 
-  respectively. \texttt{GRridge} and \texttt{SGL} with 
-  $\alpha \in \{ 0.05, 0.5, 0.95 \}$ are 
-  slightly faster with \Sexpr{times1[4]} and \Sexpr{times1[c(5:7)]} seconds, 
-  respectively.
-  \texttt{cMCP} (\Sexpr{times1[c(8:10)]} seconds) and \texttt{gel} 
-  (\Sexpr{times1[c(11:13)]} seconds) are faster than \texttt{gren}. 
-  The results for the oral cancer example are similar. \texttt{gren} 
-  achieved 
-  \Sexpr{times2[c(1:3)]} seconds, with $\alpha \in \{ 0.05, 0.5, 0.95 \}$, 
-  respectively.
-  \texttt{GRridge} was slightly faster with \Sexpr{times2[4]} seconds, 
-  while \texttt{SGL} was slightly slower: \Sexpr{times2[c(5:7)]} seconds, with 
-  $\alpha \in \{ 0.05, 0.5, 0.95 \}$.
-  \texttt{cMCP} (\Sexpr{times2[c(14:16)]} seconds) and \texttt{gel} 
-  (\Sexpr{times2[c(17:19)]} seconds) are again faster than \texttt{gren}. 
+  \ref{sec:oral} on a Macbook Pro 2016 running 
+  \Sexpr{gsub("_", ".", devtools::session_info()$platform$system)} and present the
+  results in SM Section \ref{sm-sec:timings}. In general we found that 
+  \texttt{gren} is similar in times as \texttt{GRridge}, faster than 
+  \texttt{SGL}, and slower than \texttt{cMCP}, and \texttt{gel}.
   
 	\section*{Software}
 	A (stable) \texttt{R} package is available from 

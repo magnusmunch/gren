@@ -1,0 +1,21 @@
+"expr" "time"
+"gren1" "fit.gren1 <- gren(xtrain, ytrain, partitions = part, alpha = 0.05,      trace = FALSE)" 84578960803
+"gren2" "fit.gren2 <- gren(xtrain, ytrain, partitions = part, alpha = 0.5,      trace = FALSE)" 68366215130
+"gren3" "fit.gren3 <- gren(xtrain, ytrain, partitions = part, alpha = 0.95,      trace = FALSE)" 83547272804
+"grridge" "fit.grridge <- grridge(t(xtrain), ytrain, list(corr = split(1:p,      part$corr), pv = split(1:p, part$pv)))" 39715148774
+"sgl1" "{     fit.sgl1 <- cvSGL(list(x = xtrain, y = ytrain), as.numeric(as.factor(paste(corpart0,          pvpart0))), type = \"logit\", alpha = 0.05)     fit.sgl1$fit$type <- \"logit\" }" 429176740302
+"sgl2" "{     fit.sgl2 <- cvSGL(list(x = xtrain, y = ytrain), as.numeric(as.factor(paste(corpart0,          pvpart0))), type = \"logit\", alpha = 0.5)     fit.sgl2$fit$type <- \"logit\" }" 462940475164
+"sgl3" "{     fit.sgl3 <- cvSGL(list(x = xtrain, y = ytrain), as.numeric(as.factor(paste(corpart0,          pvpart0))), type = \"logit\", alpha = 0.95)     fit.sgl3$fit$type <- \"logit\" }" 578213013627
+"cmcp1" "fit.cmcp1 <- cv.grpreg(xtrain, ytrain, as.numeric(as.factor(paste(corpart0,      pvpart0))), penalty = \"cMCP\", family = \"binomial\", alpha = 0.05)" 5778088487
+"cmcp2" "fit.cmcp2 <- cv.grpreg(xtrain, ytrain, as.numeric(as.factor(paste(corpart0,      pvpart0))), penalty = \"cMCP\", family = \"binomial\", alpha = 0.5)" 5345388371
+"cmcp3" "fit.cmcp3 <- cv.grpreg(xtrain, ytrain, as.numeric(as.factor(paste(corpart0,      pvpart0))), penalty = \"cMCP\", family = \"binomial\", alpha = 0.95)" 8428018141
+"gel1" "fit.gel1 <- cv.grpreg(xtrain, ytrain, as.numeric(as.factor(paste(corpart0,      pvpart0))), penalty = \"gel\", family = \"binomial\", alpha = 0.05)" 4141740406
+"gel2" "fit.gel2 <- cv.grpreg(xtrain, ytrain, as.numeric(as.factor(paste(corpart0,      pvpart0))), penalty = \"gel\", family = \"binomial\", alpha = 0.5)" 5180097971
+"gel3" "fit.gel3 <- cv.grpreg(xtrain, ytrain, as.numeric(as.factor(paste(corpart0,      pvpart0))), penalty = \"gel\", family = \"binomial\", alpha = 0.95)" 6517717688
+"ocmcp1" "fit.ocmcp1 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty = \"cMCP\",      family = \"binomial\", alpha = 0.05)" 10072639339
+"ocmcp2" "fit.ocmcp2 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty = \"cMCP\",      family = \"binomial\", alpha = 0.5)" 8992285623
+"ocmcp3" "fit.ocmcp3 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty = \"cMCP\",      family = \"binomial\", alpha = 0.95)" 15509586815
+"ogel1" "fit.ogel1 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty = \"gel\",      family = \"binomial\", alpha = 0.05)" 8823202620
+"ogel2" "fit.ogel2 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty = \"gel\",      family = \"binomial\", alpha = 0.5)" 12198004517
+"ogel3" "{     fit.ogel3 <- grpregOverlap(xtrain, ytrain, part.ogl, penalty = \"gel\",          family = \"binomial\", alpha = 0.95)     fit.ogel3 <- list(cve = NA, cvse = NA, lambda = fit.ogel3$lambda,          fit = fit.ogel3, min = 1, lambda.min = fit.ogel3$lambda,          null.dev = NA, pe = NA)     class(fit.ogel3) <- c(\"cv.grpregOverlap\", \"cv.grpreg\") }" 159789647
+"rf" "fit.rf <- rfsrc(y ~ ., data = data.frame(y = ytrain, x = xtrain),      var.used = \"all.trees\", ntree = 5000, importance = \"none\")" 49452676684
