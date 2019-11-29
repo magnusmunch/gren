@@ -234,8 +234,8 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   we compare the method in a simulation study, demonstrate the benefit of the 
   approach for two 
   data sets, and summarise results for two additional data sets. 
-  We conclude with a 
-  discussion.
+  We conclude with a discussion of some of the benefits and drawbacks of the
+  proposed \texttt{gren}.
 
 	\section{Model}\label{sec:model}
 	The outcome variables are assumed to be binary or sums
@@ -265,7 +265,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	where $\L(\y ; \bbeta)$ denotes the likelihood function of the 
 	observed data $\y = \begin{bmatrix} 
 	y_1 & \cdots & y_n \end{bmatrix} \tr$, and 
-	$\lambda_1, \lambda_2 \in \mathbb{R}_{>0}$ are the `global' penalty 
+	$\lambda_1 > 0$ and $\lambda_2 > 0$ are the `global' penalty 
 	parameters. From (\ref{eq:weightedlik}) we see that the
 	$\lambda'_g$'s may be interpreted as penalty multipliers. Note that
 	the regular elastic net is recovered by setting $\forall g: \lambda'_g=1$.
@@ -275,11 +275,13 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	respective group sizes, is one, such that the average shrinkage of the model
 	parameters is determined by $\lambda_1$ and $\lambda_2$. That is,
 	we calibrate the $\lambda'_g$ such that $\prod_{g=1}^G 
-	(\lambda'_g)^{|\G(g)|}=1$. The multipliers appear in square root form in the
+	(\lambda'_g)^{|\G(g)|}=1$, with $|\G(g)|$ the number of features in group $g$. 
+	The multipliers appear in square root form in the
 	$L_1$-norm term to ensure that penalisation on the parameter level scales
 	with the norm. The $L_1$-norm sets some of the estimates exactly to zero, thus 
 	automatically selecting features. The $L_2$-norm ensures collinearity is 
-	well-handled.
+	well-handled. Addition of the penalty terms also prevents quasi-complete
+	separation in logistic regression, a common phenomenon in small $n$ studies.
 	
 	The maximiser of the penalised likelihood in the elastic net, corresponds 
 	to the posterior mode of a 
@@ -331,7 +333,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   type (iv) one might consider the `standard' cut-offs 0.05, 0.01,
   and 0.001. If the choice of cut-offs is not straightforward, we propose a 
   a data-driven heuristic, which renders a relatively finer discretisation grid 
-  for data dense than for data sparse domains. Then,
+  for data-dense than for data-sparse domains. Then,
   adaptation to external information is more pronounced in high density areas.
   We propose to fit a piecewise linear spline to the empirical cumulative
   distribution function of the external data and automatically select knot
@@ -622,6 +624,8 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	In Scenario (v), \texttt{gren} outperforms all
 	other methods, which is an indication that \texttt{gren} is able to pick up 
 	the sparse differential signal.
+	
+	In addition to simulations from the correct model, i.e., model 
 
 	\subsection{Application to microRNAs in colorectal cancer}
 	\label{sec:colorectal}

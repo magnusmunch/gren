@@ -2,7 +2,8 @@
 <<settings, include=FALSE, echo=FALSE>>=
 opts_knit$set(root.dir="..", base.dir="../figs")
 opts_chunk$set(fig.align='center', fig.path="../figs/", 
-               echo=FALSE, cache=FALSE, message=FALSE, fig.pos='!ht')
+               echo=FALSE, cache=FALSE, message=FALSE, fig.pos='!ht',
+               dev="postscript")
 @
 
 % read figure code
@@ -11,13 +12,12 @@ read_chunk("code/figures.R")
 @
 
 \documentclass[oupdraft]{bio}
-\usepackage{xr-hyper}
 % \usepackage[colorlinks=true, urlcolor=citecolor, linkcolor=citecolor, 
 % citecolor=citecolor]{hyperref}
 \usepackage{url,bm,algorithm,algpseudocode,mathtools,bbm,pgfplotstable,
 enumerate}
 
-\externaldocument[sm-]{supplement}
+% \externaldocument[sm-]{supplement}
 
 % Add history information for the article if required
 %\history{Received August 1, 2010;
@@ -281,16 +281,16 @@ enumerate}
   easily retrieved from online repositories. These are already 
   discretised and may be included in the analysis as-is. Examples are:
   (i) pathway memberships of genes,
-  (ii) classes of metabolites (SM Section 12),
-  and (iii) conservation status of microRNAs (SM Section 
+  (ii) classes of metabolites (see SM Section 12),
+  and (iii) conservation status of microRNAs (see SM Section 
   13).
   A second type of external information comes in the form of continuous data.
   Examples are:
   (iv) $p$-values or false discovery rates (FDRs) from a 
-  different, related study (Section \ref{sec:colorectal}), and
-  (v) quality scores of the features (SM Section 12), 
+  different, related study (see Section \ref{sec:colorectal}), and
+  (v) quality scores of the features (see SM Section 12), 
   and (vii) the node degrees of a network estimated on the feature 
-  data (SM Section 12).
+  data (see SM Section 12).
   
   \texttt{gren} requires discretised external information, so in the case of 
   continuous external data, some form of discretisation is required. In some
@@ -298,7 +298,7 @@ enumerate}
   type (iv) one might consider the `standard' cut-offs 0.05, 0.01,
   and 0.001. If the choice of cut-offs is not straightforward, we propose a 
   a data-driven heuristic, which renders a relatively finer discretisation grid 
-  for data dense than for data sparse domains. Then,
+  for data-dense than for data-sparse domains. Then,
   adaptation to external information is more pronounced in high density areas.
   We propose to fit a piecewise linear spline to the empirical cumulative
   distribution function of the external data and automatically select knot

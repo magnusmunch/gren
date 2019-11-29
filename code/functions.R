@@ -125,30 +125,6 @@ mcmc.gren <- function(x, y, m=rep(1, nrow(x)), alpha=0.5, lambda=NULL,
   
 }
 
-n <- 100
-p <- 20
-x <- matrix(rnorm(n*p), ncol=p, nrow=n)
-beta <- -9.5:9.5
-y <- rbinom(n, 1, as.numeric(1/(1 + exp(-x %*% beta))))
-m <- rep(1, n)
-alpha <- 0.5
-lambda <- 1
-lambdamult <- rep(1, p)
-
-
-fit.vb <- vb.gren(x=x, y=y, m=m, alpha=alpha, lambda=lambda, 
-                  lambdamult=lambdamult, intercept=TRUE, 
-                  control=list(maxit=100, epsilon=0.001))
-fit.mcmc <- mcmc.gren(x=x, y=y, m=m, alpha=alpha, lambda=lambda, 
-                      lambdamult=lambdamult, intercept=TRUE, 
-                      control=list(nsamples=10000))
-test1 <- diag(fit.vb$posterior$sigma)[-1]
-test2 <- fit.vb$posterior$LRdsigma
-test3 <- apply(fit.mcmc$samples$beta, 1, var)[-1]
-plot(test1, test3)
-plot(test2, test3)
-plot(test1, test2)
-
 vb.gren <- function(x, y, m=rep(1, nrow(x)), alpha=0.5, lambda=NULL, 
                     lambdamult, intercept=TRUE, 
                     control=list(maxit=100, epsilon=0.001)) {
