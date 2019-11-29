@@ -1,0 +1,6 @@
+"expr" "time"
+"gren1" "fit.gren1 <- gren(x, y, partitions = list(part = part), alpha = 0.05,      standardize = TRUE, trace = FALSE, psel = csel)" 12550720226
+"gren2" "fit.gren2 <- gren(x, y, partitions = list(part = part), alpha = 0.5,      standardize = TRUE, trace = FALSE, psel = csel)" 13924100193
+"gren3" "fit.gren3 <- gren(x, y, partitions = list(part = part), alpha = 0.95,      standardize = TRUE, trace = FALSE, psel = csel)" 25714845530
+"grridge" "fit.grridge <- grridge(t(x), y, list(part = split(1:p, part)))" 3794834519
+"rf" "fit.rf <- rfsrc(y ~ ., data = data.frame(y = y, x = x), var.used = \"all.trees\",      ntree = 5000, importance = \"none\")" 4336129735

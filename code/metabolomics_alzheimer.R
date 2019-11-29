@@ -12,11 +12,16 @@ if(substr(system('git log -n 1 --format="%h %aN %s %ad"', intern=TRUE), 1, 7)!=
 }
 
 ### libraries
+<<<<<<< HEAD
 library(Biobase)
+=======
+library(lattice)
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 library(gren)
 library(GRridge)
 library(grpregOverlap)
 library(SGL)
+<<<<<<< HEAD
 
 ### load data
 load("data/ESetMbolCSFPR2.Rdata")
@@ -33,6 +38,14 @@ metabol.apoe <- metabol[(pheno$D_diag_name=="Probable AD" &
                            pheno$APOE=="E4YES") |
                           (pheno$D_diag_name=="Subjectieve klachten" & 
                              pheno$APOE=="E4NO"), ]
+=======
+library(randomForestSRC)
+library(freeknotsplines)
+library(microbenchmark)
+
+### load data
+load("data/metabolomics_alzheimer_data.Rdata")
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 
 ### randomly split in test and train data (30% and 70%, respectively)
 set.seed(2019)
@@ -42,17 +55,30 @@ id.train <- c(sample(which(pheno.apoe$D_diag_name=="Probable AD"),
               sample(which(pheno.apoe$D_diag_name=="Subjectieve klachten"), 
                      size=floor(sum(
                        pheno.apoe$D_diag_name=="Subjectieve klachten")*0.7)))
+<<<<<<< HEAD
 
 ### create co-data
 feat <- fData(ESetMbolCSFPR2)
+=======
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 
 # platformcode gives the type of metabolites
 platformcode <- feat$PlatformCode2
 
 # quality gives groups based on a quality measure of the assayed features
+<<<<<<< HEAD
 part.RSDqc <- CreatePartition(feat$RSDqc, ngroup=3)
 quality <- rep(c(1:3), times=sapply(part.RSDqc, length))[
   order(unlist(part.RSDqc))]
+=======
+# part.RSDqc <- CreatePartition(feat$RSDqc, ngroup=3)
+quality <- rep(c(1:3), times=sapply(part.RSDqc, length))[
+  order(unlist(part.RSDqc))]
+
+kn <- knots(ecdf(feat$RSDqc))
+spl <- freelsgen(kn, 1:length(kn), degree=1, numknot=2, seed=2019, stream=0)
+quality2 <- (feat$RSDqc <= spl@optknot[1]) + (feat$RSDqc <= spl@optknot[2]) + 1
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 
 # sds gives groups based on the standard deviations of the features
 part.sds.apoe.train <- CreatePartition(apply(metabol.apoe[id.train, ], 1, sd), 
@@ -74,12 +100,17 @@ ytest <- alzheim.apoe[-id.train]
 xtest <- scale(metabol.apoe[-id.train, ])
 p <- ncol(xtrain)
 part <- list(quality=quality, degree=degree)
+<<<<<<< HEAD
+=======
+part2 <- list(quality=quality2, degree=degree)
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 part.gl <- as.numeric(as.factor(paste(quality, degree)))
 part.ogl <- unlist(lapply(list(quality=split(1:p, part$quality), 
                                degree=split(1:p, part$degree)), function(part) {
                                  lapply(part, function(s) {
                                    colnames(xtrain)[s]})}), recursive=FALSE)
 
+<<<<<<< HEAD
 fit.gren1 <- gren(xtrain, ytrain, partitions=part, alpha=0.05, trace=FALSE)
 fit.gren2 <- gren(xtrain, ytrain, partitions=part, alpha=0.5, trace=FALSE)
 fit.gren3 <- gren(xtrain, ytrain, partitions=part, alpha=0.95, trace=FALSE)
@@ -121,11 +152,76 @@ fit.ogel2 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="gel",
                               family="binomial", alpha=0.5)
 fit.ogel3 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="gel", 
                                family="binomial", alpha=0.95)
+=======
+bench <- microbenchmark(
+fit.gren1 <- gren(xtrain, ytrain, partitions=part, alpha=0.05, trace=FALSE),
+fit.gren2 <- gren(xtrain, ytrain, partitions=part, alpha=0.5, trace=FALSE),
+fit.gren3 <- gren(xtrain, ytrain, partitions=part, alpha=0.95, trace=FALSE),
+
+fit.grridge <- grridge(t(xtrain), ytrain, list(quality=split(1:p, quality), 
+                                               degree=split(1:p, degree))), {
+
+fit.sgl1 <- cvSGL(list(x=xtrain, y=ytrain), part.gl, type="logit", alpha=0.05)
+fit.sgl1$fit$type <- "logit"}, {
+fit.sgl2 <- cvSGL(list(x=xtrain, y=ytrain), part.gl, type="logit", alpha=0.5)
+fit.sgl2$fit$type <- "logit"}, {
+fit.sgl3 <- cvSGL(list(x=xtrain, y=ytrain), part.gl, type="logit", alpha=0.95)
+fit.sgl3$fit$type <- "logit"},
+
+fit.cmcp1 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="cMCP", 
+                       family="binomial", alpha=0.05),
+fit.cmcp2 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="cMCP", 
+                       family="binomial", alpha=0.5),
+fit.cmcp3 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="cMCP", 
+                       family="binomial", alpha=0.95),
+
+fit.gel1 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="gel", 
+                      family="binomial", alpha=0.05),
+fit.gel2 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="gel", 
+                      family="binomial", alpha=0.5),
+fit.gel3 <- cv.grpreg(xtrain, ytrain, part.gl, penalty="gel", 
+                      family="binomial", alpha=0.95),
+
+fit.ocmcp1 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="cMCP", 
+                               family="binomial", alpha=0.05),
+fit.ocmcp2 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="cMCP", 
+                               family="binomial", alpha=0.5),
+fit.ocmcp3 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="cMCP", 
+                               family="binomial", alpha=0.95),
+
+fit.ogel1 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="gel", 
+                              family="binomial", alpha=0.05),
+fit.ogel2 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="gel", 
+                              family="binomial", alpha=0.5),
+fit.ogel3 <- cv.grpregOverlap(xtrain, ytrain, part.ogl, penalty="gel", 
+                               family="binomial", alpha=0.95),
+
+fit.rf <- rfsrc(y ~ ., data=data.frame(y=ytrain, x=xtrain), 
+                var.used="all.trees", ntree=5000, importance="none"),
+times=1, control=list(order="inorder"))
+
+fit.gren4 <- gren(xtrain, ytrain, partitions=part2, alpha=0.05, trace=FALSE)
+fit.gren5 <- gren(xtrain, ytrain, partitions=part2, alpha=0.5, trace=FALSE)
+fit.gren6 <- gren(xtrain, ytrain, partitions=part2, alpha=0.95, trace=FALSE)
+
+fit.grridge2 <- grridge(t(xtrain), ytrain, list(quality=split(1:p, quality2), 
+                                                degree=split(1:p, degree)))
+
+rownames(bench) <- c(paste0("gren", 1:3), "grridge", paste0("sgl", 1:3),
+                     paste0("cmcp", 1:3), paste0("gel", 1:3),
+                     paste0("ocmcp", 1:3), paste0("ogel", 1:3), "rf")
+write.table(bench, file="results/metabolomics_alzheimer_bench1.csv")
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 
 save(fit.grridge, fit.gren1, fit.gren2, fit.gren3, fit.sgl1, fit.sgl2,
      fit.sgl3, fit.cmcp1, fit.cmcp2, fit.cmcp3, fit.gel1, fit.gel2,
      fit.gel3, fit.ocmcp1, fit.ocmcp2, fit.ocmcp3, fit.ogel1, fit.ogel2, 
+<<<<<<< HEAD
      fit.ogel3, file="results/metabolomics_alzheimer_fit1.Rdata")
+=======
+     fit.ogel3, fit.rf, fit.gren4, fit.gren5, fit.gren6, fit.grridge2,
+     file="results/metabolomics_alzheimer_fit1.Rdata")
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 
 ### prediction on test set
 pred <- data.frame(ridge=predict.grridge(fit.grridge, t(xtest))[, 1], 
@@ -150,7 +246,16 @@ pred <- data.frame(ridge=predict.grridge(fit.grridge, t(xtest))[, 1],
                    ocmcp3=predict(fit.ocmcp2$fit, xtest, type="response"),
                    ogel1=predict(fit.ogel1$fit, xtest, type="response"), 
                    ogel2=predict(fit.ogel2$fit, xtest, type="response"), 
+<<<<<<< HEAD
                    ogel3=predict(fit.ogel3$fit, xtest, type="response"))
+=======
+                   ogel3=predict(fit.ogel3$fit, xtest, type="response"),
+                   rf=predict(fit.rf, data.frame(x=xtest))$predicted,
+                   gren4=predict(fit.gren4, xtest, type="groupreg"),
+                   gren5=predict(fit.gren5, xtest, type="groupreg"),
+                   gren6=predict(fit.gren6, xtest, type="groupreg"),
+                   grridge2=predict.grridge(fit.grridge2, t(xtest))[, 2])
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 psel <- c(ridge=p, grridge=p,
           gren1=fit.gren1$freq.model$groupreg$df,
           gren2=fit.gren2$freq.model$groupreg$df,
@@ -172,7 +277,16 @@ psel <- c(ridge=p, grridge=p,
           ocmcp3=colSums(fit.ocmcp3$fit$beta[-1, ]!=0),
           ogel1=colSums(fit.ogel1$fit$beta[-1, ]!=0), 
           ogel2=colSums(fit.ogel1$fit$beta[-1, ]!=0), 
+<<<<<<< HEAD
           ogel3=colSums(fit.ogel1$fit$beta[-1, ]!=0))
+=======
+          ogel3=colSums(fit.ogel1$fit$beta[-1, ]!=0),
+          rf=p,
+          gren4=fit.gren4$freq.model$groupreg$df,
+          gren5=fit.gren5$freq.model$groupreg$df,
+          gren6=fit.gren6$freq.model$groupreg$df,
+          grridge2=p)
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 auc <- apply(pred, 2, function(m) {pROC::auc(ytest, m)})
 briers <- apply(pred, 2, function(m) {
   1 - mean((m - ytest)^2)/mean((mean(ytest) - ytest)^2)})

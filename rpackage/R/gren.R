@@ -8,7 +8,7 @@ gren <- function(x, y, m=rep(1, nrow(x)), unpenalized=NULL, partitions=NULL,
                  control=list(epsilon=0.001, maxit=500, maxit.opt=1000, 
                               maxit.vb=100)) {
   
-  # save argument list and call
+  # save argument list and callm
   argum <- formals(gren)
   fit.call <- match.call()
   
