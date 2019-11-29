@@ -12,7 +12,7 @@ if(substr(system('git log -n 1 --format="%h %aN %s %ad"', intern=TRUE), 1, 7)!=
 }
 
 ### parallelisation
-parallel <- FALSE
+parallel <- TRUE
 
 ### libraries
 library(gren)
@@ -1895,14 +1895,14 @@ csel <- 2^c(1:8)
 nreps <- 100
 
 ### analysis splits in parallel
-ncores <- min(detectCores() - 1, nreps)
+# ncores <- min(detectCores() - 1, nreps)
+ncores <- nreps
 cluster <- makeForkCluster(ncores)
 if(parallel) {
   registerDoParallel(cluster)
 } else {
   registerDoSEQ()
 }
-
 res <- foreach(k=c(1:nreps), .errorhandling="pass") %dopar% {
   
   print(paste("rep", k))
