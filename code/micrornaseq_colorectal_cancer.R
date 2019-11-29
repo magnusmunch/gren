@@ -16,9 +16,12 @@ library(gren)
 library(GRridge)
 library(grpreg)
 library(SGL)
+<<<<<<< HEAD
+=======
 library(randomForestSRC)
 library(harmonicmeanp)
 library(freeknotsplines)
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 library(foreach)
 library(doParallel)
 library(microbenchmark)
@@ -28,16 +31,32 @@ parallel <- TRUE
 
 ### load data
 load("data/forMagnusN88.Rdata")
+<<<<<<< HEAD
+=======
 codata <- read.table("data/results_all.txt", header=TRUE)
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 
 ### create model matrix for unpenalized covariates
 unpenal <- model.matrix(~ adjth + thscheme + age + pcrcdiff, data=datfr)[, -1]
 
+<<<<<<< HEAD
+### create partitioning based on FDR <= 0.05 and FDR <= 0.001
+miRNA.BFDR <- as.character(TumMirs$miRNA)[TumMirs$BFDR_PNminP < 0.001]
+miRNA.TumMirs <- as.character(TumMirs$miRNA)
+miRNA <- as.character(sapply(rownames(mirnormcen_resp), function(s) {
+  strsplit(s, split=" ")[[1]][1]}))
+diff.expr <- miRNA %in% miRNA.BFDR + miRNA %in% miRNA.TumMirs + 1
+
+=======
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 ### target vector
 benefit <- as.numeric(resp) - 1
 
 ### mirna data
 micrornas <- t(mirnormcen_resp)
+<<<<<<< HEAD
+colnames(micrornas) <- miRNA
+=======
 colnames(micrornas) <- sapply(strsplit(colnames(micrornas), " "), "[[", 1)
 
 
@@ -70,6 +89,7 @@ diff.expr2[colnames(micrornas) %in% codata$miRNA[
 diff.expr2[colnames(micrornas) %in% codata$miRNA[
   hmfdr > spl@optknot[1] & hmfdr <= spl@optknot[2]]] <- 2
 diff.expr2[colnames(micrornas) %in% codata$miRNA[hmfdr > spl@optknot[2]]] <- 3
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 
 ### randomly split in test and train data (30% and 70%, respectively)
 set.seed(2019)
@@ -89,7 +109,10 @@ xtest <- scale(micrornas[-id.train, ])[, apply(micrornas[id.train, ], 2, sd)!=0]
 xtest[is.nan(xtest)] <- 0
 utest <- unpenal[-id.train, ]
 part <- diff.expr[apply(micrornas[id.train, ], 2, sd)!=0]
+<<<<<<< HEAD
+=======
 part2 <- diff.expr2[apply(micrornas[id.train, ], 2, sd)!=0]
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 p <- ncol(xtrain)
 u <- ncol(utrain)
 
@@ -148,6 +171,12 @@ fit.gel3 <- grpreg(cbind(utrain, xtrain), ytrain,
                    family="binomial", alpha=0.95);
 fit.gel3 <- list(cve=NA, cvse=NA, lambda=fit.gel3$lambda, fit=fit.gel3,
                  min=1, lambda.min=fit.gel3$lambda, null.dev=NA, pe=NA);
+<<<<<<< HEAD
+class(fit.gel3) <- "cv.grpreg"}, times=1, control=list(order="inorder"))
+
+rownames(bench) <- c(paste0("gren", 1:3), "grridge", paste0("sgl", 1:3),
+                      paste0("cmcp", 1:3), paste0("gel", 1:3))
+=======
 class(fit.gel3) <- "cv.grpreg"}, times=1, control=list(order="inorder"),
 fit.rf <- rfsrc(y ~ ., data=data.frame(y=ytrain, u=utrain, x=xtrain), 
                 var.used="all.trees", ntree=5000, importance="none"))
@@ -175,12 +204,17 @@ fit.grridge2 <- grridge(t(xtrain), ytrain, list(part=split(1:p, part2)),
 
 rownames(bench) <- c(paste0("gren", 1:3), "grridge", paste0("sgl", 1:3),
                       paste0("cmcp", 1:3), paste0("gel", 1:3), "rf")
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 write.table(bench, file="results/micrornaseq_colorectal_cancer_bench1.csv")
 
 save(fit.grridge, fit.gren1, fit.gren2, fit.gren3, fit.sgl1, fit.sgl2,
      fit.sgl3, fit.cmcp1, fit.cmcp2, fit.cmcp3, fit.gel1, fit.gel2,
+<<<<<<< HEAD
+     fit.gel3, file="results/micrornaseq_colorectal_cancer_fit1.Rdata")
+=======
      fit.gel3, fit.rf, fit.gren4, fit.gren5, fit.gren6, fit.grridge2,
      file="results/micrornaseq_colorectal_cancer_fit1.Rdata")
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 
 ### prediction on test set
 pred <- data.frame(ridge=predict.grridge(fit.grridge, t(xtest), FALSE, 
@@ -207,6 +241,9 @@ pred <- data.frame(ridge=predict.grridge(fit.grridge, t(xtest), FALSE,
                    gel2=predict(fit.gel2$fit, cbind(utest, xtest),
                                 type="response"),
                    gel3=predict(fit.gel3$fit, cbind(utest, xtest),
+<<<<<<< HEAD
+                                type="response"))
+=======
                                 type="response"),
                    rf=predict(fit.rf, data.frame(u=utest, x=xtest))$predicted,
                    gren4=predict(fit.gren4, xtest, utest, type="groupreg"),
@@ -215,6 +252,7 @@ pred <- data.frame(ridge=predict.grridge(fit.grridge, t(xtest), FALSE,
                    grridge2=predict.grridge(fit.grridge2, t(xtest), FALSE,
                                             as.data.frame(utest))[, 2])
 
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 psel <- c(ridge=p, grridge=p,
           gren1=fit.gren1$freq.model$groupreg$df - u,
           gren2=fit.gren2$freq.model$groupreg$df - u,
@@ -230,19 +268,26 @@ psel <- c(ridge=p, grridge=p,
           cmcp3=colSums(fit.cmcp3$fit$beta[-c(1:(u + 1)), ]!=0),
           gel1=colSums(fit.gel1$fit$beta[-c(1:(u + 1)), ]!=0),
           gel2=colSums(as.matrix(fit.gel2$fit$beta[-c(1:(u + 1)), ]!=0)),
+<<<<<<< HEAD
+          gel3=colSums(as.matrix(fit.gel3$fit$beta[-c(1:(u + 1)), ]!=0)))
+=======
           gel3=colSums(as.matrix(fit.gel3$fit$beta[-c(1:(u + 1)), ]!=0)),
           rf=p,
           gren4=fit.gren4$freq.model$groupreg$df - u,
           gren5=fit.gren5$freq.model$groupreg$df - u,
           gren6=fit.gren6$freq.model$groupreg$df - u,
           grridge2=p)
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 auc <- apply(pred, 2, function(m) {pROC::auc(ytest, m)})
 briers <- apply(pred, 2, function(m) {
   1 - mean((m - ytest)^2)/mean((mean(ytest) - ytest)^2)})
 res <- rbind(pred, psel, auc, briers)
 rownames(res) <- c(paste0("pred", c(1:length(ytest))), paste0("psel", 1),
                    paste0("auc", 1), paste0("briers", 1))
+<<<<<<< HEAD
+=======
 
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 write.table(res, file="results/micrornaseq_colorectal_cancer_res1.csv")
 
 

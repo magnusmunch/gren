@@ -43,6 +43,14 @@
 *.toc
 *.xlsx
 
+<<<<<<< HEAD
+!data/NwkDegreePartition.Rdata
+!data/EsetMbolCSFPR2.Rdata
+!data/forMagnusN88.Rdata
+!data/mirsData.Rdata
+
+revision/
+=======
 !data/metabolomics_alzheimer_data.Rdata
 !data/forMagnusN88.Rdata
 !data/mirsData.Rdata
@@ -59,3 +67,4 @@ docs/color.sty
 figs/
 
 arxiv.Rnw
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc

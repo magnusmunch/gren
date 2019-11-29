@@ -16,8 +16,11 @@ library(gren)
 library(GRridge)
 library(grpreg)
 library(SGL)
+<<<<<<< HEAD
+=======
 library(randomForestSRC)
 library(microbenchmark)
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 
 ### load data
 load("data/mirsData.RData")
@@ -49,6 +52,20 @@ n <- nrow(x)
 
 csel <- c(seq(1, 5, 1), seq(7, 15, 2), seq(18, 30, 3), seq(34, 50, 4))
 
+<<<<<<< HEAD
+fit.gren1 <- gren(x, y, partitions=list(part=part), alpha=0.05, 
+                  standardize=TRUE, trace=FALSE, psel=csel)
+fit.gren2 <- gren(x, y, partitions=list(part=part), alpha=0.5, 
+                  standardize=TRUE, trace=FALSE, psel=csel)
+fit.gren3 <- gren(x, y, partitions=list(part=part), alpha=0.95, 
+                  standardize=TRUE, trace=FALSE, psel=csel)
+
+fit.grridge <- grridge(t(x), y, list(part=split(1:p, part)))
+
+save(fit.grridge, fit.gren1, fit.gren2, fit.gren3, 
+     file="results/micrornaseq_cervical_cancer_fit1.Rdata")
+
+=======
 bench <- microbenchmark(
 fit.gren1 <- gren(x, y, partitions=list(part=part), alpha=0.05, 
                   standardize=TRUE, trace=FALSE, psel=csel),
@@ -70,18 +87,28 @@ save(fit.grridge, fit.gren1, fit.gren2, fit.gren3, fit.rf,
      file="results/micrornaseq_cervical_cancer_fit1.Rdata")
 
 ### cross-validating predictions
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 nfolds <- 5
 foldid <- sample(rep(1:nfolds, times=round(c(rep(
   n %/% nfolds + as.numeric((n %% nfolds)!=0), times=n %% nfolds),
   rep(n %/% nfolds, times=nfolds - n %% nfolds)))))
 
+<<<<<<< HEAD
+pred <- as.data.frame(matrix(NA, nrow=n, ncol=6*length(csel) + 2))
+psel <- as.data.frame(matrix(NA, nrow=nfolds, ncol=6*length(csel) + 2))
+=======
 pred <- as.data.frame(matrix(NA, nrow=n, ncol=6*length(csel) + 3))
 psel <- as.data.frame(matrix(NA, nrow=nfolds, ncol=6*length(csel) + 3))
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 colnames(pred) <- colnames(psel) <- 
   c("ridge", "grridge", paste0("gren1.psel", csel),
     paste0("gren2.psel", csel), paste0("gren3.psel", csel),
     paste0("enet1.psel", csel), paste0("enet2.psel", csel), 
+<<<<<<< HEAD
+    paste0("enet3.psel", csel))
+=======
     paste0("enet3.psel", csel), "rf")
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 
 for(k in sort(unique(foldid))) {
   cat(paste("fold ", k, "\n"))
@@ -100,9 +127,12 @@ for(k in sort(unique(foldid))) {
                    standardize=TRUE, trace=FALSE, psel=csel)
   
   cv.grridge <-  grridge(t(xtrain), ytrain, list(part=split(1:p, part)))
+<<<<<<< HEAD
+=======
   
   cv.rf <- rfsrc(y ~ ., data=data.frame(y=ytrain, x=xtrain), 
                  var.used="all.trees", ntree=5000, importance="none")
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 
   pred$ridge[foldid==k] <- predict.grridge(cv.grridge, t(xtest))[, 1]
   pred$grridge[foldid==k] <- predict.grridge(cv.grridge, t(xtest))[, 2]
@@ -120,10 +150,15 @@ for(k in sort(unique(foldid))) {
     predict(cv.gren2, xtest, type="regular")
   pred[foldid==k, grep("enet3", colnames(pred))] <- 
     predict(cv.gren3, xtest, type="regular")
+<<<<<<< HEAD
+
+  psel$ridge <- psel$grridge <- p
+=======
   
   pred$rf[foldid==k] <- predict(cv.rf, data.frame(x=xtest))$predicted
 
   psel$ridge <- psel$grridge <- psel$rf <- p
+>>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
   
   psel[k, grep("gren1", colnames(psel))] <- cv.gren1$freq.model$groupreg$df
   psel[k, grep("gren2", colnames(psel))] <- cv.gren2$freq.model$groupreg$df
