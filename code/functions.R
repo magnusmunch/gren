@@ -61,27 +61,6 @@ sel.grpreg <- function(X, y, group=1:ncol(X),
   
 }
 
-<<<<<<< HEAD
-n <- 100
-p <- 20
-x <- matrix(rnorm(n*p), ncol=p, nrow=n)
-beta <- -9.5:9.5
-y <- rbinom(n, 1, as.numeric(1/(1 + exp(-x %*% beta))))
-m <- rep(1, n)
-alpha <- 0.5
-lambda <- 1
-lambdamult <- rep(1, p)
-intercept <- FALSE
-control <- list(nsamples=1000)
-
-fit.mcmc <- mcmc.gren(x, y, m=rep(1, nrow(x)), 
-                      alpha=0.5, lambda=1, lambdamult=rep(1, p), 
-                      intercept=FALSE, control=list(nsamples=1000))
-plot(c(beta), apply(fit.mcmc$samples$beta, 1, mean))
-
-
-=======
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 # mcmc version of VB steps
 # devtools::install_version("BayesLogit", "0.2-0")
 mcmc.gren <- function(x, y, m=rep(1, nrow(x)), alpha=0.5, lambda=NULL, 
@@ -146,8 +125,6 @@ mcmc.gren <- function(x, y, m=rep(1, nrow(x)), alpha=0.5, lambda=NULL,
   
 }
 
-<<<<<<< HEAD
-=======
 vb.gren <- function(x, y, m=rep(1, nrow(x)), alpha=0.5, lambda=NULL, 
                     lambdamult, intercept=TRUE, 
                     control=list(maxit=100, epsilon=0.001)) {
@@ -242,5 +219,3 @@ vb.gren <- function(x, y, m=rep(1, nrow(x)), alpha=0.5, lambda=NULL,
 
 
 
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
-                

@@ -1,19 +1,4 @@
 "expr" "time"
-<<<<<<< HEAD
-"gren1" "fit.gren1 <- gren(xtrain, ytrain, unpenalized = utrain, partitions = list(part = part),      alpha = 0.05, standardize = TRUE, trace = FALSE)" 274170827659
-"gren2" "fit.gren2 <- gren(xtrain, ytrain, unpenalized = utrain, partitions = list(part = part),      alpha = 0.5, standardize = TRUE, trace = FALSE)" 348760380872
-"gren3" "fit.gren3 <- gren(xtrain, ytrain, unpenalized = utrain, partitions = list(part = part),      alpha = 0.95, standardize = TRUE, trace = FALSE)" 354908680374
-"grridge" "{     init.grridge <- grridge(t(scale(micrornas)), benefit, list(part = split(1:ncol(micrornas),          diff.expr)), unpenal = ~1 + adjth2 + thscheme2 + thscheme3 +          age + pcrcdiff3, optl = NULL, dataunpen = as.data.frame(unpenal))     fit.grridge <- grridge(t(xtrain), ytrain, list(part = split(1:p,          part)), unpenal = ~1 + adjth2 + thscheme2 + thscheme3 +          age + pcrcdiff3, optl = init.grridge$optl, dataunpen = as.data.frame(utrain)) }" 86893580190
-"sgl1" "{     fit.sgl1 <- cvSGL(list(x = xtrain, y = ytrain), part, type = \"logit\",          alpha = 0.05)     fit.sgl1$fit$type <- \"logit\" }" 219919874664
-"sgl2" "{     fit.sgl2 <- cvSGL(list(x = xtrain, y = ytrain), part, type = \"logit\",          alpha = 0.5)     fit.sgl2$fit$type <- \"logit\" }" 213074544330
-"sgl3" "{     fit.sgl3 <- cvSGL(list(x = xtrain, y = ytrain), part, type = \"logit\",          alpha = 0.95)     fit.sgl3$fit$type <- \"logit\" }" 252940495005
-"cmcp1" "fit.cmcp1 <- cv.grpreg(cbind(utrain, xtrain), ytrain, c(rep(0,      ncol(utrain)), part), penalty = \"cMCP\", family = \"binomial\",      alpha = 0.05)" 7586277942
-"cmcp2" "fit.cmcp2 <- cv.grpreg(cbind(utrain, xtrain), ytrain, c(rep(0,      ncol(utrain)), part), penalty = \"cMCP\", family = \"binomial\",      alpha = 0.5)" 8267698227
-"cmcp3" "fit.cmcp3 <- cv.grpreg(cbind(utrain, xtrain), ytrain, c(rep(0,      ncol(utrain)), part), penalty = \"cMCP\", family = \"binomial\",      alpha = 0.95)" 5884392529
-"gel1" "fit.gel1 <- cv.grpreg(cbind(utrain, xtrain), ytrain, c(rep(0,      ncol(utrain)), part), penalty = \"gel\", family = \"binomial\",      alpha = 0.05)" 10181875385
-"gel2" "{     fit.gel2 <- grpreg(cbind(utrain, xtrain), ytrain, c(rep(0,          ncol(utrain)), part), penalty = \"gel\", family = \"binomial\",          alpha = 0.5)     fit.gel2 <- list(cve = NA, cvse = NA, lambda = fit.gel2$lambda,          fit = fit.gel2, min = 1, lambda.min = fit.gel2$lambda,          null.dev = NA, pe = NA)     class(fit.gel2) <- \"cv.grpreg\" }" 173290611
-"gel3" "{     fit.gel3 <- grpreg(cbind(utrain, xtrain), ytrain, c(rep(0,          ncol(utrain)), part), penalty = \"gel\", family = \"binomial\",          alpha = 0.95)     fit.gel3 <- list(cve = NA, cvse = NA, lambda = fit.gel3$lambda,          fit = fit.gel3, min = 1, lambda.min = fit.gel3$lambda,          null.dev = NA, pe = NA)     class(fit.gel3) <- \"cv.grpreg\" }" 39448752
-=======
 "gren1" "fit.gren1 <- gren(xtrain, ytrain, unpenalized = utrain, partitions = list(part = part),      alpha = 0.05, standardize = TRUE, trace = FALSE)" 48812380575
 "gren2" "fit.gren2 <- gren(xtrain, ytrain, unpenalized = utrain, partitions = list(part = part),      alpha = 0.5, standardize = TRUE, trace = FALSE)" 38435689828
 "gren3" "fit.gren3 <- gren(xtrain, ytrain, unpenalized = utrain, partitions = list(part = part),      alpha = 0.95, standardize = TRUE, trace = FALSE)" 46816896932
@@ -28,4 +13,3 @@
 "gel2" "{     fit.gel2 <- grpreg(cbind(utrain, xtrain), ytrain, c(rep(0,          ncol(utrain)), part), penalty = \"gel\", family = \"binomial\",          alpha = 0.5)     fit.gel2 <- list(cve = NA, cvse = NA, lambda = fit.gel2$lambda,          fit = fit.gel2, min = 1, lambda.min = fit.gel2$lambda,          null.dev = NA, pe = NA)     class(fit.gel2) <- \"cv.grpreg\" }" 343134725
 "gel3" "{     fit.gel3 <- grpreg(cbind(utrain, xtrain), ytrain, c(rep(0,          ncol(utrain)), part), penalty = \"gel\", family = \"binomial\",          alpha = 0.95)     fit.gel3 <- list(cve = NA, cvse = NA, lambda = fit.gel3$lambda,          fit = fit.gel3, min = 1, lambda.min = fit.gel3$lambda,          null.dev = NA, pe = NA)     class(fit.gel3) <- \"cv.grpreg\" }" 17210117
 "rf" "fit.rf <- rfsrc(y ~ ., data = data.frame(y = ytrain, u = utrain,      x = xtrain), var.used = \"all.trees\", ntree = 5000, importance = \"none\")" 7855421116
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc

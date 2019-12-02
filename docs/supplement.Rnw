@@ -100,13 +100,8 @@ dsfont,parskip,xr-hyper,hyperref}
 \graphicspath{{../figs/}}
 \setlength{\evensidemargin}{.5cm} \setlength{\oddsidemargin}{.5cm}
 \setlength{\textwidth}{15cm}
-<<<<<<< HEAD
-\title{Adaptive group-regularized logistic elastic net regression Supplementary 
-material}
-=======
 \title{Supplementary material to 
 `Adaptive group-regularized logistic elastic net regression'}
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 \date{\today}
 \author{Magnus M. M\"unch$^{1,2}$\footnote{Correspondence to: 
 \href{mailto:m.munch@vumc.nl}{m.munch@vumc.nl}}, Carel F.W. Peeters$^{1}$, 
@@ -140,21 +135,6 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   the P{\'o}lya-Gamma parametrisation introduced in Section 
   \ref{md-sec:estimation} of the MD. The
   derivations of the variational posterior used in the MD are shown in Section
-<<<<<<< HEAD
-  \ref{sec:variationaldistributions}. Section
-  \ref{sec:computationalcomplexity} shows how we may reduce the computational
-  complexity of our variational Bayes procedure. Section 
-  \ref{sec:expectedloglikelihood} elaborates on the Variational Bayes expected
-  joint log likelihood that is maximised to estimate the penalty multipliers as
-  explained in Section \ref{md-sec:estimation} of the MD. The full procedure of
-  the
-  proposed method is shown in Section \ref{sec:fullestimationprocedure}. 
-  Additional results to the applications in the MD Sections 
-  \ref{md-sec:colorectal}--\ref{md-sec:lymphnode}. We
-  apply our method to a study on metabolomics in Alzheimer's in Section
-  \ref{sec:alzheimer} and to study in microRNAs in cervical cancer data 
-  in Section \ref{sec:cervical}. Finally, 
-=======
   \ref{sec:variationaldistributions}. In Section \ref{sec:updatingequations}
   the variational and empirical Bayes updating equations for the algorithm are
   given. Section
@@ -170,7 +150,6 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   \ref{sec:alzheimer} and to study in microRNAs in cervical cancer data 
   in Section \ref{sec:cervical}. The computational times
   of the method are explored in Section \ref{sec:timings}. Finally, 
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
   we introduce the ridge and lasso versions of the proposed method in Section
   \ref{sec:evbridgelasso}. 
 
@@ -274,11 +253,8 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   \frac{2k +m_i}{\sqrt{2 \pi \omega_i^3}}
   \exp\[-\frac{(2k + m_i)^2}{8 \omega_i} \].
   $$
-<<<<<<< HEAD
-  Let $\c = \begin{bmatrix} c_1 & \cdots & c_n \end{bmatrix} \tr$. Furthermore, 
-=======
-  Let $\mathbf{c} = \begin{bmatrix} c_1 & \cdots & c_n \end{bmatrix} \tr$. Furthermore, 
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
+  Let $\mathbf{c} = \begin{bmatrix} c_1 & \cdots & c_n \end{bmatrix} \tr$. 
+  Furthermore, 
   in the following, all expectations and variances are with respect to 
   $Q^{(t)}$. Next we write out the three terms in (\ref{eq:elboomega}):
   \begin{subequations} \label{eq:elboomega2}
@@ -294,13 +270,8 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
       \E [\omega_i] \\
       & \,\,\,\,\,+ \sum_{i=1}^n \E 
       \left\{ \log [ h(m_i, \omega_i) ] \right\}, \\
-<<<<<<< HEAD
-      \E [\log q(\bomega)] & =  \m \tr \log [1 + \exp(\c)] - n \log 2 - 
-      \frac{1}{2} \m \tr \c - \sum_{i=1}^n \log \Gamma (m_i) - \frac{1}{2} 
-=======
       \E [\log q(\bomega)] & =  \m \tr \log [1 + \exp(\mathbf{c})] - n \log 2 - 
       \frac{1}{2} \m \tr \mathbf{c} - \sum_{i=1}^n \log \Gamma (m_i) - \frac{1}{2} 
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
       \sum_{i=1}^n c_i^2 \E [\omega_i] \\
       & \,\,\,\,\, + \sum_{i=1}^n \E \left\{ \log [ h(m_i, \omega_i) ] \right\},
 	  \end{align}
@@ -314,25 +285,16 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	    \E_{Q^{(t)}} & [\log \L (\y ; \bbeta)] + \E_{Q^{(t)}} 
 	    [\log \pi(\bomega | \bbeta)] - \E_{Q^{(t)}} [\log q(\bomega)] \\ 
 	    & = \sum_{i=1}^n \log \binom{m_i}{y_i} + ( \y - \frac{1}{2} \m) 
-<<<<<<< HEAD
-	    \tr \X \bmu^{(t)} + \m \tr \left\{ \frac{1}{2} \c^{(t)} - 
-	    \log [1 + \exp(\c^{(t)})] \right\} \label{eq:elboomega4}\\
-=======
 	    \tr \X \bmu^{(t)} + \m \tr \left\{ \frac{1}{2} \mathbf{c}^{(t)} - 
 	    \log [1 + \exp(\mathbf{c}^{(t)})] \right\} \label{eq:elboomega4}\\
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 	    & \,\,\,\,\, + \frac{1}{4} \sum_{i=1}^n \frac{m_i}{c_i^{(t)}} 
 	    \tanh \(\frac{c_i^{(t)}}{2} \)\left\{ (c_i^{(t)})^2 - 
 	    ( \x_i \tr \bmu^{(t)} )^2 - \x_i \tr \bSigma^{(t)} \x_i \tr \right\}.
     \end{align}
   \end{subequations}
 
-<<<<<<< HEAD
-  Inspection of the updating equations in the MD, learns us that the 
-=======
   Inspection of the updating equations (\ref{eq:VBupdateequations}), 
   learns us that the 
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
   last term in the right-hand side of (\ref{eq:elboomega3}) equals zero, so that
   we are left with just (\ref{eq:elboomega4}). After a change of variables 
   $\psi_j = \tau_j - 1$, the two terms in (\ref{eq:elbobeta}) are as follows:
@@ -400,13 +362,9 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   (\ref{eq:elbotau3}) gives the ELBO, at iteration $t$:
   \begin{align*}
     \text{ELBO} (Q^{(t)}) & \propto (\y - \frac{1}{2} \m ) \tr \X \bmu^{(t)} + 
-<<<<<<< HEAD
-    \m \tr \{ \frac{1}{2} \c^{(t)} - \log [ \exp(\c^{(t)}) + 1 ]\} + \frac{1}{2}
-=======
     \m \tr \{ \frac{1}{2} \mathbf{c}^{(t)} - \log [ \exp(\mathbf{c}^{(t)}) + 
     1 ]\} +
     \frac{1}{2}
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
     \sum_{g=1}^G |\G(g)| \log \lambda'^{(t)}_g \\ 
     & + \frac{1}{2}\log |\bSigma^{(t)}| - \frac{\lambda_2}{2} 
     \sum_{g=1}^G \lambda'^{(t)}_g \sum_{j \in \mathcal{G}(g)} 
@@ -591,8 +549,6 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   which is the log-kernel of a $\GIG(1/2, \lambda_1^2/(4 \lambda_2), \chi_j)$
   random variable with $\chi_j=\lambda_2 \lambda'_{g(j)} [\E (\beta_j)^2 + 
   \V(\beta_j)]$.
-<<<<<<< HEAD
-=======
   
   \section{Updating equations}\label{sec:updatingequations}
   If we fill in the expectations and variances in the variational posterior
@@ -655,7 +611,6 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 		  & \text{subject to } \prod_{g=1}^G (\lambda'_g)^{|\G(g)|} = 1.
 		\end{align}
 	\end{subequations}
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 
   \section{Computational complexity}\label{sec:computationalcomplexity}
   Calculation of $\bSigma$ involves the inversion of a 
@@ -663,12 +618,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   algorithm. If naively done, every inversion is of computational complexity
   $\mathcal{O}(p^3)$. With $p$ large, this is a serious computational bottleneck
   of the algorithm, especially with possibly many iterations. However, 
-<<<<<<< HEAD
-  inspection of the updating equations in (\ref{md-eq:VBupdateequations})
-  in the MD, reveals
-=======
   inspection of the updating equations in (\ref{eq:VBupdateequations}), reveals
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
   that we only require the inner products $\x_i \tr \bSigma \x_i$, $\x_i 
   \tr \bmu$, and $\bmu$, plus the diagonal of $\bSigma$ to directly update the
   $c_i$ and $\chi_j$. In Section \ref{md-sec:estimation} of the MD we show that 
@@ -707,20 +657,13 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   \end{align}
   which is, by a similar argument as before, again an operation of complexity
   $\mathcal{O}(n^2p)$.
-
-<<<<<<< HEAD
-  Now we rewrite the calculation of $\c = \begin{bmatrix} c_1 & \cdots & c_n
-  \end{bmatrix} \tr$ as:
-  \begin{align*}
-    \c & = \begin{bmatrix} \sqrt{\x_1 \bSigma \x_1 + (\x_1 \tr \bmu)^2} & 
-=======
+  
   Now we rewrite the calculation of $\mathbf{c} = \begin{bmatrix} c_1 & 
   \cdots & c_n
   \end{bmatrix} \tr$ as:
   \begin{align*}
     \mathbf{c} & = \begin{bmatrix} \sqrt{\x_1 \bSigma \x_1 + 
     (\x_1 \tr \bmu)^2} & 
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
     \cdots & \sqrt{\x_n \bSigma \x_n + (\x_n \tr \bmu)^2} \end{bmatrix} \tr \\
     & = \sqrt{\diag \[\X \bSigma \X \tr\] +  
     \diag \[\X \bmu \bmu \tr \X \tr\]} \\
@@ -747,65 +690,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   $\mathcal{O}(n^2p)$, matrix products of complexity $\mathcal{O}(n^2p)$ and two
   Hadamard products of $\mathcal{O}(p)$. Computation of $\bm{\chi}$ is therefore
   of complexity of $\mathcal{O}(n^2p)$.
-
-<<<<<<< HEAD
-  \section{Variational Bayes expected joint log likelihood}
-  \label{sec:expectedloglikelihood}
-  Here, let $\propto$ denote proportionality with respect to $\blambda'$. Then
-  the variational Bayes expected joint log likelihood is derived as follows:
-  \begin{align*}
-    \E_{Q} [ \log \L_{\blambda'}(\y, \bomega, \bbeta, \btau) | \blambda'^{(k)} ]
-    &\propto \E_Q [\log \pi_{\blambda'}(\bbeta | \btau) | \blambda'^{(k)}]
-    \propto \sum_{g=1}^G \sum_{j \in \mathcal{G}(g)} \E_Q [\log \pi_{\blambda'}
-    (\beta_j | \tau_j) | \blambda'^{(k)}] \\
-    & \propto \frac{1}{2} \sum_{g=1}^G \sum_{j \in \mathcal{G}(g)}  
-    \log \lambda'_g - \frac{(1 - \alpha) \lambda}{4} \sum_{g=1}^G 
-    \sum_{j \in \mathcal{G}(g)} \lambda'_g \E_Q \( \frac{\tau_j}{\tau_j - 1}
-    \beta_j^2 | \blambda'^{(k)} \) \\ 
-    & \propto \frac{1}{2} \sum_{g=1}^G |\G(g)|  \log \lambda'_g - 
-    \frac{(1 - \alpha) \lambda}{4} \sum_{g=1}^G \lambda'_g d_g^{(k)},
-  \end{align*}
-  with the coefficients $d_g^{(k)}$ calculated as:
-  \begin{align*}
-    d_g^{(k)} & = \sum_{j \in \mathcal{G}(g)} \E_Q \( \frac{\tau_j}{\tau_j - 1}
-    \beta_j^2 | \blambda'^{(k)} \) \\
-    & = \sum_{j \in \mathcal{G}(g)} \[1 + \E_{q_{\psi_j}} 
-    ( \psi_j^{-1} | \blambda'^{(k)} ) \]  \[ \E_{q_{\beta_j}} 
-    ( \beta_j | \blambda'^{(k)} )^2 + \V_{q_{\beta_j}} 
-    ( \beta_j | \blambda'^{(k)} ) \] \\
-    & = \sum_{j \in \mathcal{G}(g)} \[\bSigma^{(k)}_{jj} + 
-    (\bmu^{(k)}_j)^2\]\(1 + \alpha \lambda^{1.5} 
-    \sqrt{\frac{1 - \alpha}{8 \chi_j^{(k)}}}\).
-  \end{align*}
-
-  \section{Full estimation procedure}\label{sec:fullestimationprocedure}
-  The expectation and maximisation steps introduced in the Main Document Section
-  \ref{md-sec:estimation} result
-  in a procedure as outlined in Algorithm \ref{alg:summaryalg}:
-  \begin{algorithm}
-    \caption{Group-regularized empirical Bayes elastic net}
-    \label{alg:summaryalg}
-	  \begin{algorithmic}[h]
-		  \Require $\X, \y, \G, \alpha, \epsilon_1, \epsilon_2$
-		  \Ensure $\lambda, \blambda', \bSigma, \bmu$
-		  \State{Estimate $\lambda$ by cross-validation of the regular elastic net
-		  model}
-		  \While{$|\frac{\blambda'^{(k + 1)} - \blambda'^{(k)}}{\blambda'^{(k)}}| >
-		  \epsilon_1$}
-		  \While{$\underset{ij}{\max} \, |\frac{\bSigma_{ij}^{(k+1)} - 
-		  \bSigma_{ij}^{(k)}}{\bSigma_{ij}^{(k)}}| > \epsilon_2$ or 
-		  $\underset{i}{\max} \, |\frac{\bmu_{i}^{(k+1)} - 
-		  \bmu_{i}^{(k)}}{\bmu_{i}^{(k)}}| > \epsilon_2$}
-		  \State{Update $\bSigma$, $\bmu$, $c_i$ for $i=1, \dots, n$ and $\chi_j$ 
-		  for $j=1, \dots, p$ using (\ref{md-eq:VBupdateequations}) in the MD}
-		  \EndWhile
-		  \State{Update $\blambda'$ by (\ref{md-eq:mmlupdateequation}) in the MD}
-		  \EndWhile
-	  \end{algorithmic}
-  \end{algorithm}
-
-=======
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
+  
   \section{Extensions}\label{sec:extensions}
   \subsection{Unpenalized covariates}
   Inclusion of an intercept $\beta_0$ is achieved by appending the data matrix
@@ -932,26 +817,6 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   rendering this the less restrictive option for modelling the partitions.
 
   \section{Simulations}\label{sec:simulations}
-<<<<<<< HEAD
-  The quality of feature selection is assessed by Cohen's kappa 
-  \cite[]{cohen_coefficient_1960}. This kappa is measures similarity between two
-  sets of categorical values. One set contains the feature selection indicators:
-  $s(j) := \mathbbm{1}\{\hat{\beta}_j \neq 0\}$, while the other set contains
-  the true non-zero feature indicators: $t(j) := \mathbbm{1}\{\beta_j \neq 0\}$.
-  We calculate Cohen's $\kappa$ as:
-	\begin{align*}
-	  \kappa & = \frac{f_o - f_e}{1 - f_e}, \text{ where } f_o = p^{-1}
-	  \sum_{j=1}^p \mathbbm{1}\{s(j)=t(j)\} \\ & \text{ and } f_e = p^{-2} 
-	  \left\{ \(\sum_{j=1}^p s(j)\) \cdot \(\sum_{j=1}^p t(j)\) + 
-	  \[\sum_{j=1}^p (1 - s(j)) \] \cdot \[\sum_{j=1}^p (1 - t(j)) \]\right\}.
-	\end{align*}
-	Here, $f_o$ and $f_e$ denote the frequencies of correctly identified and
-	expected correctly identified features, respectively. A positive or negative
-	kappa indicate better and worse feature selection than expected by chance,
-	respectively. In addition, we evaluate estimation accuracy by mean squared
-	error: $\text{MSE} = p^{-1} \sum_{j=1}^p (\beta_j - \hat{\beta}_j)^2$. 
-	
-=======
   We simulated data according to five different scenarios that are explained
   in more detail below. For the regular elastic net, \texttt{gren},
   \texttt{cMCP}, 
@@ -1001,7 +866,6 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 <<lines_simulations_res5_auc_briers, fig.cap="Average (a) AUC and (b) Brier skill score in simulation Scenario (v).", out.width="100%", fig.asp=1/2>>=
 @
   
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
   \subsection{Scenario 1}
 	In this sparse scenario we assume differential signal between 5 groups of
 	features. The average signal in a group increases by a factor 1.6 with group
@@ -1102,8 +966,6 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 	yield a somewhat better performance by \texttt{gren} than the regular elastic
 	net and \texttt{GRridge}. The group lasso extensions are expected to give a 
 	similar performance.
-<<<<<<< HEAD
-=======
 	
 	\subsection{Additional results}
 	Results for different values of the tuning parameter $\alpha$ than presented
@@ -1127,7 +989,7 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 <<lines2_simulations_res5_auc_briers, fig.cap="Estimated (a) AUC and (b) Brier skill score in simulation setting 5.", out.width="100%", fig.asp=1/2>>=
 @
 
-  \subsection{Model misspecification}
+  \subsection{Model misspecification}\label{sec:modelmisspecification}
   To assess the effects of model misspecification we conducted a series of 
   simulations under different modes of misspecification and simulation settings.
   We investigate model misspecification by comparing \texttt{gren} to the
@@ -1188,7 +1050,6 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
 
 <<lines2_simulations_res14_auc_briers, fig.cap="Estimated (a) AUC and (b) Brier skill score in simulation setting 4 for a non-linear feature relation with the fraction of non-linear relations 0.6.", out.width="100%", fig.asp=1/2>>=
 @
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 
   \section{Application to MicroRNAs in colorectal cancer}\label{sec:colorectal}
   \subsection{Additional comparisons}
@@ -1201,17 +1062,10 @@ Aad W. van der Vaart$^{2}$, and \\ Mark A. van de Wiel$^{1,3}$}
   on the test set in Figures 
   \ref{fig:lines_micrornaseq_colorectal_cancer_res1_auc}--
   \ref{fig:lines_micrornaseq_colorectal_cancer_res1_briers}.
-<<<<<<< HEAD
-<<lines_micrornaseq_colorectal_cancer_res1_auc, fig.cap="Estimated AUC for the colorectal cancer example.", out.width="100%", fig.asp=1>>=
-@
-  
-<<lines_micrornaseq_colorectal_cancer_res1_briers, fig.cap="Estimated Brier skill score for the colorectal cancer example.", out.width="100%", fig.asp=1>>=
-=======
 <<lines_micrornaseq_colorectal_cancer_res1_auc, fig.cap="Estimated AUC for the colorectal cancer example with (a) $\\alpha=0.05$, (b) $\\alpha=0.5$, and (c) $\\alpha=0.95$.", fig.asp=1>>=
 @
   
 <<lines_micrornaseq_colorectal_cancer_res1_briers, fig.cap="Estimated Brier skill score for the colorectal cancer example with (a) $\\alpha=0.05$, (b) $\\alpha=0.5$, and (c) $\\alpha=0.95$.", out.width="100%", fig.asp=1>>=
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 @
   
   \subsection{Random groups}\label{sec:randomgroups}
@@ -1278,16 +1132,10 @@ medians <- round(sapply(c("grridge", paste0("gren", 1:3)), function(s) {
   \ref{fig:hist_micrornaseq_colorectal_cancer_res4_overlap}.
 <<hist_micrornaseq_colorectal_cancer_res4_overlap, fig.cap="Stability of feature selection in colorectal cancer example for (a) $\\alpha=0.05$, (b) $\\alpha=0.5$, and (c) $\\alpha=0.95$.", out.width="100%", fig.asp=2/3>>=
 @
-  
-<<<<<<< HEAD
-  \section{Application to RNAseq in lymph node cancer}
-  \label{sec:lymphnode}
-  In addition to the results presented in Section \ref{md-sec:lymphnode} of the 
-=======
+
   \section{Application to RNAseq in oral cancer}
   \label{sec:oral}
   In addition to the results presented in Section \ref{md-sec:oral} of the 
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
   MD, we compared \texttt{gren} to the sparse group lasso (\texttt{SGL}) by 
   \cite{simon_sparse-group_2013} and the group exponential lasso (\texttt{gel}) 
   by \cite{breheny_group_2015}. The original group lasso methods are not 
@@ -1299,21 +1147,12 @@ medians <- round(sapply(c("grridge", paste0("gren", 1:3)), function(s) {
   methods that require this extra tuning parameter. The AUCs and Brier skill 
   scores calculated on the
   validation set are presented in Figures 
-<<<<<<< HEAD
-  \ref{fig:lines_rnaseq_lymph_node_metastasis_res1_auc}--
-  \ref{fig:lines_rnaseq_lymph_node_metastasis_res1_briers}
-<<lines_rnaseq_lymph_node_metastasis_res1_auc, fig.cap="Estimated AUC for the lymph node cancer example.", out.width="100%", fig.asp=1>>=
-@
-  
-<<lines_rnaseq_lymph_node_metastasis_res1_briers, fig.cap="Estimated Briers skill score for the lymph node cancer example.", out.width="100%", fig.asp=1>>=
-=======
   \ref{fig:lines_rnaseq_oral_cancer_metastasis_res1_auc}--
   \ref{fig:lines_rnaseq_oral_cancer_metastasis_res1_briers}
 <<lines_rnaseq_oral_cancer_metastasis_res1_auc, fig.cap="Estimated AUC for the oral cancer example with (a) $\\alpha=0.05$, (b) $\\alpha=0.5$, and (c) $\\alpha=0.95$.", out.width="100%", fig.asp=1>>=
 @
   
 <<lines_rnaseq_oral_cancer_metastasis_res1_briers, fig.cap="Estimated Briers skill score for the oral cancer example with (a) $\\alpha=0.05$, (b) $\\alpha=0.5$, and (c) $\\alpha=0.95$.", out.width="100%", fig.asp=1>>=
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 @
   
   \section{Application to metabolomics in alzheimer}\label{sec:alzheimer}
@@ -1343,18 +1182,6 @@ medians <- round(sapply(c("grridge", paste0("gren", 1:3)), function(s) {
 <<barplot_metabolomics_alzheimer_res1, fig.cap="Estimated penalty multiplies for the (a) quality score and the (b) network degree in the alzheimer example.", out.width="100%", fig.asp=1/2>>=
 @
 
-<<<<<<< HEAD
-<<lines_metabolomics_alzheimer_res1_auc, fig.cap="Estimated AUC for the alzheimer example.", out.width="100%", fig.asp=1>>=
-@
-
-<<lines_metabolomics_alzheimer_res1_briers, fig.cap="Estimated Brier skill score for the alzheimer example.", out.width="100%", fig.asp=1>>=
-@
-
-  In this example, \texttt{GRridge} and \texttt{gren} underperform due to a 
-  small number of features to learn the penalty parameters from. The other 
-  methods estimate one global penalty parameter, so do not suffer from the 
-  lower dimensionality of the problem.
-=======
 <<lines_metabolomics_alzheimer_res1_auc, fig.cap="Estimated AUC for the alzheimer example with with (a) $\\alpha=0.05$, (b) $\\alpha=0.5$, and (c) $\\alpha=0.95$.", out.width="100%", fig.asp=1>>=
 @
 
@@ -1375,18 +1202,13 @@ load("data/metabolomics_alzheimer_data.Rdata")
 cor.mat <- cor(scale(metabol.apoe))
 levelplot(cor.mat, xlab=NULL, ylab=NULL, scales=list(draw=FALSE))
 @
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
-  
+
   \section{Application to microRNAs in cervical cancer}\label{sec:cervical}
   A deep sequencing analysis on small non-coding ribonucleic acid (microRNAseq) 
   was performed on 24 women with high-grade cervical intraepithelial 
   neoplasia (CIN3) and 32 healthy women for the purpose of finding relevant 
   screening markers for cervical cancer screening. The next generation 
-<<<<<<< HEAD
-  sequencing analysis resulted in 2,576 transcripts. The data was normalized 
-=======
   sequencing analysis resulted in 2576 transcripts. The data was normalized 
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
   and pre-processed, rendering 752 transcripts. More details of the
   data sets and the pre-processing steps are found in the supplementary   
   material of \cite{novianti_better_2017}.
@@ -1398,15 +1220,12 @@ levelplot(cor.mat, xlab=NULL, ylab=NULL, scales=list(draw=FALSE))
   conserved across most vertebrates (147). We expect (c) to contain the most 
   important microRNAs, followed by (b) and (a), because these microRNAs have not
   been lost during evolution and might therefore regulate important processes.
-<<<<<<< HEAD
-=======
   
   The estimated multipliers, AUC, and Brier skill score
   are in Figures \ref{fig:barplot_micrornaseq_cervical_cancer_res1}--
   \ref{fig:lines_micrornaseq_cervical_cancer_res1_briers}, respectively. In this
   example the group regularized methods outperform the regular methods with
   respect to discrimination (AUC) and calibration (Brier skill score).
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 
 <<barplot_micrornaseq_cervical_cancer_res1, fig.cap="Estimated penalty multiplies for conservation status in cervical cancer example.", out.width="50%", fig.asp=1>>=
 @
@@ -1417,8 +1236,6 @@ levelplot(cor.mat, xlab=NULL, ylab=NULL, scales=list(draw=FALSE))
 <<lines_micrornaseq_cervical_cancer_res1_briers, fig.cap="Cross-validated Brier skill score in cervical cancer example", out.width="100%", fig.asp=1>>=
 @
   
-<<<<<<< HEAD
-=======
   \section{Computational times}\label{sec:timings}
 <<>>=
 bench1 <- read.table("results/micrornaseq_colorectal_cancer_bench1.csv", 
@@ -1449,7 +1266,6 @@ times2 <- round(bench2$time*10^(-9), 2)
   \texttt{cMCP} (\Sexpr{times2[c(14:16)]} seconds) and \texttt{gel} 
   (\Sexpr{times2[c(17:19)]} seconds) are again faster than \texttt{gren}. 
   
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
   \section{Empirical-variational Bayes for the ridge and lasso}
   \label{sec:evbridgelasso}
   \subsection{Ridge regression}
@@ -1548,19 +1364,6 @@ times2 <- round(bench2$time*10^(-9), 2)
   Note that the $\phi_g$ are updated after every penalty multiplier update  
   iteration as well, in contrast to the elastic net.
 
-<<<<<<< HEAD
-  \section{Gibbs sampler}
-    
-  \begin{align*}
-    \bbeta | \bomega, \bpsi & \sim \mathcal{N} (\bSigma, \bmu) \\
-      & \text{with } \bSigma = [\X \tr \diag (\bomega_i) \X + 
-      \lambda_2 \bLambda' + \lambda_2 \bLambda' \diag (\psi_j^{-1})]^{-1} 
-      \text{ and } \bmu = \bSigma \X \tr (\y - \frac{1}{2} \mathbf{m}), \\
-    \omega_i | \bbeta & \sim \mathcal{PG} (m_i, |\x_i \tr \bbeta|), \\
-    \psi_j^{-1} | \beta_j & \sim \mathcal{IG} (\lambda_1/ (2 \lambda_2 
-    \sqrt{\lambda'_{g(j)}} |\beta_j|), \lambda_1^2/(4 \lambda_2)).
-  \end{align*}
-=======
   % \section{Gibbs sampler}
   %   
   % \begin{align*}
@@ -1572,8 +1375,7 @@ times2 <- round(bench2$time*10^(-9), 2)
   %   \psi_j^{-1} | \beta_j & \sim \mathcal{IG} (\lambda_1/ (2 \lambda_2 
   %   \sqrt{\lambda'_{g(j)}} |\beta_j|), \lambda_1^2/(4 \lambda_2)).
   % \end{align*}
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
-    
+
   \bibliographystyle{author_short3.bst} 
   \bibliography{refs}
 

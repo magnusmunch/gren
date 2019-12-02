@@ -4,23 +4,6 @@ library(sp)
 load(file="results/simulations_res1.Rdata")
 plot.data <- c(sapply(c("grridge", "ridge"), function(m) {
   unname(cbind(NA, mean(sapply(res, function(s) {
-<<<<<<< HEAD
-    s$auc[grep(m, names(s$auc))[1]]}), na.rm=TRUE),
-    mean(sapply(res, function(s) {
-      s$auc[grep(m, names(s$briers))[1]]}), na.rm=TRUE)))}, simplify=FALSE),
-  sapply(c(paste0("gren", 1:3), paste0("enet", 1:3),
-           paste0("cmcp", 1:3), paste0("gel", 1:3)), function(m) {
-             cbind(rowMeans(sapply(res, function(s) {
-               vec <- s$psel[grep(m, names(s$psel))]
-               replace(rep(NA, 8), 1:length(vec), vec)}), 
-               na.rm=TRUE),
-               rowMeans(sapply(res, function(s) {
-                 vec <- s$auc[grep(m, names(s$auc))]
-                 replace(rep(NA, 8), 1:length(vec), vec)}), 
-                 na.rm=TRUE),
-               rowMeans(sapply(res, function(s) {
-                 vec <- s$briers[grep(m, names(s$briers))]
-=======
     s$auc[substr(names(s$auc), 1, nchar(m))==m]}), na.rm=TRUE),
     mean(sapply(res, function(s) {
       s$auc[substr(names(s$briers), 1, nchar(m))==m]}), na.rm=TRUE)))}, 
@@ -565,7 +548,6 @@ plot.data <- c(sapply(c("grridge", "ridge"), function(m) {
                  na.rm=TRUE),
                rowMeans(sapply(res, function(s) {
                  vec <- s$briers[substr(names(s$briers), 1, nchar(m))==m]
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
                  replace(rep(NA, 8), 1:length(vec), vec)}), 
                  na.rm=TRUE))}, simplify=FALSE))
 
@@ -622,36 +604,11 @@ abline(h=plot.data[[1]][, 3], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 3], col=col[2], lty=lty[1])
 par(opar)
 
-<<<<<<< HEAD
-# ---- lines_simulations_res2_auc_briers ----
-library(sp)
-load(file="results/simulations_res2.Rdata")
-
-# ---- lines_simulations_res3_auc_briers ----
-=======
 # ---- lines2_simulations_res3_auc_briers ----
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 library(sp)
 load(file="results/simulations_res3.Rdata")
 plot.data <- c(sapply(c("grridge", "ridge"), function(m) {
   unname(cbind(NA, mean(sapply(res, function(s) {
-<<<<<<< HEAD
-    s$auc[grep(m, names(s$auc))[1]]}), na.rm=TRUE),
-    mean(sapply(res, function(s) {
-      s$auc[grep(m, names(s$briers))[1]]}), na.rm=TRUE)))}, simplify=FALSE),
-  sapply(c(paste0("gren", 1:3), paste0("enet", 1:3),
-           paste0("cmcp", 1:3), paste0("gel", 1:3)), function(m) {
-             cbind(rowMeans(sapply(res, function(s) {
-               vec <- s$psel[grep(m, names(s$psel))]
-               replace(rep(NA, 8), 1:length(vec), vec)}), 
-               na.rm=TRUE),
-               rowMeans(sapply(res, function(s) {
-                 vec <- s$auc[grep(m, names(s$auc))]
-                 replace(rep(NA, 8), 1:length(vec), vec)}), 
-                 na.rm=TRUE),
-               rowMeans(sapply(res, function(s) {
-                 vec <- s$briers[grep(m, names(s$briers))]
-=======
     s$auc[substr(names(s$auc), 1, nchar(m))==m]}), na.rm=TRUE),
     mean(sapply(res, function(s) {
       s$auc[substr(names(s$briers), 1, nchar(m))==m]}), na.rm=TRUE)))}, 
@@ -668,7 +625,6 @@ plot.data <- c(sapply(c("grridge", "ridge"), function(m) {
                  na.rm=TRUE),
                rowMeans(sapply(res, function(s) {
                  vec <- s$briers[substr(names(s$briers), 1, nchar(m))==m]
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
                  replace(rep(NA, 8), 1:length(vec), vec)}), 
                  na.rm=TRUE))}, simplify=FALSE))
 
@@ -725,32 +681,11 @@ abline(h=plot.data[[1]][, 3], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 3], col=col[2], lty=lty[1])
 par(opar)
 
-<<<<<<< HEAD
-# ---- lines_simulations_res4_auc_briers ----
-=======
 # ---- lines2_simulations_res4_auc_briers ----
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 library(sp)
 load(file="results/simulations_res4.Rdata")
 plot.data <- c(sapply(c("grridge", "ridge"), function(m) {
   unname(cbind(NA, mean(sapply(res, function(s) {
-<<<<<<< HEAD
-    s$auc[grep(m, names(s$auc))[1]]}), na.rm=TRUE),
-    mean(sapply(res, function(s) {
-      s$auc[grep(m, names(s$briers))[1]]}), na.rm=TRUE)))}, simplify=FALSE),
-  sapply(c(paste0("gren", 1:3), paste0("enet", 1:3),
-           paste0("cmcp", 1:3), paste0("gel", 1:3)), function(m) {
-             cbind(rowMeans(sapply(res, function(s) {
-               vec <- s$psel[grep(m, names(s$psel))]
-               replace(rep(NA, 8), 1:length(vec), vec)}), 
-               na.rm=TRUE),
-               rowMeans(sapply(res, function(s) {
-                 vec <- s$auc[grep(m, names(s$auc))]
-                 replace(rep(NA, 8), 1:length(vec), vec)}), 
-                 na.rm=TRUE),
-               rowMeans(sapply(res, function(s) {
-                 vec <- s$briers[grep(m, names(s$briers))]
-=======
     s$auc[substr(names(s$auc), 1, nchar(m))==m]}), na.rm=TRUE),
     mean(sapply(res, function(s) {
       s$auc[substr(names(s$briers), 1, nchar(m))==m]}), na.rm=TRUE)))}, 
@@ -767,7 +702,6 @@ plot.data <- c(sapply(c("grridge", "ridge"), function(m) {
                  na.rm=TRUE),
                rowMeans(sapply(res, function(s) {
                  vec <- s$briers[substr(names(s$briers), 1, nchar(m))==m]
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
                  replace(rep(NA, 8), 1:length(vec), vec)}), 
                  na.rm=TRUE))}, simplify=FALSE))
 
@@ -824,32 +758,11 @@ abline(h=plot.data[[1]][, 3], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 3], col=col[2], lty=lty[1])
 par(opar)
 
-<<<<<<< HEAD
-# ---- lines_simulations_res5_auc_briers ----
-=======
 # ---- lines2_simulations_res5_auc_briers ----
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 library(sp)
 load(file="results/simulations_res5.Rdata")
 plot.data <- c(sapply(c("grridge", "ridge"), function(m) {
   unname(cbind(NA, mean(sapply(res, function(s) {
-<<<<<<< HEAD
-    s$auc[grep(m, names(s$auc))[1]]}), na.rm=TRUE),
-    mean(sapply(res, function(s) {
-      s$auc[grep(m, names(s$briers))[1]]}), na.rm=TRUE)))}, simplify=FALSE),
-  sapply(c(paste0("gren", 1:3), paste0("enet", 1:3),
-           paste0("cmcp", 1:3), paste0("gel", 1:3)), function(m) {
-             cbind(rowMeans(sapply(res, function(s) {
-               vec <- s$psel[grep(m, names(s$psel))]
-               replace(rep(NA, 8), 1:length(vec), vec)}), 
-               na.rm=TRUE),
-               rowMeans(sapply(res, function(s) {
-                 vec <- s$auc[grep(m, names(s$auc))]
-                 replace(rep(NA, 8), 1:length(vec), vec)}), 
-                 na.rm=TRUE),
-               rowMeans(sapply(res, function(s) {
-                 vec <- s$briers[grep(m, names(s$briers))]
-=======
     s$auc[substr(names(s$auc), 1, nchar(m))==m]}), na.rm=TRUE),
     mean(sapply(res, function(s) {
       s$auc[substr(names(s$briers), 1, nchar(m))==m]}), na.rm=TRUE)))}, 
@@ -866,7 +779,6 @@ plot.data <- c(sapply(c("grridge", "ridge"), function(m) {
                  na.rm=TRUE),
                rowMeans(sapply(res, function(s) {
                  vec <- s$briers[substr(names(s$briers), 1, nchar(m))==m]
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
                  replace(rep(NA, 8), 1:length(vec), vec)}), 
                  na.rm=TRUE))}, simplify=FALSE))
 
@@ -923,40 +835,6 @@ abline(h=plot.data[[1]][, 3], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 3], col=col[2], lty=lty[1])
 par(opar)
 
-<<<<<<< HEAD
-# ---- barplot_lines_micrornaseq_colorectal_cancer_res1_auc ----
-library(sp)
-load("results/micrornaseq_colorectal_cancer_fit1.Rdata")
-res <- read.table("results/micrornaseq_colorectal_cancer_res1.csv", 
-                  stringsAsFactors=FALSE)
-pred <- as.matrix(res[substr(rownames(res), 1, 4)=="pred", ])
-psel <- as.matrix(res[substr(rownames(res), 1, 4)=="psel", ])
-auc <- as.matrix(res[substr(rownames(res), 1, 3)=="auc", ])
-
-methods1 <- c("grridge", expression("gren, "~alpha==0.05, "gren, "~alpha==0.5,
-                                    "gren, "~alpha==0.95), "no co-data")
-methods2 <- c("ridge", "grridge", "gren1", "gren2", "enet1", "cmcp1")
-col1 <- grey.colors(length(methods1) - 1, start=0.3, end=0.9, gamma=2.2, 
-                    alpha=NULL)
-col2 <- bpy.colors(length(methods2), cutoff.tail=0.1)
-lty1 <- 2
-lty2 <- c(1, 2)
-labels1 <- list(diff.expr=expression("FDR">0.05,
-                                     atop(NA, atop(textstyle(0.05>=phantom(0)),
-                                                   textstyle("FDR" > 0.001))),
-                                     "FDR"<=0.001))
-labels2 <- expression("ridge", "GRridge", "gren,"~alpha==0.05, 
-                      "gren,"~alpha==0.5, "enet"~alpha==0.05, 
-                      "cMCP"~alpha==0.05)
-
-plot.data1 <- lapply(1:length(fit.gren1$lambdag), function(s) {
-  rbind(fit.grridge$lambdamults[[s]], fit.gren1$lambdag[[s]],
-        fit.gren2$lambdag[[s]], fit.gren3$lambdag[[s]])})
-plot.data2 <- lapply(methods2, function(m) {
-  aggregate(auc[, grepl(m, colnames(auc))], 
-            list(psel=psel[, grepl(m, colnames(psel))]), mean)})
-names(plot.data2) <- methods2
-=======
 # ---- lines2_simulations_res6_auc_briers ----
 library(sp)
 load(file="results/simulations_res6.Rdata")
@@ -1546,109 +1424,10 @@ xlim <- range(sapply(plot.data, function(s) {s[, 1]}), na.rm=TRUE)
 ylim1 <- range(sapply(plot.data, function(s) {s[, 2]}), na.rm=TRUE)
 ylim2 <- range(sapply(plot.data, function(s) {s[, 3]}), 
                na.rm=TRUE)
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 
 opar <- par(no.readonly=TRUE)
 par(mar=opar$mar*c(1, 1.3, 1, 1))
 layout(matrix(rep(c(1, 1, 2, 2), 2), 2, 4, byrow=TRUE))
-<<<<<<< HEAD
-barplot(plot.data1[[1]], beside=TRUE, col=col1,
-        legend.text=methods1,
-        args.legend=list(x="bottomleft", fill=c(col1, NA),
-                         border=c(rep(1, length(methods1) - 1), NA),
-                         lty=c(rep(NA, length(methods1) - 1), lty1[1]),
-                         seg.len=1, merge=TRUE, bg="white"),
-        names.arg=labels1[[1]], ylab=expression(hat(lambda)~"'"[g]),
-        main="(a)")
-abline(h=1, lty=2)
-
-plot(plot.data2[[3]], type="l", xlab="Number of selected features", ylab="AUC", 
-     main="(b)", ylim=range(auc), xlim=c(0, 600), col=col2[3], 
-     lty=lty2[1])
-lines(plot.data2[[4]], col=col2[4], lty=lty2[1])
-lines(plot.data2[[5]], col=col2[5], lty=lty2[1])
-lines(plot.data2[[6]], col=col2[6], lty=lty2[1])
-abline(h=plot.data2[[1]][, 2], col=col2[1], lty=lty2[2])
-abline(h=plot.data2[[2]][, 2], col=col2[2], lty=lty2[2])
-legend("bottomright", legend=labels2, col=col2, 
-       lty=c(rep(lty2[2], 2), rep(lty2[1], 4)), bg = "white")
-par(opar)
-
-# ---- barplot_lines_rnaseq_lymph_node_metastasis_res1_auc ----
-library(sp)
-load("results/rnaseq_lymph_node_metastasis_fit1.Rdata")
-res <- read.table("results/rnaseq_lymph_node_metastasis_res1.csv", 
-                  stringsAsFactors=FALSE)
-pred <- as.matrix(res[substr(rownames(res), 1, 4)=="pred", ])
-psel <- as.matrix(res[substr(rownames(res), 1, 4)=="psel", ])
-auc <- as.matrix(res[substr(rownames(res), 1, 3)=="auc", ])
-
-methods1 <- c("grridge", expression("gren, "~alpha==0.05, "gren, "~alpha==0.5,
-                                    "gren, "~alpha==0.95), "no co-data")
-methods2 <- c("ridge", "grridge", "gren1", "enet1", "ocmcp1")
-col1 <- grey.colors(length(methods1) - 1, start=0.3, end=0.9, gamma=2.2, 
-                    alpha=NULL)
-col2 <- bpy.colors(length(methods2), cutoff.tail=0.1)
-lty1 <- 2
-lty2 <- c(1, 2)
-labels1 <- list(corr=expression(tau > 0.54, 
-                                atop(NA, atop(textstyle(0.45 <phantom(0)), 
-                                              textstyle(tau <= 0.54))),
-                                atop(NA, atop(textstyle(0.36 <phantom(0)), 
-                                              textstyle(tau <= 0.45))),
-                                atop(NA, atop(textstyle(0.21 <phantom(0)), 
-                                              textstyle(tau <= 0.36))), 
-                                tau <= 0.21),
-                pv=expression(p <= 7.6e-5, 
-                              atop(NA, atop(textstyle(7.6e-05 <phantom(0)), 
-                                            textstyle(p <= 7.2e-04))),
-                              atop(NA, atop(textstyle(7.2e-04 <phantom(0)), 
-                                            textstyle(p <= 4.4e-03))),
-                              atop(NA, atop(textstyle(4.4e-03 <phantom(0)), 
-                                            textstyle(p <= 2.1e-02))), 
-                              p > 2.1e-02))
-labels2 <- expression("ridge", "GRridge", "gren,"~alpha==0.05, 
-                      "enet"~alpha==0.05, "cMCP,"~alpha==0.05)
-
-plot.data1 <- lapply(1:length(fit.gren1$lambdag), function(s) {
-  rbind(fit.grridge$lambdamults[[s]], fit.gren1$lambdag[[s]],
-        fit.gren2$lambdag[[s]], fit.gren3$lambdag[[s]])})
-plot.data2 <- lapply(methods2, function(m) {
-  aggregate(auc[, grepl(m, colnames(auc))], 
-            list(psel=psel[, grepl(m, colnames(psel))]), mean)})
-names(plot.data2) <- methods2
-
-opar <- par(no.readonly=TRUE)
-par(mar=opar$mar*c(1, 1.3, 1, 1))
-layout(matrix(c(rep(c(1, 1, 2, 2), 2), rep(c(0, 3, 3, 0), 2)), 4, 4, 
-              byrow=TRUE))
-barplot(plot.data1[[1]], beside=TRUE, col=col1,
-        legend.text=methods1,
-        args.legend=list(x="bottomright", fill=c(col1, NA),
-                         border=c(rep(1, length(methods1) - 1), NA),
-                         lty=c(rep(NA, length(methods1) - 1), lty1[1]),
-                         seg.len=1, merge=TRUE, bg="white"),
-        names.arg=labels1[[1]], ylab=expression(hat(lambda)~"'"[g]),
-        main="(a)")
-abline(h=1, lty=2)
-
-barplot(plot.data1[[2]], beside=TRUE, col=col1, main="(b)", 
-        names.arg=labels1[[2]], ylab=expression(hat(lambda)~"'"[g]), las=2)
-abline(h=1, lty=2)
-
-plot(plot.data2[[3]], type="l", xlab="Number of selected features", ylab="AUC", 
-     main="(c)", ylim=c(0.65, max(auc)), xlim=c(0, 500), col=col2[3], 
-     lty=lty2[1])
-lines(plot.data2[[4]], col=col2[4], lty=lty2[1])
-lines(plot.data2[[5]], col=col2[5], lty=lty2[1])
-abline(h=plot.data2[[1]][, 2], col=col2[1], lty=lty2[2])
-abline(h=plot.data2[[2]][, 2], col=col2[2], lty=lty2[2])
-legend("bottomright", legend=labels2, col=col2, 
-       lty=c(rep(lty2[2], 2), rep(lty2[1], 4)), bg = "white")
-par(opar)
-
-################################## supplement ##################################
-=======
 plot(plot.data[[1]][, c(1, 2)], type="l", main="(a)", ylab="AUC", 
      xlab="Number of selected features", ylim=ylim1, xlim=xlim, col=col[1], 
      lty=lty[1])
@@ -1728,8 +1507,6 @@ lines(plot.data[[5]][, c(1, 3)], col=col[2], lty=lty[2])
 lines(plot.data[[6]][, c(1, 3)], col=col[2], lty=lty[3])
 par(opar)
 
-
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 # ---- lines_micrornaseq_colorectal_cancer_res1_auc ----
 library(sp)
 res <- read.table("results/micrornaseq_colorectal_cancer_res1.csv", 
@@ -1739,24 +1516,6 @@ pred <- as.matrix(res[substr(rownames(res), 1, 4)=="pred", ])
 psel <- as.matrix(res[substr(rownames(res), 1, 4)=="psel", ])
 auc <- as.matrix(res[substr(rownames(res), 1, 3)=="auc", ])
 
-<<<<<<< HEAD
-methods <- c("ridge", "grridge", paste0("gren", c(1:3)), paste0("enet", c(1:3)),
-             paste0("sgl", c(1:3)), paste0("cmcp", c(1:3)), 
-             paste0("gel", c(1:3)))
-col <- bpy.colors(length(methods), cutoff.tail=0.1)
-lty <- 1:length(methods)
-labels <- expression("ridge", "GRridge", "gren,"~alpha==0.05, 
-                     "gren,"~alpha==0.5, "gren,"~alpha==0.95, 
-                     "enet,"~alpha==0.05, "enet,"~alpha==0.5, 
-                     "enet,"~alpha==0.95, "SGL,"~alpha==0.05, "SGL,"~alpha==0.5, 
-                     "SGL,"~alpha==0.95, "cMCP,"~alpha==0.05, 
-                     "cMCP,"~alpha==0.5, "cMCP,"~alpha==0.95, 
-                     "gel,"~alpha==0.05, "gel,"~alpha==0.5, "gel,"~alpha==0.95)
-
-plot.data <- lapply(methods, function(m) {
-  aggregate(auc[, grepl(m, colnames(auc))], 
-            list(psel=psel[, grepl(m, colnames(psel))]), mean)})
-=======
 methods <- c("grridge2", "ridge", "rf", paste0("gren", c(4:6)), 
              paste0("enet", c(1:3)), paste0("sgl", c(1:3)), 
              paste0("cmcp", c(1:3)), paste0("gel", c(1:3)))
@@ -1768,34 +1527,10 @@ lty <- 1:length(methods)
 plot.data <- lapply(methods, function(m) {
   aggregate(auc[, substr(colnames(auc), 1, nchar(m))==m], 
             list(psel=psel[, substr(colnames(psel), 1, nchar(m))==m]), mean)})
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 names(plot.data) <- methods
 
 opar <- par(no.readonly=TRUE)
 par(mar=opar$mar*c(1, 1.3, 1, 1))
-<<<<<<< HEAD
-plot(plot.data[[3]], type="l", xlab="Number of selected features", ylab="AUC", 
-     main="", ylim=range(auc), xlim=c(0, 500), col=col[3], 
-     lty=lty[3])
-lines(plot.data[[4]], col=col[4], lty=lty[4])
-lines(plot.data[[5]], col=col[5], lty=lty[5])
-lines(plot.data[[6]], col=col[6], lty=lty[6])
-lines(plot.data[[7]], col=col[7], lty=lty[7])
-lines(plot.data[[8]], col=col[8], lty=lty[8])
-lines(plot.data[[9]], col=col[9], lty=lty[9])
-lines(plot.data[[10]], col=col[10], lty=lty[10])
-lines(plot.data[[11]], col=col[11], lty=lty[11])
-lines(plot.data[[12]], col=col[12], lty=lty[12])
-lines(plot.data[[13]], col=col[13], lty=lty[13])
-lines(plot.data[[14]], col=col[14], lty=lty[14])
-lines(plot.data[[15]], col=col[15], lty=lty[15])
-lines(plot.data[[16]], col=col[16], lty=lty[16])
-lines(plot.data[[17]], col=col[17], lty=lty[17])
-abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
-abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
-legend("bottomright", legend=labels, col=col, 
-       lty=lty, bg = "white")
-=======
 layout(matrix(c(rep(c(1, 1, 2, 2), 2), rep(c(0, 3, 3, 0), 2)), 
               4, 4, byrow=TRUE))
 plot(plot.data[[4]], type="l", xlab="Number of selected features", 
@@ -1832,7 +1567,6 @@ lines(plot.data[[18]], col=col[8], lty=lty[8])
 abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
 abline(h=plot.data[[3]][, 2], col=col[3], lty=lty[3])
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 par(opar)
 
 # ---- lines_micrornaseq_colorectal_cancer_res1_briers ----
@@ -1844,24 +1578,6 @@ pred <- as.matrix(res[substr(rownames(res), 1, 4)=="pred", ])
 psel <- as.matrix(res[substr(rownames(res), 1, 4)=="psel", ])
 briers <- as.matrix(res[substr(rownames(res), 1, 6)=="briers", ])
 
-<<<<<<< HEAD
-methods <- c("ridge", "grridge", paste0("gren", c(1:3)), paste0("enet", c(1:3)),
-             paste0("sgl", c(1:3)), paste0("cmcp", c(1:3)), 
-             paste0("gel", c(1:3)))
-col <- bpy.colors(length(methods), cutoff.tail=0.1)
-lty <- 1:length(methods)
-labels <- expression("ridge", "GRridge", "gren,"~alpha==0.05, 
-                     "gren,"~alpha==0.5, "gren,"~alpha==0.95, 
-                     "enet,"~alpha==0.05, "enet,"~alpha==0.5, 
-                     "enet,"~alpha==0.95, "SGL,"~alpha==0.05, "SGL,"~alpha==0.5, 
-                     "SGL,"~alpha==0.95, "cMCP,"~alpha==0.05, 
-                     "cMCP,"~alpha==0.5, "cMCP,"~alpha==0.95, 
-                     "gel,"~alpha==0.05, "gel,"~alpha==0.5, "gel,"~alpha==0.95)
-
-plot.data <- lapply(methods, function(m) {
-  aggregate(briers[, grepl(m, colnames(briers))], 
-            list(psel=psel[, grepl(m, colnames(psel))]), mean)})
-=======
 methods <- c("grridge2", "rf", "ridge", paste0("gren", c(4:6)), 
              paste0("enet", c(1:3)), paste0("sgl", c(1:3)), 
              paste0("cmcp", c(1:3)), paste0("gel", c(1:3)))
@@ -1873,34 +1589,10 @@ lty <- 1:length(methods)
 plot.data <- lapply(methods, function(m) {
   aggregate(briers[, substr(colnames(briers), 1, nchar(m))==m], 
             list(psel=psel[, substr(colnames(psel), 1, nchar(m))==m]), mean)})
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 names(plot.data) <- methods
 
 opar <- par(no.readonly=TRUE)
 par(mar=opar$mar*c(1, 1.3, 1, 1))
-<<<<<<< HEAD
-plot(plot.data[[3]], type="l", xlab="Number of selected features", 
-     ylab="Brier skill score", main="", ylim=range(briers), xlim=c(0, 500), 
-     col=col[3], lty=lty[3])
-lines(plot.data[[4]], col=col[4], lty=lty[4])
-lines(plot.data[[5]], col=col[5], lty=lty[5])
-lines(plot.data[[6]], col=col[6], lty=lty[6])
-lines(plot.data[[7]], col=col[7], lty=lty[7])
-lines(plot.data[[8]], col=col[8], lty=lty[8])
-lines(plot.data[[9]], col=col[9], lty=lty[9])
-lines(plot.data[[10]], col=col[10], lty=lty[10])
-lines(plot.data[[11]], col=col[11], lty=lty[11])
-lines(plot.data[[12]], col=col[12], lty=lty[12])
-lines(plot.data[[13]], col=col[13], lty=lty[13])
-lines(plot.data[[14]], col=col[14], lty=lty[14])
-lines(plot.data[[15]], col=col[15], lty=lty[15])
-lines(plot.data[[16]], col=col[16], lty=lty[16])
-lines(plot.data[[17]], col=col[17], lty=lty[17])
-abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
-abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
-legend("bottomright", legend=labels, col=col, 
-       lty=lty, bg = "white")
-=======
 layout(matrix(c(rep(c(1, 1, 2, 2), 2), rep(c(0, 3, 3, 0), 2)), 
               4, 4, byrow=TRUE))
 plot(plot.data[[4]], type="l", xlab="Number of selected features", 
@@ -1938,7 +1630,6 @@ lines(plot.data[[18]], col=col[8], lty=lty[8])
 abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
 abline(h=plot.data[[3]][, 2], col=col[3], lty=lty[3])
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 par(opar)
 
 # ---- boxplots_micrornaseq_colorectal_cancer_res2_multipliers ----
@@ -2031,43 +1722,15 @@ barplot(plot.data[[3]], beside=TRUE, xlab="Number of overlapping features",
         ylab="Density", main="(c)", col=col, names.arg=1:max(res))
 par(opar)
 
-<<<<<<< HEAD
-# ---- lines_rnaseq_lymph_node_metastasis_res1_auc ----
-library(sp)
-res <- read.table("results/rnaseq_lymph_node_metastasis_res1.csv", 
-=======
 # ---- lines_rnaseq_oral_cancer_metastasis_res1_auc ----
 library(sp)
 res <- read.table("results/rnaseq_oral_cancer_metastasis_res1.csv", 
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
                   stringsAsFactors=FALSE)
 
 pred <- as.matrix(res[substr(rownames(res), 1, 4)=="pred", ])
 psel <- as.matrix(res[substr(rownames(res), 1, 4)=="psel", ])
 auc <- as.matrix(res[substr(rownames(res), 1, 3)=="auc", ])
 
-<<<<<<< HEAD
-methods <- c("ridge", "grridge", paste0("gren", c(1:3)), paste0("enet", c(1:3)),
-             paste0("sgl", c(1:3)), paste0("cmcp", c(1:3)), 
-             paste0("gel", c(1:3)), paste0("ocmcp", c(1:3)), 
-             paste0("ogel", c(1:3)))
-col <- bpy.colors(length(methods), cutoff.tail=0.1)
-lty <- 1:length(methods)
-labels <- expression("ridge", "GRridge", "gren,"~alpha==0.05, 
-                     "gren,"~alpha==0.5, "gren,"~alpha==0.95, 
-                     "enet,"~alpha==0.05, "enet,"~alpha==0.5, 
-                     "enet,"~alpha==0.95, "SGL,"~alpha==0.05, "SGL,"~alpha==0.5, 
-                     "SGL,"~alpha==0.95, "cMCP,"~alpha==0.05, 
-                     "cMCP,"~alpha==0.5, "cMCP,"~alpha==0.95, 
-                     "gel,"~alpha==0.05, "gel,"~alpha==0.5, "gel,"~alpha==0.95,
-                     "OcMCP,"~alpha==0.05, "OcMCP,"~alpha==0.5, 
-                     "OcMCP,"~alpha==0.95, "Ogel,"~alpha==0.05, 
-                     "Ogel,"~alpha==0.5, "Ogel,"~alpha==0.95)
-
-plot.data <- lapply(methods, function(m) {
-  aggregate(auc[, grepl(m, colnames(auc))], 
-            list(psel=psel[, grepl(m, colnames(psel))]), mean)})
-=======
 methods <- c("ridge", "grridge", "rf", paste0("gren", c(1:3)), 
              paste0("enet", c(1:3)), paste0("sgl", c(1:3)), 
              paste0("cmcp", c(1:3)), paste0("gel", c(1:3)), 
@@ -2080,45 +1743,10 @@ lty <- 1:length(labels)
 plot.data <- lapply(methods, function(m) {
   aggregate(auc[, substr(colnames(auc), 1, nchar(m))==m], 
             list(psel=psel[, substr(colnames(psel), 1, nchar(m))==m]), mean)})
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 names(plot.data) <- methods
 
 opar <- par(no.readonly=TRUE)
 par(mar=opar$mar*c(1, 1.3, 1, 1))
-<<<<<<< HEAD
-plot(plot.data[[3]], type="l", xlab="Number of selected features", ylab="AUC", 
-     main="", ylim=range(auc), xlim=c(0, 500), col=col[3], 
-     lty=lty[3])
-lines(plot.data[[4]], col=col[4], lty=lty[4])
-lines(plot.data[[5]], col=col[5], lty=lty[5])
-lines(plot.data[[6]], col=col[6], lty=lty[6])
-lines(plot.data[[7]], col=col[7], lty=lty[7])
-lines(plot.data[[8]], col=col[8], lty=lty[8])
-lines(plot.data[[9]], col=col[9], lty=lty[9])
-lines(plot.data[[10]], col=col[10], lty=lty[10])
-lines(plot.data[[11]], col=col[11], lty=lty[11])
-lines(plot.data[[12]], col=col[12], lty=lty[12])
-lines(plot.data[[13]], col=col[13], lty=lty[13])
-lines(plot.data[[14]], col=col[14], lty=lty[14])
-lines(plot.data[[15]], col=col[15], lty=lty[15])
-lines(plot.data[[16]], col=col[16], lty=lty[16])
-lines(plot.data[[17]], col=col[17], lty=lty[17])
-lines(plot.data[[18]], col=col[18], lty=lty[18])
-lines(plot.data[[19]], col=col[19], lty=lty[19])
-lines(plot.data[[20]], col=col[20], lty=lty[20])
-lines(plot.data[[21]], col=col[21], lty=lty[21])
-lines(plot.data[[22]], col=col[22], lty=lty[22])
-lines(plot.data[[23]], col=col[23], lty=lty[23])
-abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
-abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
-legend("bottomright", legend=labels, col=col, 
-       lty=lty, bg = "white")
-par(opar)
-
-# ---- lines_rnaseq_lymph_node_metastasis_res1_briers ----
-library(sp)
-res <- read.table("results/rnaseq_lymph_node_metastasis_res1.csv", 
-=======
 layout(matrix(c(rep(c(1, 1, 2, 2), 2), rep(c(0, 3, 3, 0), 2)), 
        4, 4, byrow=TRUE))
 plot(plot.data[[4]], type="l", xlab="Number of selected features", 
@@ -2165,35 +1793,12 @@ abline(h=plot.data[[3]][, 2], col=col[3], lty=lty[3])
 # ---- lines_rnaseq_oral_cancer_metastasis_res1_briers ----
 library(sp)
 res <- read.table("results/rnaseq_oral_cancer_metastasis_res1.csv", 
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
                   stringsAsFactors=FALSE)
 
 pred <- as.matrix(res[substr(rownames(res), 1, 4)=="pred", ])
 psel <- as.matrix(res[substr(rownames(res), 1, 4)=="psel", ])
 briers <- as.matrix(res[substr(rownames(res), 1, 6)=="briers", ])
 
-<<<<<<< HEAD
-methods <- c("ridge", "grridge", paste0("gren", c(1:3)), paste0("enet", c(1:3)),
-             paste0("sgl", c(1:3)), paste0("cmcp", c(1:3)), 
-             paste0("gel", c(1:3)), paste0("ocmcp", c(1:3)), 
-             paste0("ogel", c(1:3)))
-col <- bpy.colors(length(methods), cutoff.tail=0.1)
-lty <- 1:length(methods)
-labels <- expression("ridge", "GRridge", "gren,"~alpha==0.05, 
-                     "gren,"~alpha==0.5, "gren,"~alpha==0.95, 
-                     "enet,"~alpha==0.05, "enet,"~alpha==0.5, 
-                     "enet,"~alpha==0.95, "SGL,"~alpha==0.05, "SGL,"~alpha==0.5, 
-                     "SGL,"~alpha==0.95, "cMCP,"~alpha==0.05, 
-                     "cMCP,"~alpha==0.5, "cMCP,"~alpha==0.95, 
-                     "gel,"~alpha==0.05, "gel,"~alpha==0.5, "gel,"~alpha==0.95,
-                     "OcMCP,"~alpha==0.05, "OcMCP,"~alpha==0.5, 
-                     "OcMCP,"~alpha==0.95, "Ogel,"~alpha==0.05, 
-                     "Ogel,"~alpha==0.5, "Ogel,"~alpha==0.95)
-
-plot.data <- lapply(methods, function(m) {
-  aggregate(briers[, grepl(m, colnames(briers))], 
-            list(psel=psel[, grepl(m, colnames(psel))]), mean)})
-=======
 methods <- c("ridge", "grridge", "rf", paste0("gren", c(1:3)), 
              paste0("enet", c(1:3)), paste0("sgl", c(1:3)), 
              paste0("cmcp", c(1:3)), paste0("gel", c(1:3)), 
@@ -2206,41 +1811,10 @@ lty <- 1:length(labels)
 plot.data <- lapply(methods, function(m) {
   aggregate(briers[, substr(colnames(briers), 1, nchar(m))==m], 
             list(psel=psel[, substr(colnames(psel), 1, nchar(m))==m]), mean)})
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 names(plot.data) <- methods
 
 opar <- par(no.readonly=TRUE)
 par(mar=opar$mar*c(1, 1.3, 1, 1))
-<<<<<<< HEAD
-plot(plot.data[[3]], type="l", xlab="Number of selected features", 
-     ylab="Brier skill score", 
-     main="", ylim=range(briers), xlim=c(0, 500), col=col[3], 
-     lty=lty[3])
-lines(plot.data[[4]], col=col[4], lty=lty[4])
-lines(plot.data[[5]], col=col[5], lty=lty[5])
-lines(plot.data[[6]], col=col[6], lty=lty[6])
-lines(plot.data[[7]], col=col[7], lty=lty[7])
-lines(plot.data[[8]], col=col[8], lty=lty[8])
-lines(plot.data[[9]], col=col[9], lty=lty[9])
-lines(plot.data[[10]], col=col[10], lty=lty[10])
-lines(plot.data[[11]], col=col[11], lty=lty[11])
-lines(plot.data[[12]], col=col[12], lty=lty[12])
-lines(plot.data[[13]], col=col[13], lty=lty[13])
-lines(plot.data[[14]], col=col[14], lty=lty[14])
-lines(plot.data[[15]], col=col[15], lty=lty[15])
-lines(plot.data[[16]], col=col[16], lty=lty[16])
-lines(plot.data[[17]], col=col[17], lty=lty[17])
-lines(plot.data[[18]], col=col[18], lty=lty[18])
-lines(plot.data[[19]], col=col[19], lty=lty[19])
-lines(plot.data[[20]], col=col[20], lty=lty[20])
-lines(plot.data[[21]], col=col[21], lty=lty[21])
-lines(plot.data[[22]], col=col[22], lty=lty[22])
-lines(plot.data[[23]], col=col[23], lty=lty[23])
-abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
-abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
-legend("bottomright", legend=labels, col=col, 
-       lty=lty, bg = "white")
-=======
 layout(matrix(c(rep(c(1, 1, 2, 2), 2), rep(c(0, 3, 3, 0), 2)), 
               4, 4, byrow=TRUE))
 plot(plot.data[[4]], type="l", xlab="Number of selected features", 
@@ -2283,7 +1857,6 @@ lines(plot.data[[24]], col=col[10], lty=lty[10])
 abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
 abline(h=plot.data[[3]][, 2], col=col[3], lty=lty[3])
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 par(opar)
 
 # ---- barplot_metabolomics_alzheimer_res1 ----
@@ -2295,18 +1868,11 @@ methods <- c("grridge", expression("gren, "~alpha==0.05, "gren, "~alpha==0.5,
 col <- grey.colors(length(methods) - 1, start=0.3, end=0.9, gamma=2.2, 
                    alpha=NULL)
 lty <- 2
-<<<<<<< HEAD
-labels <- list(quality=expression("RSDqc" > 0.096, 
-                                  atop(NA, atop(textstyle(0.096 >=phantom(0)), 
-                                                textstyle("RSDqc" > 0.047))),
-                                  "RSDqc" <= 0.047),
-=======
 
 labels <- list(quality=expression("RSDqc" > 0.113, 
                                   atop(NA, atop(textstyle(0.113 >=phantom(0)), 
                                                 textstyle("RSDqc" > 0.055))),
                                   "RSDqc" <= 0.055),
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
                degree=expression("degree" == 0, 
                                  atop(NA, atop(textstyle(0 < "degree"),
                                                textstyle(
@@ -2314,15 +1880,9 @@ labels <- list(quality=expression("RSDqc" > 0.113,
                                  atop(NA, atop(textstyle("degree" > phantom(0)),
                                                textstyle("average")))))
 
-<<<<<<< HEAD
-plot.data <- lapply(1:length(fit.gren1$lambdag), function(s) {
-  rbind(fit.grridge$lambdamults[[s]], fit.gren1$lambdag[[s]],
-        fit.gren2$lambdag[[s]], fit.gren3$lambdag[[s]])})
-=======
 plot.data <- lapply(1:length(fit.gren4$lambdag), function(s) {
   rbind(fit.grridge$lambdamults[[s]], fit.gren4$lambdag[[s]],
         fit.gren5$lambdag[[s]], fit.gren6$lambdag[[s]])})
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 
 opar <- par(no.readonly=TRUE)
 par(mar=opar$mar*c(1, 1.3, 1, 1))
@@ -2350,28 +1910,6 @@ pred <- as.matrix(res[substr(rownames(res), 1, 4)=="pred", ])
 psel <- as.matrix(res[substr(rownames(res), 1, 4)=="psel", ])
 auc <- as.matrix(res[substr(rownames(res), 1, 3)=="auc", ])
 
-<<<<<<< HEAD
-methods <- c("ridge", "grridge", paste0("gren", c(1:3)), paste0("enet", c(1:3)),
-             paste0("sgl", c(1:3)), paste0("cmcp", c(1:3)), 
-             paste0("gel", c(1:3)), paste0("ocmcp", c(1:3)), 
-             paste0("ogel", c(1:3)))
-col <- bpy.colors(length(methods), cutoff.tail=0.1)
-lty <- 1:length(methods)
-labels <- expression("ridge", "GRridge", "gren,"~alpha==0.05, 
-                     "gren,"~alpha==0.5, "gren,"~alpha==0.95, 
-                     "enet,"~alpha==0.05, "enet,"~alpha==0.5, 
-                     "enet,"~alpha==0.95, "SGL,"~alpha==0.05, "SGL,"~alpha==0.5, 
-                     "SGL,"~alpha==0.95, "cMCP,"~alpha==0.05, 
-                     "cMCP,"~alpha==0.5, "cMCP,"~alpha==0.95, 
-                     "gel,"~alpha==0.05, "gel,"~alpha==0.5, "gel,"~alpha==0.95,
-                     "OcMCP,"~alpha==0.05, "OcMCP,"~alpha==0.5, 
-                     "OcMCP,"~alpha==0.95, "Ogel,"~alpha==0.05, 
-                     "Ogel,"~alpha==0.5, "Ogel,"~alpha==0.95)
-
-plot.data <- lapply(methods, function(m) {
-  aggregate(auc[, grepl(m, colnames(auc))], 
-            list(psel=psel[, grepl(m, colnames(psel))]), mean)})
-=======
 methods <- c("ridge", "grridge", "rf", paste0("gren", c(4:6)), 
              paste0("enet", c(1:3)),
              paste0("sgl", c(1:3)), paste0("cmcp", c(1:3)), 
@@ -2385,40 +1923,10 @@ lty <- 1:length(labels)
 plot.data <- lapply(methods, function(m) {
   aggregate(auc[, substr(colnames(auc), 1, nchar(m))==m], 
             list(psel=psel[, substr(colnames(psel), 1, nchar(m))==m]), mean)})
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 names(plot.data) <- methods
 
 opar <- par(no.readonly=TRUE)
 par(mar=opar$mar*c(1, 1.3, 1, 1))
-<<<<<<< HEAD
-plot(plot.data[[3]], type="l", xlab="Number of selected features", ylab="AUC", 
-     main="", ylim=range(auc), xlim=range(psel), col=col[3], 
-     lty=lty[3])
-lines(plot.data[[4]], col=col[4], lty=lty[4])
-lines(plot.data[[5]], col=col[5], lty=lty[5])
-lines(plot.data[[6]], col=col[6], lty=lty[6])
-lines(plot.data[[7]], col=col[7], lty=lty[7])
-lines(plot.data[[8]], col=col[8], lty=lty[8])
-lines(plot.data[[9]], col=col[9], lty=lty[9])
-lines(plot.data[[10]], col=col[10], lty=lty[10])
-lines(plot.data[[11]], col=col[11], lty=lty[11])
-lines(plot.data[[12]], col=col[12], lty=lty[12])
-lines(plot.data[[13]], col=col[13], lty=lty[13])
-lines(plot.data[[14]], col=col[14], lty=lty[14])
-lines(plot.data[[15]], col=col[15], lty=lty[15])
-lines(plot.data[[16]], col=col[16], lty=lty[16])
-lines(plot.data[[17]], col=col[17], lty=lty[17])
-lines(plot.data[[18]], col=col[18], lty=lty[18])
-lines(plot.data[[19]], col=col[19], lty=lty[19])
-lines(plot.data[[20]], col=col[20], lty=lty[20])
-lines(plot.data[[21]], col=col[21], lty=lty[21])
-lines(plot.data[[22]], col=col[22], lty=lty[22])
-lines(plot.data[[23]], col=col[23], lty=lty[23])
-abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
-abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
-legend("bottomright", legend=labels, col=col, 
-       lty=lty, bg = "white")
-=======
 layout(matrix(c(rep(c(1, 1, 2, 2), 2), rep(c(0, 3, 3, 0), 2)), 
               4, 4, byrow=TRUE))
 plot(plot.data[[4]], type="l", xlab="Number of selected features", 
@@ -2461,7 +1969,6 @@ lines(plot.data[[24]], col=col[10], lty=lty[10])
 abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
 abline(h=plot.data[[3]][, 2], col=col[3], lty=lty[3])
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 par(opar)
 
 # ---- lines_metabolomics_alzheimer_res1_briers ----
@@ -2473,28 +1980,6 @@ pred <- as.matrix(res[substr(rownames(res), 1, 4)=="pred", ])
 psel <- as.matrix(res[substr(rownames(res), 1, 4)=="psel", ])
 briers <- as.matrix(res[substr(rownames(res), 1, 6)=="briers", ])
 
-<<<<<<< HEAD
-methods <- c("ridge", "grridge", paste0("gren", c(1:3)), paste0("enet", c(1:3)),
-             paste0("sgl", c(1:3)), paste0("cmcp", c(1:3)), 
-             paste0("gel", c(1:3)), paste0("ocmcp", c(1:3)), 
-             paste0("ogel", c(1:3)))
-col <- bpy.colors(length(methods), cutoff.tail=0.1)
-lty <- 1:length(methods)
-labels <- expression("ridge", "GRridge", "gren,"~alpha==0.05, 
-                     "gren,"~alpha==0.5, "gren,"~alpha==0.95, 
-                     "enet,"~alpha==0.05, "enet,"~alpha==0.5, 
-                     "enet,"~alpha==0.95, "SGL,"~alpha==0.05, "SGL,"~alpha==0.5, 
-                     "SGL,"~alpha==0.95, "cMCP,"~alpha==0.05, 
-                     "cMCP,"~alpha==0.5, "cMCP,"~alpha==0.95, 
-                     "gel,"~alpha==0.05, "gel,"~alpha==0.5, "gel,"~alpha==0.95,
-                     "OcMCP,"~alpha==0.05, "OcMCP,"~alpha==0.5, 
-                     "OcMCP,"~alpha==0.95, "Ogel,"~alpha==0.05, 
-                     "Ogel,"~alpha==0.5, "Ogel,"~alpha==0.95)
-
-plot.data <- lapply(methods, function(m) {
-  aggregate(briers[, grepl(m, colnames(briers))], 
-            list(psel=psel[, grepl(m, colnames(psel))]), mean)})
-=======
 methods <- c("ridge", "grridge", "rf", paste0("gren", c(4:6)), 
              paste0("enet", c(1:3)),
              paste0("sgl", c(1:3)), paste0("cmcp", c(1:3)), 
@@ -2509,41 +1994,10 @@ lty <- 1:length(labels)
 plot.data <- lapply(methods, function(m) {
   aggregate(briers[, substr(colnames(briers), 1, nchar(m))==m], 
             list(psel=psel[, substr(colnames(psel), 1, nchar(m))==m]), mean)})
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 names(plot.data) <- methods
 
 opar <- par(no.readonly=TRUE)
 par(mar=opar$mar*c(1, 1.3, 1, 1))
-<<<<<<< HEAD
-plot(plot.data[[3]], type="l", xlab="Number of selected features", 
-     ylab="Brier skill score", 
-     main="", ylim=range(briers), xlim=c(0, 500), col=col[3], 
-     lty=lty[3])
-lines(plot.data[[4]], col=col[4], lty=lty[4])
-lines(plot.data[[5]], col=col[5], lty=lty[5])
-lines(plot.data[[6]], col=col[6], lty=lty[6])
-lines(plot.data[[7]], col=col[7], lty=lty[7])
-lines(plot.data[[8]], col=col[8], lty=lty[8])
-lines(plot.data[[9]], col=col[9], lty=lty[9])
-lines(plot.data[[10]], col=col[10], lty=lty[10])
-lines(plot.data[[11]], col=col[11], lty=lty[11])
-lines(plot.data[[12]], col=col[12], lty=lty[12])
-lines(plot.data[[13]], col=col[13], lty=lty[13])
-lines(plot.data[[14]], col=col[14], lty=lty[14])
-lines(plot.data[[15]], col=col[15], lty=lty[15])
-lines(plot.data[[16]], col=col[16], lty=lty[16])
-lines(plot.data[[17]], col=col[17], lty=lty[17])
-lines(plot.data[[18]], col=col[18], lty=lty[18])
-lines(plot.data[[19]], col=col[19], lty=lty[19])
-lines(plot.data[[20]], col=col[20], lty=lty[20])
-lines(plot.data[[21]], col=col[21], lty=lty[21])
-lines(plot.data[[22]], col=col[22], lty=lty[22])
-lines(plot.data[[23]], col=col[23], lty=lty[23])
-abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
-abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
-legend("bottomright", legend=labels, col=col, 
-       lty=lty, bg = "white")
-=======
 layout(matrix(c(rep(c(1, 1, 2, 2), 2), rep(c(0, 3, 3, 0), 2)), 
               4, 4, byrow=TRUE))
 plot(plot.data[[4]], type="l", xlab="Number of selected features", 
@@ -2586,7 +2040,6 @@ lines(plot.data[[24]], col=col[10], lty=lty[10])
 abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
 abline(h=plot.data[[3]][, 2], col=col[3], lty=lty[3])
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 par(opar)
 
 # ---- barplot_micrornaseq_cervical_cancer_res1 ----
@@ -2625,18 +2078,11 @@ pred <- as.matrix(res[substr(rownames(res), 1, 4)=="pred", ])
 psel <- as.matrix(res[substr(rownames(res), 1, 4)=="psel", ])
 auc <- as.matrix(res[substr(rownames(res), 1, 3)=="auc", ])
 
-<<<<<<< HEAD
-methods <- c("ridge", "grridge", paste0("gren", c(1:3)), paste0("enet", c(1:3)))
-col <- bpy.colors(length(methods), cutoff.tail=0.1)
-lty <- 1:length(methods)
-labels <- expression("ridge", "GRridge", "gren,"~alpha==0.05, 
-=======
 methods <- c("ridge", "rf", "grridge", paste0("gren", c(1:3)), 
              paste0("enet", c(1:3)))
 col <- bpy.colors(length(methods), cutoff.tail=0.1)
 lty <- 1:length(methods)
 labels <- expression("ridge", "GRridge", "random forest", "gren,"~alpha==0.05, 
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
                      "gren,"~alpha==0.5, "gren,"~alpha==0.95, 
                      "enet,"~alpha==0.05, "enet,"~alpha==0.5, 
                      "enet,"~alpha==0.95)
@@ -2648,29 +2094,17 @@ names(plot.data) <- methods
 
 opar <- par(no.readonly=TRUE)
 par(mar=opar$mar*c(1, 1.3, 1, 1))
-<<<<<<< HEAD
-plot(plot.data[[3]], type="l", xlab="Number of selected features", ylab="AUC", 
-     main="", ylim=range(auc), xlim=c(0, max(psel[, -c(1, 2)])), col=col[3], 
-     lty=lty[3])
-lines(plot.data[[4]], col=col[4], lty=lty[4])
-=======
 plot(plot.data[[4]], type="l", xlab="Number of selected features", ylab="AUC", 
      main="", ylim=range(auc), xlim=c(0, max(psel[, -c(1, 2, ncol(psel))])), 
      col=col[4], lty=lty[4])
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 lines(plot.data[[5]], col=col[5], lty=lty[5])
 lines(plot.data[[6]], col=col[6], lty=lty[6])
 lines(plot.data[[7]], col=col[7], lty=lty[7])
 lines(plot.data[[8]], col=col[8], lty=lty[8])
-<<<<<<< HEAD
-abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
-abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
-=======
 lines(plot.data[[9]], col=col[9], lty=lty[9])
 abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
 abline(h=plot.data[[3]][, 2], col=col[3], lty=lty[3])
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 legend("bottomright", legend=labels, col=col, 
        lty=lty, bg = "white")
 par(opar)
@@ -2684,18 +2118,11 @@ pred <- as.matrix(res[substr(rownames(res), 1, 4)=="pred", ])
 psel <- as.matrix(res[substr(rownames(res), 1, 4)=="psel", ])
 briers <- as.matrix(res[substr(rownames(res), 1, 6)=="briers", ])
 
-<<<<<<< HEAD
-methods <- c("ridge", "grridge", paste0("gren", c(1:3)), paste0("enet", c(1:3)))
-col <- bpy.colors(length(methods), cutoff.tail=0.1)
-lty <- 1:length(methods)
-labels <- expression("ridge", "GRridge", "gren,"~alpha==0.05, 
-=======
 methods <- c("ridge", "rf", "grridge", paste0("gren", c(1:3)), 
              paste0("enet", c(1:3)))
 col <- bpy.colors(length(methods), cutoff.tail=0.1)
 lty <- 1:length(methods)
 labels <- expression("ridge", "GRridge", "random forest", "gren,"~alpha==0.05, 
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
                      "gren,"~alpha==0.5, "gren,"~alpha==0.95, 
                      "enet,"~alpha==0.05, "enet,"~alpha==0.5, 
                      "enet,"~alpha==0.95)
@@ -2707,29 +2134,14 @@ names(plot.data) <- methods
 
 opar <- par(no.readonly=TRUE)
 par(mar=opar$mar*c(1, 1.3, 1, 1))
-<<<<<<< HEAD
-plot(plot.data[[3]], type="l", xlab="Number of selected features", 
-     ylab="Brier skill score", 
-     main="", ylim=range(briers), xlim=c(0, max(psel[, -c(1, 2)])), col=col[3], 
-     lty=lty[3])
-lines(plot.data[[4]], col=col[4], lty=lty[4])
-=======
 plot(plot.data[[4]], type="l", xlab="Number of selected features", 
      ylab="Brier skill score", 
      main="", ylim=range(briers), xlim=c(0, max(psel[, -c(1, 2, ncol(psel))])), 
      col=col[4], lty=lty[4])
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
 lines(plot.data[[5]], col=col[5], lty=lty[5])
 lines(plot.data[[6]], col=col[6], lty=lty[6])
 lines(plot.data[[7]], col=col[7], lty=lty[7])
 lines(plot.data[[8]], col=col[8], lty=lty[8])
-<<<<<<< HEAD
-abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
-abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
-legend("bottomright", legend=labels, col=col, 
-       lty=lty, bg = "white")
-par(opar)
-=======
 lines(plot.data[[9]], col=col[9], lty=lty[9])
 abline(h=plot.data[[1]][, 2], col=col[1], lty=lty[1])
 abline(h=plot.data[[2]][, 2], col=col[2], lty=lty[2])
@@ -2791,4 +2203,3 @@ legend("bottomright", legend=labels2, fill=c(col2, NA, NA),
        border=c(rep(1, 3), NA, NA), lty=c(rep(NA, 3), lty2),
        seg.len=1, merge=TRUE, bg="white")
 par(opar)
->>>>>>> 31db1da7fc892df40e05ce4287d82f38e942befc
