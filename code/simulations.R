@@ -1695,6 +1695,7 @@ res <- foreach(k=c(1:nreps), .errorhandling="pass") %dopar% {
   print(paste("rep", k))
   set.seed(2019 + k)
 
+  xtrain <- rmvnorm(n, mean=rep(0, p), sigma=Sigma)
   ind.mat <- matrix(rep(rep(c(TRUE, FALSE),
                             times=c(frac.relu*p/G, (1 - frac.relu)*p/G)), G),
                     nrow=n, ncol=p, byrow=TRUE)
@@ -1803,6 +1804,7 @@ res <- foreach(k=c(1:nreps), .errorhandling="pass") %dopar% {
   print(paste("rep", k))
   set.seed(2019 + k)
 
+  xtrain <- rmvnorm(n, mean=rep(0, p), sigma=Sigma)
   ind.mat <- matrix(rep(rep(c(TRUE, FALSE),
                             times=c(frac.relu*p/G, (1 - frac.relu)*p/G)), G),
                     nrow=n, ncol=p, byrow=TRUE)
@@ -1910,6 +1912,7 @@ res <- foreach(k=c(1:nreps), .errorhandling="pass") %dopar% {
   print(paste("rep", k))
   set.seed(2019 + k)
   
+  xtrain <- rmvnorm(n, mean=rep(0, p), sigma=Sigma)
   ind.mat <- matrix(rep(rep(c(TRUE, FALSE), 
                             times=c(frac.relu*p/G, (1 - frac.relu)*p/G)), G), 
                     nrow=n, ncol=p, byrow=TRUE)
