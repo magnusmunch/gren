@@ -60,7 +60,7 @@ List est_param(arma::mat xr, arma::mat xu, arma::vec kappa, arma::vec m, int n,
   if(p <= n) {
     sigma = (x.each_col() % om).t()*x;
     arma::vec happend = h;
-    happend.insert_rows(0, nvars - r, true);
+    happend.insert_rows(0, nvars - r);
     sigma.diag() += happend;
     if(elbo) {
       ldetsig = - real(log_det(sigma));
